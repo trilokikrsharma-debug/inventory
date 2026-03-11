@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">InvenBill</string>
+    <style name="Theme.InvenBill" parent="Theme.SplashScreen">
+        
+        <item name="windowSplashScreenBackground">#1a1c2e</item>
+        
+        <item name="windowSplashScreenAnimatedIcon">@android:drawable/sym_def_app_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.InvenBill.App</item>
+    </style>
+    <style name="Theme.InvenBill.App" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">#4e73df</item>
+        <item name="colorPrimaryDark">#1a1d2e</item>
+        <item name="colorAccent">#1cc88a</item>
+        <item name="android:statusBarColor">#1a1d2e</item>
+        <item name="android:windowBackground">#1a1c2e</item>
+    </style>
+</resources>

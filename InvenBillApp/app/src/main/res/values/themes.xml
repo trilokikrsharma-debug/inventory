@@ -1,0 +1,19 @@
+<resources>
+    <!-- SPLASH SCREEN LAYER -->
+    <style name="Theme.InvenBill" parent="Theme.SplashScreen">
+        <!-- Matches your dark theme web background -->
+        <item name="windowSplashScreenBackground">#1a1c2e</item>
+        <!-- Use a solid color or custom drawable for animated icon since mipmap isn't standard shape -->
+        <item name="windowSplashScreenAnimatedIcon">@android:drawable/sym_def_app_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.InvenBill.App</item>
+    </style>
+
+    <!-- APP LAYER -->
+    <style name="Theme.InvenBill.App" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">#4e73df</item>
+        <item name="colorPrimaryDark">#1a1d2e</item>
+        <item name="colorAccent">#1cc88a</item>
+        <item name="android:statusBarColor">#1a1d2e</item>
+        <item name="android:windowBackground">#1a1c2e</item>
+    </style>
+</resources>

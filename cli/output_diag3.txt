@@ -1,0 +1,14 @@
+--- CHECKING ISOLATION & SCHEMA ---
+Table companies EXISTS.
+Table users EXISTS.
+  -> has company_id.
+Table products EXISTS.
+  -> has company_id.
+Table invoices DOES NOT EXIST!
+Table saas_plans EXISTS.
+Table tenant_subscriptions EXISTS.
+  -> has company_id.
+Table tenant_billing_history EXISTS.
+  -> has company_id.
+Table jobs EXISTS.
+  -> has company_id.

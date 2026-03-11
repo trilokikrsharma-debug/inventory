@@ -1,0 +1,151 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.invenbill.app"
+4    android:versionCode="1"
+5    android:versionName="1.0.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="24"
+9        android:targetSdkVersion="34" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:6:5-67
+11-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:6:22-64
+12    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+12-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:7:5-79
+12-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:7:22-76
+13
+14    <!-- Permissions to upload media/files within the WebView -->
+15    <uses-permission
+15-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:10:5-107
+16        android:name="android.permission.READ_EXTERNAL_STORAGE"
+16-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:10:22-77
+17        android:maxSdkVersion="32" />
+17-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:10:78-104
+18    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+18-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:11:5-76
+18-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:11:22-73
+19
+20    <permission
+20-->[androidx.core:core:1.12.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\9c45b6825824ed2fd45e1e89c9f51f96\workspace\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
+21        android:name="com.invenbill.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+21-->[androidx.core:core:1.12.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\9c45b6825824ed2fd45e1e89c9f51f96\workspace\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
+22        android:protectionLevel="signature" />
+22-->[androidx.core:core:1.12.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\9c45b6825824ed2fd45e1e89c9f51f96\workspace\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
+23
+24    <uses-permission android:name="com.invenbill.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+24-->[androidx.core:core:1.12.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\9c45b6825824ed2fd45e1e89c9f51f96\workspace\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
+24-->[androidx.core:core:1.12.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\9c45b6825824ed2fd45e1e89c9f51f96\workspace\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
+25
+26    <application
+26-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:13:5-33:19
+27        android:allowBackup="false"
+27-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:14:9-36
+28        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+28-->[androidx.core:core:1.12.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\9c45b6825824ed2fd45e1e89c9f51f96\workspace\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
+29        android:dataExtractionRules="@xml/data_extraction_rules"
+29-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:15:9-65
+30        android:debuggable="true"
+31        android:extractNativeLibs="false"
+32        android:fullBackupContent="@xml/backup_rules"
+32-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:16:9-54
+33        android:icon="@mipmap/ic_launcher"
+33-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:17:9-43
+34        android:label="@string/app_name"
+34-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:18:9-41
+35        android:roundIcon="@mipmap/ic_launcher_round"
+35-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:19:9-54
+36        android:supportsRtl="true"
+36-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:20:9-35
+37        android:theme="@style/Theme.InvenBill"
+37-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:21:9-47
+38        android:usesCleartextTraffic="true" >
+38-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:22:9-44
+39        <activity
+39-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:24:9-32:20
+40            android:name="com.invenbill.app.MainActivity"
+40-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:25:13-41
+41            android:configChanges="orientation|keyboardHidden|screenSize"
+41-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:27:13-74
+42            android:exported="true" >
+42-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:26:13-36
+43            <intent-filter>
+43-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:28:13-31:29
+44                <action android:name="android.intent.action.MAIN" />
+44-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:29:17-69
+44-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:29:25-66
+45
+46                <category android:name="android.intent.category.LAUNCHER" />
+46-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:30:17-77
+46-->F:\xampp\htdocs\inventory\InvenBillApp\app\src\main\AndroidManifest.xml:30:27-74
+47            </intent-filter>
+48        </activity>
+49
+50        <provider
+50-->[androidx.emoji2:emoji2:1.2.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\57d89081640d41d6ee5ebcb76ba91774\workspace\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
+51            android:name="androidx.startup.InitializationProvider"
+51-->[androidx.emoji2:emoji2:1.2.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\57d89081640d41d6ee5ebcb76ba91774\workspace\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:25:13-67
+52            android:authorities="com.invenbill.app.androidx-startup"
+52-->[androidx.emoji2:emoji2:1.2.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\57d89081640d41d6ee5ebcb76ba91774\workspace\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:26:13-68
+53            android:exported="false" >
+53-->[androidx.emoji2:emoji2:1.2.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\57d89081640d41d6ee5ebcb76ba91774\workspace\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:27:13-37
+54            <meta-data
+54-->[androidx.emoji2:emoji2:1.2.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\57d89081640d41d6ee5ebcb76ba91774\workspace\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:29:13-31:52
+55                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+55-->[androidx.emoji2:emoji2:1.2.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\57d89081640d41d6ee5ebcb76ba91774\workspace\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:30:17-75
+56                android:value="androidx.startup" />
+56-->[androidx.emoji2:emoji2:1.2.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\57d89081640d41d6ee5ebcb76ba91774\workspace\transformed\jetified-emoji2-1.2.0\AndroidManifest.xml:31:17-49
+57            <meta-data
+57-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\ac627cec7ac662583a5569d9b7b156d1\workspace\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:29:13-31:52
+58                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+58-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\ac627cec7ac662583a5569d9b7b156d1\workspace\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:30:17-78
+59                android:value="androidx.startup" />
+59-->[androidx.lifecycle:lifecycle-process:2.6.1] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\ac627cec7ac662583a5569d9b7b156d1\workspace\transformed\jetified-lifecycle-process-2.6.1\AndroidManifest.xml:31:17-49
+60            <meta-data
+60-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:29:13-31:52
+61                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+61-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:30:17-85
+62                android:value="androidx.startup" />
+62-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:31:17-49
+63        </provider>
+64
+65        <receiver
+65-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:34:9-52:20
+66            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+66-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:35:13-76
+67            android:directBootAware="false"
+67-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:36:13-44
+68            android:enabled="true"
+68-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:37:13-35
+69            android:exported="true"
+69-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:38:13-36
+70            android:permission="android.permission.DUMP" >
+70-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:39:13-57
+71            <intent-filter>
+71-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:40:13-42:29
+72                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+72-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:41:17-91
+72-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:41:25-88
+73            </intent-filter>
+74            <intent-filter>
+74-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:43:13-45:29
+75                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+75-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:44:17-85
+75-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:44:25-82
+76            </intent-filter>
+77            <intent-filter>
+77-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:46:13-48:29
+78                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+78-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:47:17-88
+78-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:47:25-85
+79            </intent-filter>
+80            <intent-filter>
+80-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:49:13-51:29
+81                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+81-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:50:17-95
+81-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\KARSO\.gradle\caches\9.2.1\transforms\a607bd8b578721e2ff27f80f2fb7d4ec\workspace\transformed\jetified-profileinstaller-1.3.0\AndroidManifest.xml:50:25-92
+82            </intent-filter>
+83        </receiver>
+84    </application>
+85
+86</manifest>

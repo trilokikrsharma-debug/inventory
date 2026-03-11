@@ -1,0 +1,23 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Deny access to hidden files (.env, .git, etc.)
+    RewriteRule ^\. - [F,L]
+    
+    # Deny access to specific sensitive directories explicitly
+    RewriteRule ^(core|config|database|logs|cache|cli|backups|models|controllers|views)/ - [F,L]
+    
+    # Prevent directory listing globally
+    Options -Indexes
+
+    # Route all traffic to index.php unless the file physically exists
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php?/$1 [L,QSA]
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Prevent caching of dynamic authenticated states accidentally
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+</IfModule>

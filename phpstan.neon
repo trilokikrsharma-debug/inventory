@@ -1,0 +1,23 @@
+parameters:
+    level: 5
+    paths:
+        - core/
+        - models/
+        - controllers/
+        - services/
+        - repositories/
+        - middleware/
+        - bootstrap/
+    excludePaths:
+        - vendor/
+        - tests/
+        - cache/
+        - logs/
+    ignoreErrors:
+        # Allow dynamic property access on models (legacy pattern)
+        - '#Access to an undefined property#'
+        # Allow static method calls on classes resolved via Container
+        - '#Call to static method .* on a non-class#'
+        # Legacy Session::get returns mixed
+        - '#Cannot access offset .* on mixed#'
+    reportUnmatchedIgnoredErrors: false

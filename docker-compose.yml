@@ -1,0 +1,117 @@
+# ============================================================
+# InvenBill Pro — Docker Compose (Production)
+# Services: app, mysql, redis, worker
+# ============================================================
+
+version: '3.8'
+
+services:
+  # ── PHP-FPM + Nginx ──────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: invenbill-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    environment:
+      - APP_ENV=production
+      - APP_URL=${APP_URL:?Set APP_URL}
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:?Set DB_NAME}
+      - DB_USER=${DB_USER:?Set DB_USER}
+      - DB_PASS=${DB_PASS:?Set DB_PASS}
+      - RAZORPAY_KEY=${RAZORPAY_KEY:?Set RAZORPAY_KEY}
+      - RAZORPAY_SECRET=${RAZORPAY_SECRET:?Set RAZORPAY_SECRET}
+      - RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET:?Set RAZORPAY_WEBHOOK_SECRET}
+      - REDIS_ENABLED=1
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - SESSION_LIFETIME=7200
+      - SESSION_IDLE_TIMEOUT=1800
+    volumes:
+      - uploads:/var/www/html/uploads
+      - logs:/var/www/html/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: [ "CMD", "curl", "-sf", "http://localhost/index.php?page=health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── MySQL 8.0 ────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: invenbill-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:?Set DB_ROOT_PASS}
+      MYSQL_DATABASE: ${DB_NAME:?Set DB_NAME}
+      MYSQL_USER: ${DB_USER:?Set DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS:?Set DB_PASS}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    command: >
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --innodb-buffer-pool-size=256M --max-connections=200 --slow-query-log=1 --long-query-time=2
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASS}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis 7 ──────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: invenbill-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
+  # ── Background Worker ────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: invenbill-worker
+    restart: unless-stopped
+    command: php /var/www/html/cli/worker.php
+    environment:
+      - APP_ENV=production
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:?Set DB_NAME}
+      - DB_USER=${DB_USER:?Set DB_USER}
+      - DB_PASS=${DB_PASS:?Set DB_PASS}
+      - REDIS_ENABLED=1
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    volumes:
+      - logs:/var/www/html/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads:
+    driver: local
+  logs:
+    driver: local
