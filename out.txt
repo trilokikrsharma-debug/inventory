@@ -1,0 +1,21 @@
+﻿Field	Type	Null	Key	Default	Extra
+id	int(10) unsigned	NO	PRI	NULL	auto_increment
+company_id	int(10) unsigned	NO	MUL	1	
+name	varchar(255)	NO		NULL	
+sku	varchar(100)	YES	MUL	NULL	
+barcode	varchar(100)	YES		NULL	
+category_id	int(10) unsigned	YES	MUL	NULL	
+brand_id	int(10) unsigned	YES	MUL	NULL	
+unit_id	int(10) unsigned	YES	MUL	NULL	
+purchase_price	decimal(15,2)	NO		0.00	
+selling_price	decimal(15,2)	NO		0.00	
+tax_rate	decimal(5,2)	YES		NULL	
+opening_stock	decimal(12,3)	YES		0.000	
+current_stock	decimal(12,3)	YES	MUL	0.000	
+low_stock_alert	int(11)	YES		NULL	
+description	text	YES		NULL	
+image	varchar(255)	YES		NULL	
+is_active	tinyint(1)	YES	MUL	1	
+created_at	timestamp	NO		current_timestamp()	
+updated_at	timestamp	NO		current_timestamp()	on update current_timestamp()
+deleted_at	timestamp	YES	MUL	NULL	

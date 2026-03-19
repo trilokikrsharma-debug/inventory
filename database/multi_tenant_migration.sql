@@ -1,17 +1,19 @@
 -- ============================================================
--- MULTI-TENANT SaaS MIGRATION
+-- MULTI-TENANT SaaS MIGRATION (MySQL 8 + PDO SPLIT SAFE)
 -- Converts single-tenant schema to shared-database multi-tenant
--- 
--- SAFE: All operations are additive (CREATE TABLE, ALTER TABLE ADD COLUMN)
--- IDEMPOTENT: Uses IF NOT EXISTS / conditional checks
--- BACKWARD COMPATIBLE: Existing data assigned to company_id = 1
+--
+-- SAFETY:
+-- - No dynamic SQL or routine blocks
+-- - No CREATE/DROP INDEX IF [NOT] EXISTS
+-- - Additive schema changes and controlled unique-key conversion
 -- ============================================================
 
 -- NOTE:
 -- Database selection is handled by cli/migrate.php using configured DB_NAME.
+-- This migration is intended to run once (tracked in migrations table).
 
 -- ============================================================
--- 1. CREATE COMPANIES TABLE
+-- 1) CORE TENANT TABLE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `companies` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -30,343 +32,159 @@ CREATE TABLE IF NOT EXISTS `companies` (
   INDEX `idx_companies_owner` (`owner_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ============================================================
--- 2. INSERT DEFAULT COMPANY (for existing data migration)
--- ============================================================
 INSERT IGNORE INTO `companies` (`id`, `name`, `slug`, `plan`, `status`)
 VALUES (1, 'My Business', 'my-business', 'pro', 'active');
 
 -- ============================================================
--- 3. ADD company_id TO ALL BUSINESS TABLES
--- Each block checks if column already exists (idempotent)
+-- 2) ADD company_id TO BUSINESS TABLES
 -- ============================================================
-
--- 3.1 company_settings
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'company_settings' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `company_settings` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_cs_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.2 users
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `users` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_users_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.3 categories
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'categories' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `categories` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_categories_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.4 brands
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'brands' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `brands` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_brands_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.5 units
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'units' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `units` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_units_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.6 products
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `products` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_products_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.7 stock_history
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_history' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `stock_history` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_stockh_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.8 customers
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'customers' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `customers` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_customers_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.9 suppliers
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'suppliers' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `suppliers` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_suppliers_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.10 purchases
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'purchases' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `purchases` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_purchases_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.11 purchase_items
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'purchase_items' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `purchase_items` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_pitems_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.12 purchase_returns
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'purchase_returns' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `purchase_returns` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_preturn_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.13 purchase_return_items
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'purchase_return_items' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `purchase_return_items` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_pritems_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.14 sales
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sales' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `sales` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_sales_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.15 sale_items
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sale_items' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `sale_items` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_sitems_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.16 sale_returns
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sale_returns' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `sale_returns` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_sreturn_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.17 sale_return_items
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sale_return_items' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `sale_return_items` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_sritems_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.18 payments
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `payments` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_payments_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.19 activity_log
-SET @col = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'activity_log' AND COLUMN_NAME = 'company_id');
-SET @sql = IF(@col = 0, 
-    'ALTER TABLE `activity_log` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_activity_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.20 quotations (if exists)
-SET @tbl = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quotations');
-SET @col = IF(@tbl > 0, (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quotations' AND COLUMN_NAME = 'company_id'), 1);
-SET @sql = IF(@tbl > 0 AND @col = 0, 
-    'ALTER TABLE `quotations` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_quotations_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 3.21 quotation_items (if exists)
-SET @tbl = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quotation_items');
-SET @col = IF(@tbl > 0, (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'quotation_items' AND COLUMN_NAME = 'company_id'), 1);
-SET @sql = IF(@tbl > 0 AND @col = 0, 
-    'ALTER TABLE `quotation_items` ADD COLUMN `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`, ADD INDEX `idx_qitems_company` (`company_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+ALTER TABLE `company_settings`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `users`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `categories`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `brands`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `units`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `products`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `stock_history`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `customers`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `suppliers`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `purchases`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `purchase_items`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `purchase_returns`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `purchase_return_items`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `sales`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `sale_items`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `sale_returns`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `sale_return_items`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `payments`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
+ALTER TABLE `activity_log`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NOT NULL DEFAULT 1 AFTER `id`;
 
 -- ============================================================
--- 4. UPDATE EXISTING DATA — ASSIGN TO COMPANY 1
+-- 3) DATA BACKFILL
 -- ============================================================
-UPDATE `company_settings` SET `company_id` = 1 WHERE `company_id` = 0 OR `company_id` IS NULL;
--- Link company to its owner (the first admin user)
-UPDATE `companies` SET `owner_user_id` = (SELECT MIN(id) FROM `users` WHERE `role` = 'admin' AND `deleted_at` IS NULL) WHERE `id` = 1 AND `owner_user_id` IS NULL;
+UPDATE `company_settings`
+SET `company_id` = 1
+WHERE `company_id` = 0 OR `company_id` IS NULL;
 
--- ============================================================
--- 5. COMPANY-SCOPED UNIQUE INDEXES
--- Drop old global UNIQUE and recreate as company-scoped
--- ============================================================
+UPDATE `users`
+SET `company_id` = 1
+WHERE `company_id` = 0 OR `company_id` IS NULL;
 
--- 5.1 products.sku — unique per company
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products' AND INDEX_NAME = 'sku');
-SET @sql = IF(@idx > 0, 'ALTER TABLE `products` DROP INDEX `sku`', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products' AND INDEX_NAME = 'uq_products_company_sku');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `products` ADD UNIQUE INDEX `uq_products_company_sku` (`company_id`, `sku`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 5.2 sales.invoice_number — unique per company
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sales' AND INDEX_NAME = 'invoice_number');
-SET @sql = IF(@idx > 0, 'ALTER TABLE `sales` DROP INDEX `invoice_number`', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sales' AND INDEX_NAME = 'uq_sales_company_invoice');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `sales` ADD UNIQUE INDEX `uq_sales_company_invoice` (`company_id`, `invoice_number`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 5.3 purchases.invoice_number — unique per company
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'purchases' AND INDEX_NAME = 'invoice_number');
-SET @sql = IF(@idx > 0, 'ALTER TABLE `purchases` DROP INDEX `invoice_number`', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'purchases' AND INDEX_NAME = 'uq_purchases_company_invoice');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `purchases` ADD UNIQUE INDEX `uq_purchases_company_invoice` (`company_id`, `invoice_number`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 5.4 payments.payment_number — unique per company
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments' AND INDEX_NAME = 'payment_number');
-SET @sql = IF(@idx > 0, 'ALTER TABLE `payments` DROP INDEX `payment_number`', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments' AND INDEX_NAME = 'uq_payments_company_number');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `payments` ADD UNIQUE INDEX `uq_payments_company_number` (`company_id`, `payment_number`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 5.5 users.username — unique per company (allow same username in different companies)
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND INDEX_NAME = 'username');
-SET @sql = IF(@idx > 0, 'ALTER TABLE `users` DROP INDEX `username`', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND INDEX_NAME = 'uq_users_company_username');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `users` ADD UNIQUE INDEX `uq_users_company_username` (`company_id`, `username`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- 5.6 users.email — keep globally unique (for login across companies)
--- No change needed — email remains globally unique
+UPDATE `companies`
+SET `owner_user_id` = (
+  SELECT MIN(`id`) FROM `users` WHERE `role` = 'admin' AND `deleted_at` IS NULL
+)
+WHERE `id` = 1 AND `owner_user_id` IS NULL;
 
 -- ============================================================
--- 6. PERFORMANCE COMPOUND INDEXES
+-- 4) INDEXES (DIRECT SQL FOR PDO COMPATIBILITY)
 -- ============================================================
--- These indexes optimize the most common tenant-scoped queries
+ALTER TABLE `company_settings`
+  ADD INDEX `idx_cs_company` (`company_id`);
+ALTER TABLE `users`
+  ADD INDEX `idx_users_company` (`company_id`);
+ALTER TABLE `categories`
+  ADD INDEX `idx_categories_company` (`company_id`);
+ALTER TABLE `brands`
+  ADD INDEX `idx_brands_company` (`company_id`);
+ALTER TABLE `units`
+  ADD INDEX `idx_units_company` (`company_id`);
+ALTER TABLE `products`
+  ADD INDEX `idx_products_company` (`company_id`);
+ALTER TABLE `stock_history`
+  ADD INDEX `idx_stockh_company` (`company_id`);
+ALTER TABLE `customers`
+  ADD INDEX `idx_customers_company` (`company_id`);
+ALTER TABLE `suppliers`
+  ADD INDEX `idx_suppliers_company` (`company_id`);
+ALTER TABLE `purchases`
+  ADD INDEX `idx_purchases_company` (`company_id`);
+ALTER TABLE `purchase_items`
+  ADD INDEX `idx_pitems_company` (`company_id`);
+ALTER TABLE `purchase_returns`
+  ADD INDEX `idx_preturn_company` (`company_id`);
+ALTER TABLE `purchase_return_items`
+  ADD INDEX `idx_pritems_company` (`company_id`);
+ALTER TABLE `sales`
+  ADD INDEX `idx_sales_company` (`company_id`);
+ALTER TABLE `sale_items`
+  ADD INDEX `idx_sitems_company` (`company_id`);
+ALTER TABLE `sale_returns`
+  ADD INDEX `idx_sreturn_company` (`company_id`);
+ALTER TABLE `sale_return_items`
+  ADD INDEX `idx_sritems_company` (`company_id`);
+ALTER TABLE `payments`
+  ADD INDEX `idx_payments_company` (`company_id`);
+ALTER TABLE `activity_log`
+  ADD INDEX `idx_activity_company` (`company_id`);
 
--- Products: company + active + deleted (most common listing query)
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products' AND INDEX_NAME = 'idx_products_tenant_active');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `products` ADD INDEX `idx_products_tenant_active` (`company_id`, `is_active`, `deleted_at`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+-- Tenant-scoped unique constraints
+-- NOTE: these DROP statements are safe in normal upgrade path from schema.sql.
+ALTER TABLE `products`
+  DROP INDEX `sku`,
+  ADD UNIQUE INDEX `uq_products_company_sku` (`company_id`, `sku`);
+ALTER TABLE `sales`
+  DROP INDEX `invoice_number`,
+  ADD UNIQUE INDEX `uq_sales_company_invoice` (`company_id`, `invoice_number`);
+ALTER TABLE `purchases`
+  DROP INDEX `invoice_number`,
+  ADD UNIQUE INDEX `uq_purchases_company_invoice` (`company_id`, `invoice_number`);
+ALTER TABLE `payments`
+  DROP INDEX `payment_number`,
+  ADD UNIQUE INDEX `uq_payments_company_number` (`company_id`, `payment_number`);
+ALTER TABLE `users`
+  DROP INDEX `username`,
+  ADD UNIQUE INDEX `uq_users_company_username` (`company_id`, `username`);
 
--- Sales: company + date range
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sales' AND INDEX_NAME = 'idx_sales_tenant_date');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `sales` ADD INDEX `idx_sales_tenant_date` (`company_id`, `sale_date`, `deleted_at`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- Purchases: company + date range
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'purchases' AND INDEX_NAME = 'idx_purchases_tenant_date');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `purchases` ADD INDEX `idx_purchases_tenant_date` (`company_id`, `purchase_date`, `deleted_at`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- Payments: company + date range
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments' AND INDEX_NAME = 'idx_payments_tenant_date');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `payments` ADD INDEX `idx_payments_tenant_date` (`company_id`, `payment_date`, `deleted_at`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- Customers: company + balance (for dues queries)
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'customers' AND INDEX_NAME = 'idx_customers_tenant_balance');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `customers` ADD INDEX `idx_customers_tenant_balance` (`company_id`, `current_balance`, `deleted_at`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- Stock history: company + product
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_history' AND INDEX_NAME = 'idx_stockh_tenant_product');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `stock_history` ADD INDEX `idx_stockh_tenant_product` (`company_id`, `product_id`, `created_at`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- Sale items: company + product (for top products query)
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sale_items' AND INDEX_NAME = 'idx_sitems_tenant_product');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `sale_items` ADD INDEX `idx_sitems_tenant_product` (`company_id`, `product_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- Activity log: company + date
-SET @idx = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'activity_log' AND INDEX_NAME = 'idx_activity_tenant_date');
-SET @sql = IF(@idx = 0, 
-    'ALTER TABLE `activity_log` ADD INDEX `idx_activity_tenant_date` (`company_id`, `created_at`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+-- Tenant query performance indexes
+ALTER TABLE `products`
+  ADD INDEX `idx_products_tenant_active` (`company_id`, `is_active`, `deleted_at`);
+ALTER TABLE `sales`
+  ADD INDEX `idx_sales_tenant_date` (`company_id`, `sale_date`, `deleted_at`);
+ALTER TABLE `purchases`
+  ADD INDEX `idx_purchases_tenant_date` (`company_id`, `purchase_date`, `deleted_at`);
+ALTER TABLE `payments`
+  ADD INDEX `idx_payments_tenant_date` (`company_id`, `payment_date`, `deleted_at`);
+ALTER TABLE `customers`
+  ADD INDEX `idx_customers_tenant_balance` (`company_id`, `current_balance`, `deleted_at`);
+ALTER TABLE `stock_history`
+  ADD INDEX `idx_stockh_tenant_product` (`company_id`, `product_id`, `created_at`);
+ALTER TABLE `sale_items`
+  ADD INDEX `idx_sitems_tenant_product` (`company_id`, `product_id`);
+ALTER TABLE `activity_log`
+  ADD INDEX `idx_activity_tenant_date` (`company_id`, `created_at`);
 
 -- ============================================================
--- 7. INSERT DEMO COMPANY
+-- 5) NOTE ON QUOTATIONS
 -- ============================================================
-INSERT IGNORE INTO `companies` (`id`, `name`, `slug`, `plan`, `status`, `is_demo`, `max_users`, `max_products`)
-VALUES (999, 'InvenBill Demo Store', 'demo-store', 'pro', 'active', 1, 99, 9999);
+-- Quotations/quotation_items are intentionally not altered here because
+-- quotations.sql runs later in migration order and already contains company_id.
+
+-- ============================================================
+-- 6) DEMO TENANT
+-- ============================================================
+INSERT IGNORE INTO `companies`
+  (`id`, `name`, `slug`, `plan`, `status`, `is_demo`, `max_users`, `max_products`)
+VALUES
+  (999, 'InvenBill Demo Store', 'demo-store', 'pro', 'active', 1, 99, 9999);
 
 -- ============================================================
 -- MIGRATION COMPLETE
