@@ -18,4 +18,5 @@ node_modules/
 # Generic artifacts
 *.log
 *.sql
+!database/*.sql
 *.dump

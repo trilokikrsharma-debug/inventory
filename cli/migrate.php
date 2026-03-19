@@ -2,13 +2,12 @@
 /**
  * InvenBill Pro - CLI Migration Runner
  *
- * Executes SQL migration files from database/ in a deterministic order.
- * Tracks executed migrations in the migrations table to prevent double execution.
- *
  * Usage:
- *   php cli/migrate.php           Run all pending migrations
- *   php cli/migrate.php --status  Show migration status
+ *   php cli/migrate.php          Run pending migrations
+ *   php cli/migrate.php --status Show migration and schema health status
  */
+
+declare(strict_types=1);
 
 define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/config/config.php';
@@ -32,6 +31,11 @@ function yellow(string $text): string
 function bold(string $text): string
 {
     return "\033[1m{$text}\033[0m";
+}
+
+function quoteIdentifier(string $identifier): string
+{
+    return '`' . str_replace('`', '``', $identifier) . '`';
 }
 
 function migrationManifest(string $migrationDir): array
@@ -75,7 +79,18 @@ function migrationManifest(string $migrationDir): array
     return $manifest;
 }
 
-function splitSqlStatements(string $sqlContent): array
+function getMissingMigrationFilenames(array $manifest): array
+{
+    $missing = [];
+    foreach ($manifest as $entry) {
+        if (!empty($entry['missing'])) {
+            $missing[] = (string)$entry['filename'];
+        }
+    }
+    return $missing;
+}
+
+function filterSqlComments(string $sqlContent): string
 {
     $sqlContent = preg_replace('/^\xEF\xBB\xBF/', '', $sqlContent) ?? $sqlContent;
     $sqlContent = preg_replace('~/\*.*?\*/~s', '', $sqlContent) ?? $sqlContent;
@@ -94,7 +109,20 @@ function splitSqlStatements(string $sqlContent): array
         $cleanLines[] = $line;
     }
 
-    $normalized = trim(implode("\n", $cleanLines));
+    return trim(implode("\n", $cleanLines));
+}
+
+function sanitizeSqlForCurrentDatabase(string $sqlContent, string $databaseName): string
+{
+    $sanitized = preg_replace('/^\s*CREATE\s+DATABASE\b[\s\S]*?;\s*/im', '', $sqlContent) ?? $sqlContent;
+    $sanitized = preg_replace('/^\s*USE\s+`?[a-zA-Z0-9_\-]+`?\s*;\s*$/im', '', $sanitized) ?? $sanitized;
+
+    return 'USE ' . quoteIdentifier($databaseName) . ';' . "\n\n" . ltrim($sanitized);
+}
+
+function splitSqlStatements(string $sqlContent): array
+{
+    $normalized = filterSqlComments($sqlContent);
     if ($normalized === '') {
         return [];
     }
@@ -112,162 +140,392 @@ function splitSqlStatements(string $sqlContent): array
     return $statements;
 }
 
+function extractCreatedTablesFromSql(string $sqlContent): array
+{
+    $normalized = filterSqlComments($sqlContent);
+    if ($normalized === '') {
+        return [];
+    }
+
+    $matches = [];
+    preg_match_all(
+        '/\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?([a-zA-Z0-9_]+)`?/i',
+        $normalized,
+        $matches
+    );
+
+    $tables = [];
+    foreach (($matches[1] ?? []) as $table) {
+        $name = strtolower((string)$table);
+        if ($name !== '') {
+            $tables[$name] = true;
+        }
+    }
+
+    return array_keys($tables);
+}
+
+function runSqlFile(PDO $pdo, string $path, string $databaseName): array
+{
+    if (!is_file($path)) {
+        throw new RuntimeException('Migration SQL file is missing: ' . $path);
+    }
+
+    $rawSql = file_get_contents($path);
+    if ($rawSql === false) {
+        throw new RuntimeException('Unable to read SQL file: ' . $path);
+    }
+
+    $sanitizedSql = sanitizeSqlForCurrentDatabase($rawSql, $databaseName);
+    $statements = splitSqlStatements($sanitizedSql);
+    if (empty($statements)) {
+        throw new RuntimeException('SQL file is empty or contains no executable statements: ' . basename($path));
+    }
+
+    foreach ($statements as $index => $statement) {
+        try {
+            $result = $pdo->query($statement);
+            if ($result instanceof PDOStatement) {
+                do {
+                    $result->fetchAll();
+                } while ($result->nextRowset());
+                $result->closeCursor();
+            }
+        } catch (Throwable $e) {
+            $preview = preg_replace('/\s+/', ' ', trim($statement)) ?? trim($statement);
+            $preview = substr($preview, 0, 180);
+            throw new RuntimeException(
+                sprintf(
+                    'Statement #%d failed in %s: %s | SQL: %s',
+                    $index + 1,
+                    basename($path),
+                    $e->getMessage(),
+                    $preview
+                ),
+                0,
+                $e
+            );
+        }
+    }
+
+    return extractCreatedTablesFromSql($sanitizedSql);
+}
+
 function applicationTableCount(PDO $pdo): int
 {
-    $stmt = $pdo->query("\n        SELECT COUNT(*)\n        FROM information_schema.TABLES\n        WHERE TABLE_SCHEMA = DATABASE()\n          AND TABLE_NAME <> 'migrations'\n    ");
+    $stmt = $pdo->query("
+        SELECT COUNT(*)
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME <> 'migrations'
+    ");
 
     return (int)($stmt ? $stmt->fetchColumn() : 0);
 }
 
-function runSqlFile(PDO $pdo, string $path): void
+function ensureMigrationsTable(PDO $pdo): void
 {
-    $sqlContent = file_get_contents($path);
-    if ($sqlContent === false) {
-        throw new RuntimeException('Unable to read SQL file.');
-    }
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS `migrations` (
+            `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            `filename` VARCHAR(255) NOT NULL,
+            `batch` INT UNSIGNED NOT NULL DEFAULT 1,
+            `executed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY `uq_migration_filename` (`filename`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+}
 
-    $statements = splitSqlStatements($sqlContent);
-    if (empty($statements)) {
-        throw new RuntimeException('SQL file is empty or contains no executable statements.');
-    }
+function loadExecutedMap(PDO $pdo): array
+{
+    $stmt = $pdo->query('SELECT filename FROM migrations');
+    $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN) : [];
+    return array_fill_keys(array_map('strval', $rows), true);
+}
 
-    foreach ($statements as $statement) {
-        $result = $pdo->query($statement);
-        if ($result instanceof PDOStatement) {
-            do {
-                $result->fetchAll();
-            } while ($result->nextRowset());
-            $result->closeCursor();
+function fetchExistingTables(PDO $pdo): array
+{
+    $stmt = $pdo->query("
+        SELECT TABLE_NAME
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+    ");
+    $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN) : [];
+
+    $tables = [];
+    foreach ($rows as $row) {
+        $table = strtolower((string)$row);
+        if ($table !== '') {
+            $tables[$table] = true;
         }
     }
+
+    return $tables;
+}
+
+function getMissingTables(array $expectedTables, array $existingTableMap): array
+{
+    $missing = [];
+    foreach ($expectedTables as $table) {
+        $normalized = strtolower((string)$table);
+        if ($normalized === '') {
+            continue;
+        }
+        if (!isset($existingTableMap[$normalized])) {
+            $missing[] = $normalized;
+        }
+    }
+
+    $missing = array_values(array_unique($missing));
+    sort($missing);
+    return $missing;
+}
+
+function expectedTablesFromManifest(array $manifest, string $databaseName): array
+{
+    $tables = [];
+
+    foreach ($manifest as $entry) {
+        if (!empty($entry['missing'])) {
+            continue;
+        }
+
+        $path = (string)$entry['path'];
+        $rawSql = file_get_contents($path);
+        if ($rawSql === false) {
+            throw new RuntimeException('Unable to read migration file while building expected schema map: ' . $path);
+        }
+
+        $sanitizedSql = sanitizeSqlForCurrentDatabase($rawSql, $databaseName);
+        foreach (extractCreatedTablesFromSql($sanitizedSql) as $table) {
+            $tables[strtolower($table)] = true;
+        }
+    }
+
+    $expected = array_keys($tables);
+    sort($expected);
+    return $expected;
+}
+
+function requiredCoreTableGroups(): array
+{
+    return [
+        ['label' => 'users', 'tables' => ['users']],
+        ['label' => 'companies', 'tables' => ['companies']],
+        ['label' => 'subscriptions', 'tables' => ['subscriptions', 'tenant_subscriptions']],
+    ];
+}
+
+function missingCoreGroups(array $existingTableMap): array
+{
+    $missing = [];
+    foreach (requiredCoreTableGroups() as $group) {
+        $found = false;
+        foreach ($group['tables'] as $table) {
+            if (isset($existingTableMap[strtolower((string)$table)])) {
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) {
+            $missing[] = (string)$group['label'];
+        }
+    }
+    return $missing;
+}
+
+function currentDatabaseName(PDO $pdo): string
+{
+    $stmt = $pdo->query('SELECT DATABASE()');
+    $name = $stmt ? (string)$stmt->fetchColumn() : '';
+    if (trim($name) === '') {
+        throw new RuntimeException('Could not determine active database name from current connection.');
+    }
+    return $name;
+}
+
+function usage(): string
+{
+    return "Usage:\n  php cli/migrate.php\n  php cli/migrate.php --status";
 }
 
 echo bold('InvenBill Pro - Migration Runner') . PHP_EOL;
-echo str_repeat('-', 50) . PHP_EOL;
+echo str_repeat('-', 60) . PHP_EOL;
 
-try {
-    $db = Database::getInstance();
-    $pdo = $db->getConnection();
-} catch (Exception $e) {
-    echo red('Database connection failed: ' . $e->getMessage()) . PHP_EOL;
+$mode = $argv[1] ?? '--run';
+if (!in_array($mode, ['--run', '--status'], true)) {
+    echo red('Invalid option: ' . $mode) . PHP_EOL;
+    echo usage() . PHP_EOL;
     exit(1);
 }
 
 try {
-    $pdo->exec("\n        CREATE TABLE IF NOT EXISTS `migrations` (\n            `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,\n            `filename` VARCHAR(255) NOT NULL,\n            `batch` INT UNSIGNED NOT NULL DEFAULT 1,\n            `executed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n            UNIQUE KEY `uq_migration_filename` (`filename`)\n        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\n    ");
-} catch (Exception $e) {
-    // The table may already exist. Keep going.
+    $db = Database::getInstance();
+    $pdo = $db->getConnection();
+    $databaseName = currentDatabaseName($pdo);
+} catch (Throwable $e) {
+    echo red('Database connection failed: ' . $e->getMessage()) . PHP_EOL;
+    exit(1);
 }
 
 $migrationDir = BASE_PATH . '/database';
 $manifest = migrationManifest($migrationDir);
-$mode = $argv[1] ?? '--run';
-$hasExistingApplicationTables = applicationTableCount($pdo) > 0;
+$missingFiles = getMissingMigrationFilenames($manifest);
 
-$executed = [];
+if (!empty($missingFiles)) {
+    echo red('Migration validation failed. Required SQL file(s) are missing:') . PHP_EOL;
+    foreach ($missingFiles as $file) {
+        echo '  - ' . $file . PHP_EOL;
+    }
+    echo PHP_EOL . red('Fix: commit/push database/*.sql to Git, deploy again, then re-run migrations.') . PHP_EOL;
+    exit(1);
+}
+
 try {
-    $stmt = $pdo->query('SELECT filename FROM migrations');
-    $executed = $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN) : [];
-} catch (Exception $e) {
-    echo yellow('Could not read migrations table yet; continuing with an empty execution cache.') . PHP_EOL;
+    $expectedTables = expectedTablesFromManifest($manifest, $databaseName);
+    ensureMigrationsTable($pdo);
+    $executedMap = loadExecutedMap($pdo);
+} catch (Throwable $e) {
+    echo red('Migration bootstrap failed: ' . $e->getMessage()) . PHP_EOL;
+    exit(1);
 }
-$executedMap = array_fill_keys($executed, true);
 
-if ($mode === '--status') {
-    echo PHP_EOL . bold('Migration Status:') . PHP_EOL;
-    foreach ($manifest as $entry) {
-        $basename = $entry['filename'];
-        if (!empty($entry['missing'])) {
-            echo '  ' . yellow("! {$basename}") . ' (missing)' . PHP_EOL;
-            continue;
-        }
-
-        if ($basename === 'schema.sql' && $hasExistingApplicationTables && empty($executedMap[$basename])) {
-            echo '  ' . yellow("SKIP {$basename}") . ' (skipped on non-empty database)' . PHP_EOL;
-            continue;
-        }
-
-        if (!empty($executedMap[$basename])) {
-            echo '  ' . green("OK {$basename}") . ' (executed)' . PHP_EOL;
-            continue;
-        }
-
-        echo '  ' . yellow("PENDING {$basename}") . ' (pending)' . PHP_EOL;
-    }
-
-    $pendingCount = 0;
-    $executedCount = count($executedMap);
-    $availableCount = 0;
-    foreach ($manifest as $entry) {
-        if (!empty($entry['missing'])) {
-            continue;
-        }
-        $availableCount++;
-        if ($entry['filename'] === 'schema.sql' && $hasExistingApplicationTables) {
-            continue;
-        }
-        if (empty($executedMap[$entry['filename']])) {
-            $pendingCount++;
-        }
-    }
-
-    echo PHP_EOL . 'Total: ' . $availableCount . ' | Executed: ' . $executedCount . ' | Pending: ' . $pendingCount . PHP_EOL;
-    exit(0);
-}
+$hasExistingApplicationTables = applicationTableCount($pdo) > 0;
 
 $pending = [];
 foreach ($manifest as $entry) {
-    if (!empty($entry['missing'])) {
+    $filename = (string)$entry['filename'];
+    if ($filename === 'schema.sql' && $hasExistingApplicationTables && empty($executedMap[$filename])) {
         continue;
     }
-
-    if ($entry['filename'] === 'schema.sql' && $hasExistingApplicationTables) {
-        continue;
-    }
-
-    if (empty($executedMap[$entry['filename']])) {
+    if (empty($executedMap[$filename])) {
         $pending[] = $entry;
     }
 }
 
-if (empty($pending)) {
-    echo green('All migrations are up to date.') . PHP_EOL;
+if ($mode === '--status') {
+    echo PHP_EOL . bold('Migration Status:') . PHP_EOL;
+    foreach ($manifest as $entry) {
+        $filename = (string)$entry['filename'];
+        if ($filename === 'schema.sql' && $hasExistingApplicationTables && empty($executedMap[$filename])) {
+            echo '  ' . yellow("SKIP {$filename}") . ' (non-empty database)' . PHP_EOL;
+            continue;
+        }
+
+        if (!empty($executedMap[$filename])) {
+            echo '  ' . green("OK {$filename}") . ' (executed)' . PHP_EOL;
+        } else {
+            echo '  ' . yellow("PENDING {$filename}") . ' (pending)' . PHP_EOL;
+        }
+    }
+
+    $existingTables = fetchExistingTables($pdo);
+    $missingExpectedTables = getMissingTables($expectedTables, $existingTables);
+    $missingCore = missingCoreGroups($existingTables);
+
+    echo PHP_EOL . bold('Schema Health:') . PHP_EOL;
+    echo '  Current DB: ' . $databaseName . PHP_EOL;
+    echo '  Expected tables from migrations: ' . count($expectedTables) . PHP_EOL;
+    echo '  Existing tables in DB: ' . count($existingTables) . PHP_EOL;
+
+    if (empty($missingExpectedTables)) {
+        echo '  ' . green('OK expected schema tables are present') . PHP_EOL;
+    } else {
+        echo '  ' . red('Missing expected tables: ' . implode(', ', $missingExpectedTables)) . PHP_EOL;
+    }
+
+    if (empty($missingCore)) {
+        echo '  ' . green('OK core signup tables are present') . PHP_EOL;
+    } else {
+        echo '  ' . red('Missing core groups: ' . implode(', ', $missingCore)) . PHP_EOL;
+    }
+
+    echo PHP_EOL . 'Total: ' . count($manifest)
+        . ' | Executed: ' . count($executedMap)
+        . ' | Pending: ' . count($pending) . PHP_EOL;
+
+    $isInconsistent = empty($pending) && (!empty($missingExpectedTables) || !empty($missingCore));
+    if ($isInconsistent) {
+        echo red('Status FAILED: migrations appear complete but schema is incomplete.') . PHP_EOL;
+        exit(1);
+    }
+
     exit(0);
 }
 
-$currentBatch = 1;
+if (empty($pending)) {
+    $existingTables = fetchExistingTables($pdo);
+    $missingExpectedTables = getMissingTables($expectedTables, $existingTables);
+    $missingCore = missingCoreGroups($existingTables);
+
+    if (!empty($missingExpectedTables) || !empty($missingCore)) {
+        echo red('Migration state is inconsistent. No pending migrations, but schema is incomplete.') . PHP_EOL;
+        if (!empty($missingExpectedTables)) {
+            echo red('Missing expected tables: ' . implode(', ', $missingExpectedTables)) . PHP_EOL;
+        }
+        if (!empty($missingCore)) {
+            echo red('Missing core groups: ' . implode(', ', $missingCore)) . PHP_EOL;
+        }
+        echo red('Aborting with failure so this cannot be treated as production-ready.') . PHP_EOL;
+        exit(1);
+    }
+
+    echo green('All migrations are up to date and schema integrity checks passed.') . PHP_EOL;
+    exit(0);
+}
+
 try {
     $maxBatch = $pdo->query('SELECT MAX(batch) FROM migrations')->fetchColumn();
     $currentBatch = ((int)($maxBatch ?? 0)) + 1;
-} catch (Exception $e) {
-    // Keep default batch number.
+} catch (Throwable $e) {
+    $currentBatch = 1;
 }
 
-echo 'Pending: ' . yellow((string)count($pending) . ' migration(s)') . PHP_EOL;
-echo 'Batch:   ' . $currentBatch . PHP_EOL . PHP_EOL;
+echo 'Current DB: ' . $databaseName . PHP_EOL;
+echo 'Pending:    ' . yellow((string)count($pending) . ' migration(s)') . PHP_EOL;
+echo 'Batch:      ' . $currentBatch . PHP_EOL . PHP_EOL;
 
 $success = 0;
 $failed = 0;
 
 foreach ($pending as $entry) {
-    $basename = $entry['filename'];
-    $path = $entry['path'];
-    echo "  Running: {$basename} ... ";
+    $filename = (string)$entry['filename'];
+    $path = (string)$entry['path'];
+
+    echo "  Running: {$filename} ... ";
 
     try {
-        if ($basename === 'schema.sql' && $hasExistingApplicationTables) {
-            echo yellow('SKIP (database already contains application tables)') . PHP_EOL;
-            continue;
+        if (!is_file($path)) {
+            throw new RuntimeException('Missing migration file during execution: ' . $path);
         }
 
-        runSqlFile($pdo, $path);
+        if (!$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+        }
 
-        $pdo->prepare('INSERT INTO migrations (filename, batch) VALUES (?, ?)')
-            ->execute([$basename, $currentBatch]);
+        $createdTables = runSqlFile($pdo, $path, $databaseName);
+        $existingTables = fetchExistingTables($pdo);
+        $missingFromThisFile = getMissingTables($createdTables, $existingTables);
+        if (!empty($missingFromThisFile)) {
+            throw new RuntimeException(
+                'Migration executed but did not create expected table(s): ' . implode(', ', $missingFromThisFile)
+            );
+        }
+
+        $insert = $pdo->prepare('INSERT INTO migrations (filename, batch) VALUES (?, ?)');
+        $insert->execute([$filename, $currentBatch]);
+
+        if ($pdo->inTransaction()) {
+            $pdo->commit();
+        }
 
         echo green('OK') . PHP_EOL;
         $success++;
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
         echo red('FAILED') . PHP_EOL;
         echo '    ' . red('Error: ' . $e->getMessage()) . PHP_EOL;
         $failed++;
@@ -276,6 +534,27 @@ foreach ($pending as $entry) {
     }
 }
 
-echo PHP_EOL . str_repeat('-', 50) . PHP_EOL;
-echo 'Results: ' . green("{$success} succeeded") . ' | ' . ($failed > 0 ? red("{$failed} failed") : "{$failed} failed") . PHP_EOL;
+if ($failed === 0) {
+    $existingTables = fetchExistingTables($pdo);
+    $missingExpectedTables = getMissingTables($expectedTables, $existingTables);
+    $missingCore = missingCoreGroups($existingTables);
+    if (!empty($missingExpectedTables) || !empty($missingCore)) {
+        echo PHP_EOL . red('Post-migration integrity check failed.') . PHP_EOL;
+        if (!empty($missingExpectedTables)) {
+            echo red('Missing expected tables: ' . implode(', ', $missingExpectedTables)) . PHP_EOL;
+        }
+        if (!empty($missingCore)) {
+            echo red('Missing core groups: ' . implode(', ', $missingCore)) . PHP_EOL;
+        }
+        $failed++;
+    }
+}
+
+echo PHP_EOL . str_repeat('-', 60) . PHP_EOL;
+echo 'Results: '
+    . green("{$success} succeeded")
+    . ' | '
+    . ($failed > 0 ? red("{$failed} failed") : "{$failed} failed")
+    . PHP_EOL;
+
 exit($failed > 0 ? 1 : 0);

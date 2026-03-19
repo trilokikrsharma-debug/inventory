@@ -34,10 +34,18 @@ $dbPass = $firstEnv(
     (defined('APP_ENV') && APP_ENV !== 'production') ? '' : null,
     true
 );
+$dbName = $firstEnv(
+    ['DB_NAME'],
+    (defined('APP_ENV') && APP_ENV !== 'production') ? 'inventory_billing' : null
+);
 
 if (defined('APP_ENV') && APP_ENV === 'production') {
-    if ($dbUser === null || trim((string)$dbUser) === '' || $dbPass === null || trim((string)$dbPass) === '') {
-        error_log('[FATAL] DB_USER and DB_PASS/DB_PASSWORD must be set in production.');
+    if (
+        $dbUser === null || trim((string)$dbUser) === ''
+        || $dbPass === null || trim((string)$dbPass) === ''
+        || $dbName === null || trim((string)$dbName) === ''
+    ) {
+        error_log('[FATAL] DB_NAME, DB_USER and DB_PASS/DB_PASSWORD must be set in production.');
         http_response_code(503);
         die('Service unavailable: database configuration error. Check server environment.');
     }
@@ -46,7 +54,7 @@ if (defined('APP_ENV') && APP_ENV === 'production') {
 return [
     'host'     => getenv('DB_HOST') ?: 'localhost',
     'port'     => (int)(getenv('DB_PORT') ?: 3306),
-    'database' => getenv('DB_NAME') ?: 'inventory_billing',
+    'database' => $dbName !== null ? (string)$dbName : 'inventory_billing',
     'username' => $dbUser !== null ? (string)$dbUser : '',
     'password' => $dbPass !== null ? (string)$dbPass : '',
     'charset'  => 'utf8mb4',
