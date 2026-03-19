@@ -18,6 +18,62 @@ if (!defined('BASE_PATH')) {
 define('APP_NAME', 'KARSO');
 define('APP_VERSION', '2.0.0');
 
+// Load .env variables into environment
+$envFile = BASE_PATH . '/.env';
+if (file_exists($envFile)) {
+    $parseEnvValue = static function (string $raw): string {
+        $value = trim($raw);
+        if ($value === '') {
+            return '';
+        }
+
+        $isDoubleQuoted = str_starts_with($value, '"') && str_ends_with($value, '"');
+        $isSingleQuoted = str_starts_with($value, "'") && str_ends_with($value, "'");
+        if (($isDoubleQuoted || $isSingleQuoted) && strlen($value) >= 2) {
+            $value = substr($value, 1, -1);
+        }
+
+        return trim($value);
+    };
+
+    $hasNonEmptyEnv = static function (string $name): bool {
+        $candidates = [
+            $_SERVER[$name] ?? null,
+            $_ENV[$name] ?? null,
+            getenv($name),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate === false) {
+                continue;
+            }
+            if (trim((string)$candidate) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim((string)$line);
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+        if (strpos($line, '=') !== false) {
+            list($name, $value) = explode('=', $line, 2);
+            $name = trim($name);
+            $value = $parseEnvValue($value);
+            if ($name !== '' && !$hasNonEmptyEnv($name)) {
+                putenv(sprintf('%s=%s', $name, $value));
+                $_ENV[$name] = $value;
+                $_SERVER[$name] = $value;
+            }
+        }
+    }
+}
+
 // APP_URL: Use environment variable if set, otherwise auto-detect from request.
 // For production, ALWAYS set APP_URL in your environment (Apache SetEnv, .env file, etc.)
 $_autoProtocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -67,7 +123,7 @@ define('RECORDS_PER_PAGE', 15);
 define('PASSWORD_MIN_LENGTH', 8);
 define('PASSWORD_COMPLEXITY', true); // Require 1 uppercase + 1 digit
 
-// Session Idle Timeout (seconds) Ã¢â‚¬â€ server-side enforcement
+// Session Idle Timeout (seconds)
 define('SESSION_IDLE_TIMEOUT', (int)(getenv('SESSION_IDLE_TIMEOUT') ?: 1800)); // 30 min default
 
 // Date formats
@@ -95,6 +151,9 @@ define('REDIS_PREFIX', getenv('REDIS_PREFIX') ?: 'invenbill:');
 define('CACHE_TTL_DASHBOARD', 300);   // 5 minutes
 define('CACHE_TTL_SETTINGS', 3600);   // 1 hour
 define('CACHE_TTL_QUERY', 60);        // 1 minute
+define('CACHE_TTL_PRODUCTS', 180);    // 3 minutes
+define('CACHE_TTL_REPORTS', 600);     // 10 minutes
+define('CACHE_TTL_EXPORT_STATUS', 86400); // 24 hours
 
 // Razorpay Configuration
 define('RAZORPAY_KEY', getenv('RAZORPAY_KEY') ?: '');
@@ -103,6 +162,48 @@ define('RAZORPAY_SECRET', getenv('RAZORPAY_SECRET') ?: '');
 // IMPORTANT: Set this to the Webhook Secret from Razorpay Dashboard -> Webhooks -> Secret
 // This is DIFFERENT from the API secret and must be set separately.
 define('RAZORPAY_WEBHOOK_SECRET', getenv('RAZORPAY_WEBHOOK_SECRET') ?: '');
+
+// Tenant / Subdomain Enforcement
+// Production default: enabled. Development default: disabled.
+$tenantBaseDomain = trim((string)(getenv('TENANT_BASE_DOMAIN') ?: ''));
+if ($tenantBaseDomain === '') {
+    $appUrlHost = strtolower((string)(parse_url(APP_URL, PHP_URL_HOST) ?: ''));
+    $appUrlLabels = $appUrlHost === '' ? 0 : substr_count($appUrlHost, '.') + 1;
+    if (
+        $appUrlHost !== '' &&
+        $appUrlHost !== 'localhost' &&
+        !filter_var($appUrlHost, FILTER_VALIDATE_IP) &&
+        $appUrlLabels <= 2
+    ) {
+        // Fallback only when APP_URL is already on the root domain.
+        $tenantBaseDomain = $appUrlHost;
+    }
+}
+define('TENANT_BASE_DOMAIN', $tenantBaseDomain);
+
+$tenantHostEnforcement = getenv('TENANT_HOST_ENFORCEMENT');
+define(
+    'TENANT_HOST_ENFORCEMENT',
+    $tenantHostEnforcement === false
+        ? (APP_ENV === 'production')
+        : filter_var($tenantHostEnforcement, FILTER_VALIDATE_BOOLEAN)
+);
+
+$tenantAutoSyncSubscriptionStatus = getenv('TENANT_AUTO_SYNC_SUBSCRIPTION_STATUS');
+define(
+    'TENANT_AUTO_SYNC_SUBSCRIPTION_STATUS',
+    $tenantAutoSyncSubscriptionStatus === false
+        ? true
+        : filter_var($tenantAutoSyncSubscriptionStatus, FILTER_VALIDATE_BOOLEAN)
+);
+
+$tenantAllowLocalhostFallback = getenv('TENANT_ALLOW_LOCALHOST_FALLBACK');
+define(
+    'TENANT_ALLOW_LOCALHOST_FALLBACK',
+    $tenantAllowLocalhostFallback === false
+        ? true
+        : filter_var($tenantAllowLocalhostFallback, FILTER_VALIDATE_BOOLEAN)
+);
 
 // Asset Versioning
 define('ASSET_VERSION', APP_VERSION . '.' . (getenv('ASSET_BUILD') ?: '1'));

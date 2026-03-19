@@ -5,6 +5,15 @@
 class SupplierModel extends Model {
     protected $table = 'suppliers';
 
+    /**
+     * Keep dashboard and report caches coherent after supplier/payments mutations.
+     */
+    private function flushAnalyticCaches(): void {
+        $tenantPrefix = 'c' . (Tenant::id() ?? 0) . '_';
+        Cache::flushPrefix($tenantPrefix . 'dash_');
+        Cache::flushPrefix($tenantPrefix . 'report_');
+    }
+
     public function getAllPaginated($search = '', $page = 1, $perPage = RECORDS_PER_PAGE) {
         $offset = ($page - 1) * $perPage;
         $params = [];
@@ -21,7 +30,20 @@ class SupplierModel extends Model {
         $whereClause = implode(' AND ', $where);
         $total = $this->db->query("SELECT COUNT(*) FROM {$this->table} WHERE {$whereClause}", $params)->fetchColumn();
         $data = $this->db->query(
-            "SELECT * FROM {$this->table} WHERE {$whereClause} ORDER BY name ASC LIMIT {$perPage} OFFSET {$offset}", $params
+            "SELECT
+                id,
+                name,
+                phone,
+                email,
+                city,
+                current_balance,
+                is_active,
+                created_at
+             FROM {$this->table}
+             WHERE {$whereClause}
+             ORDER BY name ASC
+             LIMIT {$perPage} OFFSET {$offset}",
+            $params
         )->fetchAll();
         return ['data' => $data, 'total' => $total, 'page' => $page, 'perPage' => $perPage, 'totalPages' => ceil($total / $perPage)];
     }
@@ -31,7 +53,7 @@ class SupplierModel extends Model {
         $params = [$amount, $supplierId];
         if (Tenant::id() !== null) { $sql .= " AND company_id = ?"; $params[] = Tenant::id(); }
         $res = $this->db->query($sql, $params);
-        Cache::flushPrefix('c' . (Tenant::id() ?? 0) . '_dash_');
+        $this->flushAnalyticCaches();
         return $res;
     }
 
@@ -51,7 +73,7 @@ class SupplierModel extends Model {
         }
 
         return $this->db->query(
-            "SELECT * FROM (
+            "SELECT date, reference, type, debit, credit, id FROM (
                 SELECT purchase_date as date, invoice_number as reference, 'Purchase' as type, grand_total as debit, 0 as credit, id
                 FROM purchases WHERE supplier_id = ? AND deleted_at IS NULL {$tenantFilter} {$dateFilter}
                 UNION ALL
@@ -67,7 +89,16 @@ class SupplierModel extends Model {
         $params = [];
         if (Tenant::id() !== null) { $where[] = "company_id = ?"; $params[] = Tenant::id(); }
         return $this->db->query(
-            "SELECT * FROM {$this->table} WHERE " . implode(' AND ', $where) . " ORDER BY current_balance DESC", $params
+            "SELECT
+                id,
+                name,
+                phone,
+                city,
+                current_balance
+             FROM {$this->table}
+             WHERE " . implode(' AND ', $where) . "
+             ORDER BY current_balance DESC",
+            $params
         )->fetchAll();
     }
 
@@ -88,15 +119,20 @@ class SupplierModel extends Model {
         $tenantFilter = $cid !== null ? " AND company_id = ?" : "";
         $params = [$supplierId];
         if ($cid !== null) $params[] = $cid;
-        $purchaseDue = (float)$this->db->query(
-            "SELECT COALESCE(SUM(due_amount), 0) FROM purchases WHERE supplier_id = ? AND deleted_at IS NULL" . $tenantFilter, $params
+        $purchaseTotal = (float)$this->db->query(
+            "SELECT COALESCE(SUM(grand_total), 0) FROM purchases WHERE supplier_id = ? AND deleted_at IS NULL" . $tenantFilter, $params
         )->fetchColumn();
-        $correctBalance = $opening + $purchaseDue;
+
+        $paymentTotal = (float)$this->db->query(
+            "SELECT COALESCE(SUM(amount), 0) FROM payments WHERE supplier_id = ? AND type = 'payment' AND deleted_at IS NULL" . $tenantFilter, $params
+        )->fetchColumn();
+
+        $correctBalance = $opening + $purchaseTotal - $paymentTotal;
         $updateParams = [$correctBalance, $supplierId];
         $updateSql = "UPDATE {$this->table} SET current_balance = ? WHERE id = ?";
         if ($cid !== null) { $updateSql .= " AND company_id = ?"; $updateParams[] = $cid; }
         $this->db->query($updateSql, $updateParams);
-        Cache::flushPrefix('c' . (Tenant::id() ?? 0) . '_dash_');
+        $this->flushAnalyticCaches();
         return $correctBalance;
     }
 }

@@ -18,6 +18,10 @@ class AuthController extends Controller {
     public function index() {
         // If already logged in, redirect to dashboard
         if (Session::isLoggedIn()) {
+            if (!empty(Session::get('twofa_pending_user_id'))) {
+                $this->redirect('index.php?page=twoFactor&action=verify');
+                return;
+            }
             $this->redirect('index.php?page=dashboard');
         }
 
@@ -47,19 +51,12 @@ class AuthController extends Controller {
             }
 
             $userModel = new UserModel();
-            $user = $userModel->authenticate($username, $password);
+            $loginTenantId = $this->resolveLoginTenantId();
+            $user = $userModel->authenticate($username, $password, $loginTenantId);
 
             if ($user) {
                 // Successful login — clear rate limit data
                 $this->clearRateLimit($ip, $username);
-
-                session_regenerate_id(true);
-
-                // SECURITY: Rotate CSRF token to prevent pre-auth token reuse
-                CSRF::rotateToken();
-
-                // Initialize session fingerprint (prevents session hijacking)
-                Session::initFingerprint();
 
                 // ── RBAC: Determine super-admin status first (before company check) ──
                 // Platform super-admins are set directly in DB and may have no company_id.
@@ -93,7 +90,9 @@ class AuthController extends Controller {
 
                     try {
                         $company = Database::getInstance()->query(
-                            "SELECT id, name, status, is_demo, plan FROM companies WHERE id = ? AND status = 'active'",
+                            "SELECT id, name, status, is_demo, plan, saas_plan_id, subscription_status, trial_ends_at, max_users, max_products
+                             FROM companies
+                             WHERE id = ? AND status = 'active'",
                             [$companyId]
                         )->fetch();
                     } catch (\Exception $e) {
@@ -107,34 +106,13 @@ class AuthController extends Controller {
                     }
                 }
 
-                // Store user in session (includes company_id)
-                Session::set('user', $user);
-
-                // Set tenant context for this request
-                Tenant::set($companyId, $company);
-
-                // RBAC: Enrich session with resolved is_super_admin flag
-                Session::clearPermissionCache();
-                $user['is_super_admin'] = $isSuperAdmin;
-                Session::set('user', $user);
-
-                // Set tenant context only for non-super-admins who have a company
-                if ($companyId > 0 && $company) {
-                    Tenant::set($companyId, $company);
+                if (!empty($user['twofa_enabled'])) {
+                    $this->beginTwoFactorChallenge($user, $companyId, $company, $isSuperAdmin);
+                    return;
                 }
 
-                $this->logActivity('Login', 'auth', $user['id'],
-                    $isSuperAdmin ? 'Platform super-admin logged in' : 'Tenant user logged in');
-
-                // ── Route to correct dashboard based on role ──
-                if ($isSuperAdmin) {
-                    // Platform owner → platform dashboard
-                    header("Location: " . APP_URL . "/index.php?page=platform&action=dashboard");
-                } else {
-                    // Tenant user → tenant dashboard
-                    header("Location: " . APP_URL . "/index.php?page=dashboard");
-                }
-                exit;
+                $this->finalizeLogin($user, $companyId, $company, $isSuperAdmin);
+                return;
             } else {
                 // Failed login — update rate limit with exponential backoff
                 $rateData['attempts'] = ($rateData['attempts'] ?? 0) + 1;
@@ -242,5 +220,116 @@ class AuthController extends Controller {
         $tenantId = class_exists('Tenant') ? (Tenant::id() ?? 0) : 0;
         $key = hash('sha256', $tenantId . '_' . $ip . '_' . strtolower(trim($username)));
         return $dir . '/ratelimit_' . $key . '.json';
+    }
+
+    /**
+     * Start the pending 2FA flow without creating a fully authorized session.
+     */
+    private function beginTwoFactorChallenge(array $user, int $companyId, ?array $company, bool $isSuperAdmin): void {
+        $pendingUser = $this->sanitizeSessionUser($user, $isSuperAdmin);
+        $pendingUser['twofa_pending'] = true;
+        $pendingUser['twofa_verified'] = false;
+
+        // Keep a partial session so AuthMiddleware can pass the verification page,
+        // but fence all other routes in Router until verification completes.
+        Session::set('user', $pendingUser);
+        Session::set('twofa_pending_user_id', (int)$pendingUser['id']);
+        Session::set('twofa_pending_is_super_admin', $isSuperAdmin ? 1 : 0);
+        Session::set('twofa_pending_company_id', $companyId > 0 ? $companyId : null);
+        Session::set('twofa_pending_company', $company);
+        Session::clearPermissionCache();
+
+        if ($isSuperAdmin) {
+            Tenant::reset();
+        } elseif ($companyId > 0 && $company) {
+            Tenant::set($companyId, $company);
+        } else {
+            Tenant::reset();
+        }
+
+        $this->logActivity('Login pending 2FA', 'auth', $pendingUser['id'], 'Two-factor verification required');
+        $this->redirect('index.php?page=twoFactor&action=verify');
+    }
+
+    /**
+     * Finalize a successful login after all checks have passed.
+     */
+    private function finalizeLogin(array $user, int $companyId, ?array $company, bool $isSuperAdmin): void {
+        $sessionUser = $this->sanitizeSessionUser($user, $isSuperAdmin);
+        $sessionUser['twofa_pending'] = false;
+        $sessionUser['twofa_verified'] = true;
+
+        session_regenerate_id(true);
+        CSRF::rotateToken();
+        Session::initFingerprint();
+        Session::clearPermissionCache();
+
+        Session::remove('twofa_pending_user_id');
+        Session::remove('twofa_pending_is_super_admin');
+        Session::remove('twofa_pending_company_id');
+        Session::remove('twofa_pending_company');
+
+        Session::set('user', $sessionUser);
+
+        if ($isSuperAdmin) {
+            Tenant::reset();
+        } elseif ($companyId > 0 && $company) {
+            Tenant::set($companyId, $company);
+        } else {
+            Tenant::reset();
+        }
+
+        $this->logActivity('Login', 'auth', $sessionUser['id'],
+            $isSuperAdmin ? 'Platform super-admin logged in' : 'Tenant user logged in');
+
+        if ($isSuperAdmin) {
+            $this->redirect('index.php?page=platform&action=dashboard');
+        }
+
+        $this->redirect('index.php?page=dashboard');
+    }
+
+    /**
+     * Strip sensitive DB fields before storing the user in session.
+     */
+    private function sanitizeSessionUser(array $user, bool $isSuperAdmin): array {
+        unset(
+            $user['password'],
+            $user['twofa_secret'],
+            $user['twofa_recovery_codes'],
+            $user['company_status'],
+            $user['company_name']
+        );
+        $user['is_super_admin'] = $isSuperAdmin || !empty($user['is_super_admin']);
+        return $user;
+    }
+
+    /**
+     * Resolve tenant context from the current host when the app is served on a
+     * subdomain. This keeps logins tenant-scoped without breaking apex-domain
+     * or localhost deployments.
+     */
+    private function resolveLoginTenantId(): ?int {
+        try {
+            $company = Tenant::resolveFromHost();
+            if (!is_array($company)) {
+                return null;
+            }
+
+            $companyId = (int)($company['id'] ?? 0);
+            if ($companyId <= 0) {
+                return null;
+            }
+
+            $status = strtolower(trim((string)($company['status'] ?? 'active')));
+            if ($status !== 'active') {
+                return null;
+            }
+
+            return $companyId;
+        } catch (\Throwable $e) {
+            error_log('[Auth] Failed to resolve login tenant from host: ' . $e->getMessage());
+            return null;
+        }
     }
 }

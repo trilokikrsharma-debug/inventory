@@ -14,8 +14,58 @@ class HealthController extends Controller {
 
     public function index() {
         $startTime = microtime(true);
-        
-        $checks = [
+        $publicMode = $this->isPublicHealthModeEnabled();
+        $isPrivileged = Session::isLoggedIn() && Session::isSuperAdmin();
+
+        if (!$publicMode && !$isPrivileged) {
+            $this->requireSuperAdmin();
+            return;
+        }
+
+        $payload = $isPrivileged
+            ? $this->buildDetailedPayload($startTime)
+            : $this->buildPublicPayload($startTime);
+
+        http_response_code($payload['http_status']);
+        header('Content-Type: application/json');
+        header('Cache-Control: no-store');
+
+        unset($payload['http_status']);
+        echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    private function buildDetailedPayload(float $startTime): array {
+        $checks = $this->collectChecks();
+        $summary = $this->evaluateChecks($checks);
+
+        return [
+            'http_status'   => $summary['http_status'],
+            'status'        => $summary['status'],
+            'version'       => $this->appVersion(),
+            'environment'   => $this->appEnvironment(),
+            'timestamp'     => date('c'),
+            'response_ms'   => round((microtime(true) - $startTime) * 1000, 2),
+            'uptime_s'      => isset($_SERVER['REQUEST_TIME']) ? time() - (int)$_SERVER['REQUEST_TIME'] : null,
+            'checks'        => $checks,
+        ];
+    }
+
+    private function buildPublicPayload(float $startTime): array {
+        $summary = $this->evaluateChecks($this->collectChecks());
+
+        return [
+            'http_status' => $summary['http_status'],
+            'status'      => $summary['status'],
+            'version'     => $this->appVersion(),
+            'timestamp'   => date('c'),
+            'response_ms' => round((microtime(true) - $startTime) * 1000, 2),
+            'uptime_s'    => isset($_SERVER['REQUEST_TIME']) ? time() - (int)$_SERVER['REQUEST_TIME'] : null,
+        ];
+    }
+
+    private function collectChecks(): array {
+        return [
             'database'    => $this->checkDatabase(),
             'cache'       => $this->checkCache(),
             'redis'       => $this->checkRedis(),
@@ -26,27 +76,41 @@ class HealthController extends Controller {
             'logs'        => $this->checkLogs(),
             'php'         => $this->checkPhp(),
         ];
+    }
 
-        $responseTime = round((microtime(true) - $startTime) * 1000, 2);
+    private function evaluateChecks(array $checks): array {
         $allHealthy = !array_filter($checks, fn($c) => $c['status'] === 'error');
         $hasWarnings = (bool)array_filter($checks, fn($c) => $c['status'] === 'warning');
-        
         $overallStatus = $allHealthy ? ($hasWarnings ? 'degraded' : 'healthy') : 'unhealthy';
-        http_response_code($allHealthy ? 200 : 503);
 
-        header('Content-Type: application/json');
-        header('Cache-Control: no-store');
-        
-        echo json_encode([
-            'status'        => $overallStatus,
-            'version'       => defined('APP_VERSION') ? APP_VERSION : '2.0.0',
-            'environment'   => APP_ENV,
-            'timestamp'     => date('c'),
-            'response_ms'   => $responseTime,
-            'uptime_s'      => time() - $_SERVER['REQUEST_TIME'],
-            'checks'        => $checks,
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        exit;
+        return [
+            'status'      => $overallStatus,
+            'http_status' => $allHealthy ? 200 : 503,
+        ];
+    }
+
+    private function isPublicHealthModeEnabled(): bool {
+        $flag = defined('HEALTH_PUBLIC_MODE') ? HEALTH_PUBLIC_MODE : getenv('HEALTH_PUBLIC_MODE');
+        if ($flag === false || $flag === null || $flag === '') {
+            $flag = getenv('HEALTH_ALLOW_PUBLIC');
+        }
+
+        return filter_var($flag, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function appEnvironment(): string {
+        if (defined('APP_ENV')) {
+            return (string)APP_ENV;
+        }
+        $env = getenv('APP_ENV');
+        return $env !== false && $env !== '' ? $env : 'production';
+    }
+
+    private function appVersion(): string {
+        if (defined('APP_VERSION')) {
+            return (string)APP_VERSION;
+        }
+        return '2.0.0';
     }
 
     private function checkDatabase(): array {

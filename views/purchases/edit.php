@@ -21,9 +21,9 @@
             <div class="card mb-3">
                 <div class="card-header"><h6><i class="fas fa-list me-2"></i>Items</h6><button type="button" class="btn btn-sm btn-primary" id="addItemBtn"><i class="fas fa-plus me-1"></i>Add Item</button></div>
                 <div class="card-body p-0"><div class="table-responsive"><table class="table mb-0" id="itemsTable">
-                    <thead><tr><th style="width:30%">Product</th><th>Qty</th><th>Price</th><th>Discount</th><th>Tax %</th><th>Total</th><th></th></tr></thead>
+                    <thead><tr><th style="width:30%">Product</th><th>Qty</th><th>Price</th><th>Discount</th><?php if((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])): ?><th>Tax %</th><?php endif; ?><th>Total</th><th></th></tr></thead>
                     <tbody id="itemsBody"></tbody>
-                    <tfoot><tr><td colspan="5" class="text-end fw-bold">Subtotal:</td><td class="fw-bold" id="subtotalDisplay">₹0.00</td><td></td></tr></tfoot>
+                    <tfoot><tr><td colspan="<?= ((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])) ? 5 : 4 ?>" class="text-end fw-bold">Subtotal:</td><td class="fw-bold" id="subtotalDisplay">₹0.00</td><td></td></tr></tfoot>
                 </table></div></div>
             </div>
         </div>
@@ -69,6 +69,9 @@ $existingItems = json_encode(array_map(function($item) {
 
 $inlineScript = "
 let itemIndex = 0;
+const currentTaxStatus = " . ((!isset($settings['enable_tax']) || $settings['enable_tax']) ? 'true' : 'false') . ";
+const currentGstStatus = " . ((!isset($settings['enable_gst']) || $settings['enable_gst']) ? 'true' : 'false') . ";
+const taxCalculationEnabled = currentTaxStatus && currentGstStatus;
 const APP = '" . APP_URL . "';
 const existingItems = " . $existingItems . ";
 
@@ -76,13 +79,16 @@ document.getElementById('addItemBtn').addEventListener('click', () => addItemRow
 
 function addItemRow(prefill) {
     const row = document.createElement('tr');
+    const taxInputHtml = taxCalculationEnabled
+        ? '<td><input type=\"number\" name=\"item_tax_rate[]\" class=\"form-control form-control-sm tax-input\" step=\"0.01\" value=\"0\"></td>'
+        : '<input type=\"hidden\" name=\"item_tax_rate[]\" class=\"tax-input\" value=\"0\">';
     row.innerHTML = `
         <td><input type=\"text\" class=\"form-control form-control-sm product-search\" placeholder=\"Search product...\">
             <input type=\"hidden\" name=\"product_id[]\" class=\"product-id\"></td>
         <td><input type=\"number\" name=\"quantity[]\" class=\"form-control form-control-sm qty-input\" step=\"0.001\" value=\"1\" min=\"0.001\"></td>
         <td><input type=\"number\" name=\"unit_price[]\" class=\"form-control form-control-sm price-input\" step=\"0.01\" value=\"0\"></td>
         <td><input type=\"number\" name=\"item_discount[]\" class=\"form-control form-control-sm disc-input\" step=\"0.01\" value=\"0\"></td>
-        <td><input type=\"number\" name=\"item_tax_rate[]\" class=\"form-control form-control-sm tax-input\" step=\"0.01\" value=\"0\"></td>
+        ` + taxInputHtml + `
         <td class=\"fw-bold item-total\">₹0.00</td>
         <td><button type=\"button\" class=\"btn btn-sm btn-outline-danger\" onclick=\"this.closest('tr').remove(); calculateTotals();\"><i class=\"fas fa-times\"></i></button></td>
     `;
@@ -93,7 +99,7 @@ function addItemRow(prefill) {
         row.querySelector('.qty-input').value = prefill.quantity;
         row.querySelector('.price-input').value = prefill.unit_price;
         row.querySelector('.disc-input').value = prefill.discount;
-        row.querySelector('.tax-input').value = prefill.tax_rate;
+        row.querySelector('.tax-input').value = taxCalculationEnabled ? prefill.tax_rate : 0;
     }
     const searchInput = row.querySelector('.product-search');
     let timeout;
@@ -130,7 +136,7 @@ function showProductDropdown(products, row, input) {
             row.querySelector('.product-id').value = p.id;
             input.value = p.name_raw || p.name;
             row.querySelector('.price-input').value = p.purchase_price;
-            row.querySelector('.tax-input').value = p.tax_rate || 0;
+            row.querySelector('.tax-input').value = taxCalculationEnabled ? (p.tax_rate || 0) : 0;
             dropdown.remove();
             calculateTotals();
         });
@@ -152,7 +158,7 @@ function calculateTotals() {
         const qty = parseFloat(row.querySelector('.qty-input')?.value) || 0;
         const price = parseFloat(row.querySelector('.price-input')?.value) || 0;
         const disc = parseFloat(row.querySelector('.disc-input')?.value) || 0;
-        const taxRate = parseFloat(row.querySelector('.tax-input')?.value) || 0;
+        const taxRate = taxCalculationEnabled ? (parseFloat(row.querySelector('.tax-input')?.value) || 0) : 0;
         const itemSub = (qty * price) - disc;
         const tax = itemSub * (taxRate / 100);
         row.querySelector('.item-total').textContent = '₹' + (itemSub + tax).toFixed(2);
@@ -178,3 +184,9 @@ existingItems.forEach(item => addItemRow(item));
 if (existingItems.length === 0) addItemRow();
 ";
 ?>
+
+
+
+
+
+

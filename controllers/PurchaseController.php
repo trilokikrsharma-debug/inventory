@@ -35,6 +35,10 @@ class PurchaseController extends Controller {
             $this->validateCSRF();
             $settingsModel = new SettingsModel();
             $invoiceNumber = $settingsModel->getNextNumber('purchase');
+            $settings = $settingsModel->getSettings();
+            $isTaxEnabled = !isset($settings['enable_tax']) || !empty($settings['enable_tax']);
+            $isGstEnabled = !isset($settings['enable_gst']) || !empty($settings['enable_gst']);
+            $allowTax = $isTaxEnabled && $isGstEnabled;
 
             $items = [];
             $subtotal = 0;
@@ -53,15 +57,19 @@ class PurchaseController extends Controller {
                     $price = (float)$unitPrices[$i];
                     $disc = (float)($discounts[$i] ?? 0);
                     $taxRate = (float)($taxRates[$i] ?? 0);
+                    if (!$allowTax) {
+                        $taxRate = 0.0;
+                    }
+                    $lineBase = $qty * $price;
 
-                    if ($qty < 0 || $price < 0 || $taxRate < 0 || $taxRate > 100 || $disc < 0 || $disc > 100) {
+                    if ($qty <= 0 || $price < 0 || $taxRate < 0 || $taxRate > 100 || $disc < 0 || $disc > $lineBase) {
                         error_log("Invalid input values in Purchase create: qty=$qty, price=$price, tax=$taxRate, disc=$disc");
-                        $this->setFlash('error', 'Invalid quantities, prices, taxes, or discounts provided. Values must be positive and percentages must be 0-100.');
+                        $this->setFlash('error', 'Invalid item values. Quantity must be greater than 0, tax must be 0-100, and discount cannot exceed line amount.');
                         $this->redirect('index.php?page=purchases&action=create');
                         return;
                     }
 
-                    $itemSubtotal = ($qty * $price) - $disc;
+                    $itemSubtotal = $lineBase - $disc;
                     $taxAmt = $itemSubtotal * ($taxRate / 100);
                     $itemTotal = $itemSubtotal + $taxAmt;
 
@@ -189,6 +197,10 @@ class PurchaseController extends Controller {
             $items = [];
             $subtotal = 0;
             $totalTax = 0;
+            $settings = (new SettingsModel())->getSettings();
+            $isTaxEnabled = !isset($settings['enable_tax']) || !empty($settings['enable_tax']);
+            $isGstEnabled = !isset($settings['enable_gst']) || !empty($settings['enable_gst']);
+            $allowTax = $isTaxEnabled && $isGstEnabled;
 
             $productIds = $this->post('product_id');
             $quantities = $this->post('quantity');
@@ -203,14 +215,18 @@ class PurchaseController extends Controller {
                     $price    = (float)$unitPrices[$i];
                     $disc     = (float)($discounts[$i] ?? 0);
                     $taxRate  = (float)($taxRates[$i] ?? 0);
+                    if (!$allowTax) {
+                        $taxRate = 0.0;
+                    }
+                    $lineBase = $qty * $price;
 
-                    if ($qty < 0 || $price < 0 || $taxRate < 0 || $taxRate > 100 || $disc < 0 || $disc > 100) {
+                    if ($qty <= 0 || $price < 0 || $taxRate < 0 || $taxRate > 100 || $disc < 0 || $disc > $lineBase) {
                         error_log("Invalid input values in Purchase edit: qty=$qty, price=$price, tax=$taxRate, disc=$disc");
-                        $this->setFlash('error', 'Invalid quantities, prices, taxes, or discounts provided. Values must be positive and percentages must be 0-100.');
+                        $this->setFlash('error', 'Invalid item values. Quantity must be greater than 0, tax must be 0-100, and discount cannot exceed line amount.');
                         $this->redirect('index.php?page=purchases&action=edit&id=' . $id);
                         return;
                     }
-                    $itemSub  = ($qty * $price) - $disc;
+                    $itemSub  = $lineBase - $disc;
                     $taxAmt   = $itemSub * ($taxRate / 100);
                     $items[]  = [
                         'product_id' => (int)$productIds[$i],

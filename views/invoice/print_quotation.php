@@ -10,19 +10,39 @@
     $documentDate = $data['quotation_date'] ?? date('Y-m-d');
     $showUnit = ($company['show_unit_on_invoice'] ?? 0) ? true : false;
     $showDiscount = (!isset($company['show_discount_on_invoice']) || !empty($company['show_discount_on_invoice'])) ? true : false;
+    $showHsnOnInvoice = (!isset($company['show_hsn_on_invoice']) || !empty($company['show_hsn_on_invoice'])) ? true : false;
+    $showTaxColumns = $isTaxEnabled && $isGst;
+    $showHsnColumn = $showTaxColumns && $showHsnOnInvoice;
     $bankDetails = $company['invoice_bank_details'] ?? '';
 
-    // Status badge
+    $normalizeState = static function ($value): string {
+        return preg_replace('/[^a-z0-9]/', '', strtolower(trim((string)$value)));
+    };
+
+    $gstType = strtolower((string)($data['gst_type'] ?? 'auto'));
+    if (!in_array($gstType, ['cgst_sgst', 'igst', 'none'], true)) {
+        $companyState = $normalizeState($company['company_state'] ?? '');
+        $customerState = $normalizeState($data['customer_state'] ?? '');
+        $gstType = ($companyState !== '' && $customerState !== '' && $companyState !== $customerState)
+            ? 'igst'
+            : 'cgst_sgst';
+    }
+    if (!$showTaxColumns) {
+        $gstType = 'none';
+    }
+
+    $cgstAmount = ($gstType === 'cgst_sgst') ? ((float)($data['tax_amount'] ?? 0) / 2) : 0;
+    $sgstAmount = ($gstType === 'cgst_sgst') ? ((float)($data['tax_amount'] ?? 0) / 2) : 0;
+    $igstAmount = ($gstType === 'igst') ? (float)($data['tax_amount'] ?? 0) : 0;
+
     $statusClass = 'status-' . ($data['status'] ?? 'draft');
     $badgeHtml = '<span class="status-badge ' . $statusClass . '">' . strtoupper($data['status'] ?? 'draft') . '</span>';
 
-    // Validity info
     $extraInfo = '';
     if (!empty($data['valid_until'])) {
         $extraInfo = 'Valid Until: ' . Helper::formatDate($data['valid_until']);
     }
 
-    // Terms: use quotation-specific terms if available, otherwise fall back to company terms
     $termsText = $data['terms'] ?? ($company['invoice_terms'] ?? '');
     $noteText = $data['note'] ?? '';
     ?>
@@ -33,10 +53,8 @@
 <?php $printLabel = 'Print Quotation'; include __DIR__ . '/_partials/_print_bar.php'; ?>
 
 <div class="invoice">
-    <!-- Header -->
     <?php include __DIR__ . '/_partials/_header.php'; ?>
 
-    <!-- Customer Info -->
     <div class="party-info">
         <div>
             <div class="label">Quotation For</div>
@@ -44,7 +62,8 @@
             <div class="party-detail">
                 <?php if (!empty($data['customer_phone'])): ?>Ph: <?= Helper::escape($data['customer_phone']) ?><br><?php endif; ?>
                 <?php if (!empty($data['customer_email'])): ?>Email: <?= Helper::escape($data['customer_email']) ?><br><?php endif; ?>
-                <?php if (!empty($data['customer_address'])): ?><?= Helper::escape($data['customer_address']) ?><?php endif; ?>
+                <?php if (!empty($data['customer_address'])): ?><?= Helper::escape($data['customer_address']) ?><br><?php endif; ?>
+                <?php if ($isGst && !empty($data['customer_tax_number'])): ?>GSTIN: <?= Helper::escape($data['customer_tax_number']) ?><?php endif; ?>
             </div>
         </div>
         <div style="text-align:right;">
@@ -55,49 +74,42 @@
         </div>
     </div>
 
-    <!-- Items Table -->
     <table>
         <thead>
             <tr>
                 <th style="width:30px;">#</th>
                 <th>Product</th>
+                <?php if ($showHsnColumn): ?><th style="text-align:left; width:80px;">HSN/SAC</th><?php endif; ?>
                 <th style="text-align:center; width:60px;">Qty</th>
                 <th style="text-align:right; width:90px;">Rate</th>
-                <?php if ($isTaxEnabled && $isGst): ?>
                 <?php if ($showDiscount): ?><th style="text-align:right; width:70px;">Disc</th><?php endif; ?>
+                <?php if ($showTaxColumns): ?>
                 <th style="text-align:right; width:60px;">GST %</th>
                 <th style="text-align:right; width:80px;">GST Amt</th>
-                <?php elseif ($isTaxEnabled && !$isGst): ?>
-                <?php if ($showDiscount): ?><th style="text-align:right; width:70px;">Disc</th><?php endif; ?>
-                <?php else: ?>
-                <?php if ($showDiscount): ?><th style="text-align:right; width:70px;">Disc</th><?php endif; ?>
                 <?php endif; ?>
                 <th style="text-align:right; width:90px;">Total</th>
             </tr>
         </thead>
         <tbody>
-        <?php if (!empty($data['items'])): $i=0; foreach ($data['items'] as $item): $i++; ?>
+        <?php if (!empty($data['items'])): $i = 0; foreach ($data['items'] as $item): $i++; ?>
         <tr>
             <td><?= $i ?></td>
             <td>
                 <?= Helper::escape($item['product_name'] ?? '') ?>
                 <?php if (!empty($item['sku'])): ?>
-                <br><small style="color:#888;">SKU: <?= Helper::escape($item['sku'] ?? '') ?></small>
+                <br><small style="color:#888;">SKU: <?= Helper::escape($item['sku']) ?></small>
                 <?php endif; ?>
             </td>
+            <?php if ($showHsnColumn): ?><td><?= !empty($item['hsn_code']) ? Helper::escape($item['hsn_code']) : '-' ?></td><?php endif; ?>
             <td style="text-align:center;">
                 <?= Helper::formatQty($item['quantity'] ?? 0) ?>
                 <?php if ($showUnit && isset($item['unit_name'])): ?> <?= Helper::escape($item['unit_name']) ?><?php endif; ?>
             </td>
             <td style="text-align:right;"><?= Helper::formatCurrency($item['unit_price'] ?? 0) ?></td>
-            <?php if ($isTaxEnabled && $isGst): ?>
-            <?php if ($showDiscount): ?><td style="text-align:right;"><?= (($item['discount'] ?? 0) > 0) ? Helper::formatCurrency($item['discount'] ?? 0) : '—' ?></td><?php endif; ?>
+            <?php if ($showDiscount): ?><td style="text-align:right;"><?= (($item['discount'] ?? 0) > 0) ? Helper::formatCurrency($item['discount'] ?? 0) : '-' ?></td><?php endif; ?>
+            <?php if ($showTaxColumns): ?>
             <td style="text-align:right;"><?= $item['tax_rate'] ?? 0 ?>%</td>
             <td style="text-align:right;"><?= Helper::formatCurrency($item['tax_amount'] ?? 0) ?></td>
-            <?php elseif ($isTaxEnabled && !$isGst): ?>
-            <?php if ($showDiscount): ?><td style="text-align:right;"><?= (($item['discount'] ?? 0) > 0) ? Helper::formatCurrency($item['discount'] ?? 0) : '—' ?></td><?php endif; ?>
-            <?php else: ?>
-            <?php if ($showDiscount): ?><td style="text-align:right;"><?= (($item['discount'] ?? 0) > 0) ? Helper::formatCurrency($item['discount'] ?? 0) : '—' ?></td><?php endif; ?>
             <?php endif; ?>
             <td style="text-align:right; font-weight:600;"><?= Helper::formatCurrency($item['total'] ?? 0) ?></td>
         </tr>
@@ -105,24 +117,23 @@
         </tbody>
     </table>
 
-    <!-- Summary -->
     <div class="summary-section">
         <div class="summary-left">
             <?php if (!empty($bankDetails)): ?>
             <div class="bank-section">
-                <div class="bank-title"><i>🏦</i> Bank Details</div>
+                <div class="bank-title">Bank Details</div>
                 <div class="bank-info"><?= nl2br(Helper::escape($bankDetails)) ?></div>
             </div>
             <?php endif; ?>
         </div>
         <div class="summary">
             <div class="summary-row"><span>Subtotal</span><span><?= Helper::formatCurrency($data['subtotal'] ?? 0) ?></span></div>
-            <?php if ($isTaxEnabled && ($data['tax_amount'] ?? 0) > 0): ?>
-                <?php if ($isGst): ?>
-                <div class="summary-row"><span>CGST</span><span><?= Helper::formatCurrency(($data['tax_amount'] ?? 0) / 2) ?></span></div>
-                <div class="summary-row"><span>SGST</span><span><?= Helper::formatCurrency(($data['tax_amount'] ?? 0) / 2) ?></span></div>
+            <?php if ($showTaxColumns && ($data['tax_amount'] ?? 0) > 0): ?>
+                <?php if ($gstType === 'igst'): ?>
+                <div class="summary-row"><span>IGST</span><span><?= Helper::formatCurrency($igstAmount) ?></span></div>
                 <?php else: ?>
-                <div class="summary-row"><span>Tax</span><span><?= Helper::formatCurrency($data['tax_amount']) ?></span></div>
+                <div class="summary-row"><span>CGST</span><span><?= Helper::formatCurrency($cgstAmount) ?></span></div>
+                <div class="summary-row"><span>SGST</span><span><?= Helper::formatCurrency($sgstAmount) ?></span></div>
                 <?php endif; ?>
             <?php endif; ?>
             <?php if (($data['discount_amount'] ?? 0) > 0): ?>
@@ -135,13 +146,8 @@
         </div>
     </div>
 
-    <!-- Terms -->
     <?php include __DIR__ . '/_partials/_terms.php'; ?>
-
-    <!-- Signature -->
     <?php include __DIR__ . '/_partials/_signature.php'; ?>
-
-    <!-- Footer -->
     <?php include __DIR__ . '/_partials/_footer.php'; ?>
 </div>
 </body>

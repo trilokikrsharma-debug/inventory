@@ -17,11 +17,34 @@ class SignupController extends Controller {
         }
 
         $error = '';
+        $errors = [];
         $success = '';
         $formData = [];
 
         if ($this->isPost()) {
             $this->validateCSRF();
+
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+            if (!RateLimiter::attempt('signup_ip:' . $ip, 10, 3600)) {
+                $error = 'Too many signup attempts from your network. Please try again in some time.';
+                $this->renderPartial('auth.signup', [
+                    'error' => $error,
+                    'errors' => ['general' => $error],
+                    'success' => $success,
+                    'formData' => $formData,
+                ]);
+                return;
+            }
+            if (!RateLimiter::attempt('signup_global', 200, 3600)) {
+                $error = 'Signup service is temporarily busy. Please retry after some time.';
+                $this->renderPartial('auth.signup', [
+                    'error' => $error,
+                    'errors' => ['general' => $error],
+                    'success' => $success,
+                    'formData' => $formData,
+                ]);
+                return;
+            }
 
             $companyName = trim($this->sanitize($this->post('company_name', '')));
             $ownerName   = trim($this->sanitize($this->post('full_name', '')));
@@ -33,29 +56,65 @@ class SignupController extends Controller {
             $referralCode = strtoupper(trim((string)$this->post('referral_code', '')));
 
             $formData = compact('companyName', 'ownerName', 'email', 'phone', 'username', 'referralCode');
+            $minPasswordLength = defined('PASSWORD_MIN_LENGTH')
+                ? max(6, (int)PASSWORD_MIN_LENGTH)
+                : 6;
 
             // Validation
             if (empty($companyName) || strlen($companyName) < 2) {
-                $error = 'Company name is required (minimum 2 characters).';
-            } elseif (empty($ownerName) || strlen($ownerName) < 2) {
-                $error = 'Full name is required (minimum 2 characters).';
-            } elseif (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $error = 'A valid email address is required.';
-            } elseif (empty($username) || strlen($username) < 3 || !preg_match('/^[a-z0-9_]+$/', $username)) {
-                $error = 'Username must be at least 3 characters (lowercase letters, numbers, underscore only).';
-            } elseif (empty($password) || strlen($password) < 6) {
-                $error = 'Password must be at least 6 characters.';
-            } elseif ($password !== $confirmPass) {
-                $error = 'Passwords do not match.';
-            } else {
-                // Check email uniqueness (globally)
-                $userModel = new UserModel();
-                if ($userModel->emailExists($email)) {
-                    $error = 'This email is already registered. Please log in or use a different email.';
+                $errors['company_name'] = 'Company name is required (minimum 2 characters).';
+            } elseif (strlen($companyName) > 120) {
+                $errors['company_name'] = 'Company name must be 120 characters or fewer.';
+            }
+
+            if (empty($ownerName) || strlen($ownerName) < 2) {
+                $errors['full_name'] = 'Full name is required (minimum 2 characters).';
+            } elseif (strlen($ownerName) > 120) {
+                $errors['full_name'] = 'Full name must be 120 characters or fewer.';
+            }
+
+            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors['email'] = 'A valid email address is required.';
+            } elseif (strlen($email) > 190) {
+                $errors['email'] = 'Email address is too long.';
+            }
+
+            if (!empty($phone) && !preg_match('/^\+?[0-9\s\-()]{7,20}$/', $phone)) {
+                $errors['phone'] = 'Phone number format looks invalid.';
+            }
+
+            if (empty($username) || strlen($username) < 3 || strlen($username) > 40 || !preg_match('/^[a-z0-9_]+$/', $username)) {
+                $errors['username'] = 'Username must be 3-40 characters (lowercase letters, numbers, underscore only).';
+            }
+
+            if (empty($password) || strlen($password) < $minPasswordLength) {
+                $errors['password'] = "Password must be at least {$minPasswordLength} characters.";
+            } elseif (defined('PASSWORD_COMPLEXITY') && PASSWORD_COMPLEXITY) {
+                if (!preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
+                    $errors['password'] = 'Password must contain at least 1 uppercase letter and 1 number.';
                 }
             }
 
-            if (empty($error)) {
+            if (empty($confirmPass)) {
+                $errors['confirm_password'] = 'Please confirm your password.';
+            } elseif ($password !== $confirmPass) {
+                $errors['confirm_password'] = 'Passwords do not match.';
+            }
+
+            if ($referralCode !== '' && !preg_match('/^[A-Z0-9_-]{4,40}$/', $referralCode)) {
+                $errors['referral_code'] = 'Referral code format is invalid.';
+            }
+
+            if (empty($errors)) {
+                // Check email uniqueness (globally)
+                $userModel = new UserModel();
+                if ($userModel->emailExists($email)) {
+                    $errors['email'] = 'This email is already registered. Please log in or use a different email.';
+                }
+            }
+
+            if (empty($errors)) {
+                $db = null;
                 $db = Database::getInstance();
                 $db->beginTransaction();
 
@@ -63,17 +122,23 @@ class SignupController extends Controller {
                 // 1. Create company
                 $slug = $this->generateSlug($companyName);
                 $db->query(
-                    "INSERT INTO companies (name, slug, plan, status, max_users, max_products) VALUES (?, ?, 'starter', 'active', 3, 500)",
+                    "INSERT INTO companies
+                     (name, slug, saas_plan_id, subscription_status, trial_ends_at, plan, status, max_users, max_products)
+                     VALUES (?, ?, 1, 'trial', DATE_ADD(NOW(), INTERVAL 14 DAY), 'starter', 'active', 3, 500)",
                     [$companyName, $slug]
                 );
                 $companyId = $db->lastInsertId();
 
-                // 2. Create owner user (tenant_owner = role_id=1 Administrator, NEVER is_super_admin)
+                // 2. Create owner user using a tenant-safe admin role.
                 // SECURITY: is_super_admin is ALWAYS 0 here. Platform super-admins are set via DB ONLY.
+                $tenantAdminRoleId = $this->resolveTenantAdminRoleId($db, (int)$companyId);
+                if ($tenantAdminRoleId <= 0) {
+                    throw new \RuntimeException('Unable to resolve a safe tenant admin role.');
+                }
                 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
                 $db->query(
-                    "INSERT INTO users (company_id, username, email, password, full_name, phone, role, role_id, is_active, is_super_admin) VALUES (?, ?, ?, ?, ?, ?, 'admin', 1, 1, 0)",
-                    [$companyId, $username, $email, $hashedPassword, $ownerName, $phone]
+                    "INSERT INTO users (company_id, username, email, password, full_name, phone, role, role_id, is_active, is_super_admin) VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, 1, 0)",
+                    [$companyId, $username, $email, $hashedPassword, $ownerName, $phone, $tenantAdminRoleId]
                 );
                 $userId = $db->lastInsertId();
 
@@ -152,14 +217,30 @@ class SignupController extends Controller {
                 if ($db) {
                     $db->rollback();
                 }
-                error_log('[SIGNUP] Error: ' . $e->getMessage());
-                $error = 'Registration failed. Please try again or contact support.';
+                $message = trim((string)$e->getMessage());
+
+                if ($message !== '' && stripos($message, 'referral') !== false) {
+                    $errors['referral_code'] = $message;
+                } elseif ($message !== '' && stripos($message, 'duplicate') !== false && stripos($message, 'email') !== false) {
+                    $errors['email'] = 'This email is already registered. Please log in or use a different email.';
+                } elseif ($message !== '' && stripos($message, 'duplicate') !== false && stripos($message, 'username') !== false) {
+                    $errors['username'] = 'This username is not available. Please choose another one.';
+                } else {
+                    $errors['general'] = 'Registration failed. Please try again or contact support.';
+                }
+
+                error_log('[SIGNUP] Error: ' . $message);
             }
+            }
+
+            if (!empty($errors)) {
+                $error = (string)(reset($errors) ?: 'Please fix the form errors and try again.');
             }
         }
 
         $this->renderPartial('auth.signup', [
             'error' => $error,
+            'errors' => $errors,
             'success' => $success,
             'formData' => $formData,
         ]);
@@ -180,5 +261,97 @@ class SignupController extends Controller {
             $slug = $original . '-' . $counter++;
         }
         return $slug;
+    }
+
+    /**
+     * Resolve a tenant-local admin role, creating one when needed.
+     * This keeps signup away from hardcoded role_id assumptions.
+     */
+    private function resolveTenantAdminRoleId(Database $db, int $tenantId): int {
+        try {
+            $role = $db->query(
+                "SELECT id, name, display_name, company_id
+                 FROM roles
+                 WHERE company_id = ? AND IFNULL(is_super_admin, 0) = 0
+                 ORDER BY CASE
+                            WHEN LOWER(name) IN ('admin', 'tenant_admin', 'owner', 'administrator') THEN 0
+                            WHEN LOWER(display_name) LIKE '%admin%' THEN 1
+                            ELSE 2
+                          END,
+                          id ASC
+                 LIMIT 1",
+                [$tenantId]
+            )->fetch();
+
+            if ($role) {
+                return (int)$role['id'];
+            }
+
+            $roleName = 'tenant_admin_' . $tenantId;
+            $db->query(
+                "INSERT INTO roles (company_id, name, display_name, description, is_super_admin, is_system)
+                 VALUES (?, ?, 'Administrator', 'Full tenant-level access', 0, 1)",
+                [$tenantId, $roleName]
+            );
+            $roleId = (int)$db->lastInsertId();
+
+            $this->grantAllPermissionsToRole($db, $roleId);
+            return $roleId;
+        } catch (\Throwable $e) {
+            error_log('[Signup] Failed to resolve tenant admin role: ' . $e->getMessage());
+
+            try {
+                $globalRole = $db->query(
+                    "SELECT id
+                     FROM roles
+                     WHERE company_id IS NULL AND IFNULL(is_super_admin, 0) = 0
+                     ORDER BY CASE
+                                WHEN LOWER(name) = 'admin' THEN 0
+                                WHEN LOWER(display_name) LIKE '%admin%' THEN 1
+                                ELSE 2
+                              END,
+                              id ASC
+                     LIMIT 1"
+                )->fetch();
+
+                if ($globalRole) {
+                    return (int)$globalRole['id'];
+                }
+            } catch (\Throwable $fallbackError) {
+                error_log('[Signup] Global role fallback failed: ' . $fallbackError->getMessage());
+            }
+
+            $fallback = $db->query(
+                "SELECT id
+                 FROM roles
+                 WHERE IFNULL(is_super_admin, 0) = 0
+                 ORDER BY CASE
+                            WHEN LOWER(name) = 'admin' THEN 0
+                            WHEN LOWER(display_name) LIKE '%admin%' THEN 1
+                            ELSE 2
+                          END,
+                          id ASC
+                 LIMIT 1"
+            )->fetch();
+
+            return (int)($fallback['id'] ?? 0);
+        }
+    }
+
+    /**
+     * Seed all permissions into a freshly-created tenant admin role.
+     */
+    private function grantAllPermissionsToRole(Database $db, int $roleId): void {
+        try {
+            $permissions = $db->query("SELECT id FROM permissions ORDER BY id ASC")->fetchAll();
+            foreach ($permissions as $permission) {
+                $db->query(
+                    "INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)",
+                    [$roleId, (int)$permission['id']]
+                );
+            }
+        } catch (\Throwable $e) {
+            error_log('[Signup] Failed to seed role permissions: ' . $e->getMessage());
+        }
     }
 }

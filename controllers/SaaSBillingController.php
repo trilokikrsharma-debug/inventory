@@ -24,6 +24,12 @@ class SaaSBillingController extends Controller {
     private PromoCode $promoModel;
     private Referral $referralModel;
     private TenantSubscription $subscriptionModel;
+    private const RATE_PROMO_MAX = 40;
+    private const RATE_PROMO_WINDOW = 60;
+    private const RATE_CHECKOUT_MAX = 15;
+    private const RATE_CHECKOUT_WINDOW = 60;
+    private const RATE_VERIFY_MAX = 25;
+    private const RATE_VERIFY_WINDOW = 300;
 
     public function __construct() {
         $this->planModel = new SaaSPlan();
@@ -52,6 +58,7 @@ class SaaSBillingController extends Controller {
             'companyId' => $companyId,
             'referralCode' => $referralCode,
             'razorpayKey' => RAZORPAY_KEY,
+            'gatewayConfigured' => $this->isGatewayConfigured(),
         ]);
     }
 
@@ -85,6 +92,10 @@ class SaaSBillingController extends Controller {
         if (!$this->isPost()) {
             $this->json(['success' => false, 'message' => 'Method not allowed.'], 405);
         }
+        $companyId = (int)Tenant::id();
+        if (!$this->enforceTenantRateLimit('promo_validate', $companyId, self::RATE_PROMO_MAX, self::RATE_PROMO_WINDOW)) {
+            return;
+        }
 
         $planId = (int)$this->post('plan_id');
         $code = strtoupper(trim((string)$this->post('promo_code')));
@@ -97,7 +108,6 @@ class SaaSBillingController extends Controller {
             $this->json(['success' => false, 'message' => 'Plan not found or inactive.'], 404);
         }
 
-        $companyId = (int)Tenant::id();
         $base = $this->planModel->checkoutPrice($plan);
         $promoCheck = $this->promoModel->validateForCheckout($code, $companyId, $plan, $base);
 
@@ -133,6 +143,9 @@ class SaaSBillingController extends Controller {
         $this->validateCSRF();
 
         $companyId = (int)Tenant::id();
+        if (!$this->enforceTenantRateLimit('create_checkout', $companyId, self::RATE_CHECKOUT_MAX, self::RATE_CHECKOUT_WINDOW)) {
+            return;
+        }
         $planId = (int)$this->post('plan_id');
         $promoCode = strtoupper(trim((string)$this->post('promo_code', '')));
 
@@ -164,6 +177,9 @@ class SaaSBillingController extends Controller {
         $planId = (int)($input['plan_id'] ?? 0);
         $promoCode = strtoupper(trim((string)($input['promo_code'] ?? '')));
         $companyId = (int)Tenant::id();
+        if (!$this->enforceTenantRateLimit('upgrade_api', $companyId, self::RATE_CHECKOUT_MAX, self::RATE_CHECKOUT_WINDOW)) {
+            return;
+        }
 
         $result = $this->buildCheckoutSession($companyId, $planId, $promoCode);
         if (!$result['success']) {
@@ -185,6 +201,9 @@ class SaaSBillingController extends Controller {
         $this->validateCSRF();
 
         $companyId = (int)Tenant::id();
+        if (!$this->enforceTenantRateLimit('verify_payment', $companyId, self::RATE_VERIFY_MAX, self::RATE_VERIFY_WINDOW)) {
+            return;
+        }
         $localSubscriptionId = (int)$this->post('local_subscription_id');
         $razorpayPaymentId = trim((string)$this->post('razorpay_payment_id'));
         $razorpayOrderId = trim((string)$this->post('razorpay_order_id'));
@@ -257,7 +276,19 @@ class SaaSBillingController extends Controller {
         try {
             $payment = $api->payment->fetch($razorpayPaymentId);
             $status = strtolower((string)($payment['status'] ?? ''));
-            if (!in_array($status, ['captured', 'authorized'], true)) {
+            if ($status === 'authorized') {
+                Logger::warning('Payment authorized but not captured yet', [
+                    'subscription_id' => $localSubscriptionId,
+                    'payment_id' => $razorpayPaymentId,
+                ]);
+                $this->json([
+                    'success' => false,
+                    'pending_capture' => true,
+                    'message' => 'Payment authorized. Waiting for capture confirmation.',
+                ], 409);
+            }
+
+            if ($status !== 'captured') {
                 $this->subscriptionModel->markPaymentFailed($localSubscriptionId, 'Payment status: ' . $status, $razorpayPaymentId);
                 $this->json(['success' => false, 'message' => 'Payment is not captured yet.'], 422);
             }
@@ -758,10 +789,51 @@ class SaaSBillingController extends Controller {
     }
 
     private function razorpay(): ?Api {
-        if (empty(RAZORPAY_KEY) || empty(RAZORPAY_SECRET)) {
+        if (!$this->isGatewayConfigured()) {
             return null;
         }
-        return new Api(RAZORPAY_KEY, RAZORPAY_SECRET);
+        $key = trim((string)RAZORPAY_KEY);
+        $secret = trim((string)RAZORPAY_SECRET);
+        return new Api($key, $secret);
+    }
+
+    private function isGatewayConfigured(): bool {
+        $key = trim((string)RAZORPAY_KEY);
+        $secret = trim((string)RAZORPAY_SECRET);
+
+        if ($key === '' || $secret === '') {
+            return false;
+        }
+
+        if (stripos($key, 'placeholder') !== false || stripos($secret, 'placeholder') !== false) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function enforceTenantRateLimit(string $bucket, int $companyId, int $maxHits, int $windowSeconds): bool {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $key = 'billing:' . $bucket . ':c' . $companyId . ':ip:' . $ip;
+        $allowed = RateLimiter::attempt($key, $maxHits, $windowSeconds);
+        RateLimiter::headers($key, $maxHits, $windowSeconds);
+
+        if ($allowed) {
+            return true;
+        }
+
+        Logger::security('Billing rate limit exceeded', [
+            'bucket' => $bucket,
+            'company_id' => $companyId,
+            'ip' => $ip,
+            'max_hits' => $maxHits,
+            'window_seconds' => $windowSeconds,
+        ]);
+
+        $this->json([
+            'success' => false,
+            'message' => 'Too many requests. Please wait and retry.',
+        ], 429);
+        return false;
     }
 }
-

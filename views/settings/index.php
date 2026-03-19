@@ -5,6 +5,13 @@ $activeTab = $_GET['tab'] ?? 'company';
 if (!in_array($activeTab, $allowedTabs, true)) {
     $activeTab = 'company';
 }
+$previewCurrency = (string)($settings['currency_symbol'] ?? 'Rs. ');
+$previewTaxEnabled = !isset($settings['enable_tax']) || !empty($settings['enable_tax']);
+$previewGstEnabled = !isset($settings['enable_gst']) || !empty($settings['enable_gst']);
+$previewShowPaidDue = !isset($settings['show_paid_due_on_invoice']) || !empty($settings['show_paid_due_on_invoice']);
+$previewShowUnit = !empty($settings['show_unit_on_invoice']);
+$previewShowDiscount = !isset($settings['show_discount_on_invoice']) || !empty($settings['show_discount_on_invoice']);
+$previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['show_hsn_on_invoice']);
 ?>
 <div class="page-header"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item active">Settings</li></ol></nav></div>
 
@@ -185,27 +192,40 @@ if (!in_array($activeTab, $allowedTabs, true)) {
 
                     <!-- GST-specific fields -->
                     <div class="gst-fields" id="gstFields">
-                        <hr class="section-divider">
-                        <div class="section-label"><i class="fas fa-file-invoice-dollar"></i> GST Details</div>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">GSTIN Number</label>
-                                <input type="text" name="tax_number" class="form-control" 
-                                       value="<?= Helper::escape($settings['tax_number'] ?? '') ?>"
-                                       placeholder="e.g. 27AABCU9603R1ZM">
-                                <small class="text-muted">15-digit GST Identification Number</small>
+                        <div id="gstOnlyFields">
+                            <hr class="section-divider">
+                            <div class="section-label"><i class="fas fa-file-invoice-dollar"></i> GST Details</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">GSTIN Number</label>
+                                    <input type="text" name="tax_number" class="form-control" 
+                                           value="<?= Helper::escape($settings['tax_number'] ?? '') ?>"
+                                           placeholder="e.g. 27AABCU9603R1ZM">
+                                    <small class="text-muted">15-digit GST Identification Number</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Default GST Rate (%)</label>
+                                    <input type="number" name="tax_rate" class="form-control" step="0.01" 
+                                           value="<?= $settings['tax_rate'] ?? 18 ?>">
+                                    <small class="text-muted">Applied to products without specific tax rate</small>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Default GST Rate (%)</label>
-                                <input type="number" name="tax_rate" class="form-control" step="0.01" 
-                                       value="<?= $settings['tax_rate'] ?? 18 ?>">
-                                <small class="text-muted">Applied to products without specific tax rate</small>
+
+                            <div class="alert alert-info mt-3" style="border-radius: 12px; font-size: 0.85rem;">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>GST Enabled:</strong> Invoice will show as <strong>"Tax Invoice"</strong> with GSTIN, tax columns (CGST/SGST/IGST), HSN codes, and tax breakup.
                             </div>
                         </div>
 
-                        <div class="alert alert-info mt-3" style="border-radius: 12px; font-size: 0.85rem;">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>GST Enabled:</strong> Invoice will show as <strong>"Tax Invoice"</strong> with GSTIN, tax columns (CGST/SGST/IGST), HSN codes, and tax breakup.
+                        <div class="toggle-card mt-3">
+                            <div class="toggle-info">
+                                <h6><i class="fas fa-equals me-2" style="color: #0d6efd;"></i>Auto Round Off to Nearest ₹1</h6>
+                                <p>Automatically applies round-off on sale bills so final total rounds to nearest rupee.</p>
+                            </div>
+                            <div class="form-check form-switch form-switch-lg">
+                                <input class="form-check-input" type="checkbox" id="autoRoundOffSwitch" name="auto_round_off_rupee" value="1"
+                                       <?= (!empty($settings['auto_round_off_rupee'])) ? 'checked' : '' ?>>
+                            </div>
                         </div>
                     </div>
 
@@ -215,7 +235,7 @@ if (!in_array($activeTab, $allowedTabs, true)) {
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Tax Label <small class="text-muted">(optional)</small></label>
-                                <input type="text" name="tax_number" class="form-control" 
+                                <input type="text" name="tax_number_nongst" class="form-control" 
                                        value="<?= Helper::escape($settings['tax_number'] ?? '') ?>"
                                        placeholder="e.g. PAN, TIN, etc.">
                             </div>
@@ -326,6 +346,16 @@ if (!in_array($activeTab, $allowedTabs, true)) {
                                    <?= (!isset($settings['show_discount_on_invoice']) || !empty($settings['show_discount_on_invoice'])) ? 'checked' : '' ?>>
                         </div>
                     </div>
+                    <div class="toggle-card">
+                        <div class="toggle-info">
+                            <h6><i class="fas fa-barcode me-2" style="color: #20c997;"></i>Show HSN/SAC on Invoice</h6>
+                            <p>When enabled, HSN/SAC column is shown on GST invoices. In non-GST mode it stays hidden.</p>
+                        </div>
+                        <div class="form-check form-switch form-switch-lg">
+                            <input class="form-check-input" type="checkbox" id="showHsnSwitch" name="show_hsn_on_invoice" value="1"
+                                   <?= (!isset($settings['show_hsn_on_invoice']) || !empty($settings['show_hsn_on_invoice'])) ? 'checked' : '' ?>>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="card mb-3">
@@ -369,6 +399,9 @@ if (!in_array($activeTab, $allowedTabs, true)) {
                                     <?= Helper::escape($settings['invoice_title'] ?? 'Tax Invoice') ?>
                                 </div>
                                 <div style="font-size:0.7rem; color:#888;">INV-00001</div>
+                                <div id="previewStatusWrap" style="margin-top:4px; display: <?= $previewShowPaidDue ? 'block' : 'none' ?>;">
+                                    <span style="display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.65rem; font-weight:700; background:#f8d7da; color:#721c24;">UNPAID</span>
+                                </div>
                             </div>
                         </div>
                         <table style="width:100%; font-size:0.7rem; border-collapse:collapse;">
@@ -376,17 +409,34 @@ if (!in_array($activeTab, $allowedTabs, true)) {
                                 <tr style="background:#4e73df; color:#fff;">
                                     <th style="padding:4px;">Item</th>
                                     <th style="padding:4px; text-align:center;">Qty</th>
+                                    <th style="padding:4px; text-align:left; display: <?= ($previewTaxEnabled && $previewGstEnabled && $previewShowHsn) ? '' : 'none' ?>;" id="previewHsnCol">HSN/SAC</th>
                                     <th style="padding:4px; text-align:right;">Rate</th>
-                                    <th style="padding:4px; text-align:right;" id="previewTaxCol">Tax</th>
+                                    <th style="padding:4px; text-align:right; display: <?= $previewShowDiscount ? '' : 'none' ?>;" id="previewDiscountCol">Disc</th>
+                                    <th style="padding:4px; text-align:right; display: <?= ($previewTaxEnabled && $previewGstEnabled) ? '' : 'none' ?>;" id="previewTaxRateCol">GST %</th>
+                                    <th style="padding:4px; text-align:right; display: <?= ($previewTaxEnabled && $previewGstEnabled) ? '' : 'none' ?>;" id="previewTaxAmtCol">GST Amt</th>
                                     <th style="padding:4px; text-align:right;">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr><td style="padding:3px;">Sample Product</td><td style="padding:3px; text-align:center;">2</td><td style="padding:3px; text-align:right;">₹500</td><td style="padding:3px; text-align:right;" class="preview-tax-cell">18%</td><td style="padding:3px; text-align:right;">₹1,180</td></tr>
+                                <tr>
+                                    <td style="padding:3px;">Sample Product</td>
+                                    <td style="padding:3px; text-align:center;" id="previewQtyCell"><?= $previewShowUnit ? '2 Pcs' : '2' ?></td>
+                                    <td style="padding:3px; display: <?= ($previewTaxEnabled && $previewGstEnabled && $previewShowHsn) ? '' : 'none' ?>;" id="previewHsnCell">8471</td>
+                                    <td style="padding:3px; text-align:right;"><?= Helper::escape($previewCurrency) ?>500</td>
+                                    <td style="padding:3px; text-align:right; display: <?= $previewShowDiscount ? '' : 'none' ?>;" id="previewDiscountCell">-</td>
+                                    <td style="padding:3px; text-align:right; display: <?= ($previewTaxEnabled && $previewGstEnabled) ? '' : 'none' ?>;" class="preview-tax-cell">18%</td>
+                                    <td style="padding:3px; text-align:right; display: <?= ($previewTaxEnabled && $previewGstEnabled) ? '' : 'none' ?>;" class="preview-tax-cell"><?= Helper::escape($previewCurrency) ?>180</td>
+                                    <td style="padding:3px; text-align:right;"><?= Helper::escape($previewCurrency) ?>1,180</td>
+                                </tr>
                             </tbody>
                         </table>
-                        <div style="text-align:right; margin-top:0.5rem; font-weight:700; font-size:0.8rem; border-top:1px solid #eee; padding-top:0.5rem;">
-                            Total: ₹1,180.00
+                        <div style="text-align:right; margin-top:0.5rem; font-size:0.75rem; border-top:1px solid #eee; padding-top:0.5rem; color:#555;">
+                            <div id="previewTaxSummaryRow" style="display: <?= ($previewTaxEnabled && $previewGstEnabled) ? 'block' : 'none' ?>;">Tax: <?= Helper::escape($previewCurrency) ?>180.00</div>
+                            <div style="font-weight:700; font-size:0.8rem; color:#222;">Grand Total: <?= Helper::escape($previewCurrency) ?>1,180.00</div>
+                            <div id="previewPaidDueRow" style="display: <?= $previewShowPaidDue ? 'block' : 'none' ?>;">
+                                <div style="color:#28a745;">Paid: <?= Helper::escape($previewCurrency) ?>0.00</div>
+                                <div style="color:#dc3545; font-weight:600;">Balance Due: <?= Helper::escape($previewCurrency) ?>1,180.00</div>
+                            </div>
                         </div>
                         <div id="previewSignature" style="text-align:right; margin-top:1rem; padding-top:0.5rem; border-top:1px dashed #ddd; font-size:0.7rem; color:#888;">
                             <?= Helper::escape($settings['invoice_signature_label'] ?? 'Authorised Signatory') ?>
@@ -400,7 +450,6 @@ if (!in_array($activeTab, $allowedTabs, true)) {
         </div>
     </div>
 </div>
-
 <!-- ========== TAB 4: Prefixes ========== -->
 <div class="tab-pane <?= $activeTab === 'prefixes' ? 'active' : '' ?>" id="tab-prefixes">
     <div class="row g-3">
@@ -453,17 +502,29 @@ function toggleTaxFields() {
     const enabled = taxSwitch.checked;
     const gstCard = document.getElementById('gstToggleCard');
     const gstFields = document.getElementById('gstFields');
+    const gstOnlyFields = document.getElementById('gstOnlyFields');
     const nonGstInfo = document.getElementById('nonGstInfo');
+    const gstSwitch = document.getElementById('enableGstSwitch');
 
     if (enabled) {
         gstCard.style.opacity = '1';
         gstCard.style.pointerEvents = 'auto';
+        if (gstSwitch) {
+            gstSwitch.disabled = false;
+            if (!gstSwitch.checked) gstSwitch.checked = true;
+        }
         toggleGstFields();
     } else {
         gstCard.style.opacity = '0.4';
         gstCard.style.pointerEvents = 'none';
-        gstFields.style.display = 'none';
-        nonGstInfo.style.display = 'none';
+        if (gstSwitch) {
+            gstSwitch.checked = false;
+            gstSwitch.disabled = true;
+        }
+        if (gstFields) gstFields.style.display = 'block';
+        if (gstOnlyFields) gstOnlyFields.style.display = 'none';
+        if (nonGstInfo) nonGstInfo.style.display = 'none';
+        updatePreviewLayout();
     }
 }
 
@@ -472,11 +533,17 @@ function toggleGstFields() {
     if (!gstSwitch) return;
     const gstEnabled = gstSwitch.checked;
     const gstFields = document.getElementById('gstFields');
+    const gstOnlyFields = document.getElementById('gstOnlyFields');
     const nonGstInfo = document.getElementById('nonGstInfo');
+    const taxSwitch = document.getElementById('enableTaxSwitch');
     const titleField = document.querySelector('input[name="invoice_title"]');
 
     if (gstEnabled) {
-        gstFields.style.display = 'block';
+        if (taxSwitch && !taxSwitch.checked) {
+            taxSwitch.checked = true;
+        }
+        if (gstFields) gstFields.style.display = 'block';
+        if (gstOnlyFields) gstOnlyFields.style.display = 'block';
         nonGstInfo.style.display = 'none';
         // Auto-suggest title
         if (titleField && (titleField.value === 'Bill of Supply' || titleField.value === '')) {
@@ -484,7 +551,11 @@ function toggleGstFields() {
             updatePreview();
         }
     } else {
-        gstFields.style.display = 'none';
+        if (taxSwitch && taxSwitch.checked) {
+            taxSwitch.checked = false;
+        }
+        if (gstFields) gstFields.style.display = 'block';
+        if (gstOnlyFields) gstOnlyFields.style.display = 'none';
         nonGstInfo.style.display = 'block';
         // Auto-suggest title
         if (titleField && (titleField.value === 'Tax Invoice' || titleField.value === '')) {
@@ -492,7 +563,7 @@ function toggleGstFields() {
             updatePreview();
         }
     }
-    updatePreviewTax();
+    updatePreviewLayout();
 }
 
 // Live preview updates
@@ -503,23 +574,44 @@ function updatePreview() {
     if (sig) document.getElementById('previewSignature').textContent = sig.value || 'Authorised Signatory';
 }
 
-function updatePreviewTax() {
+function updatePreviewLayout() {
     const gstSwitch = document.getElementById('enableGstSwitch');
     const taxSwitch = document.getElementById('enableTaxSwitch');
-    if (!gstSwitch || !taxSwitch) return;
-    const gstEnabled = gstSwitch.checked;
-    const taxEnabled = taxSwitch.checked;
-    const taxCol = document.getElementById('previewTaxCol');
+    const showPaidDueSwitch = document.getElementById('showPaidDueSwitch');
+    const showUnitSwitch = document.getElementById('showUnitSwitch');
+    const showDiscountSwitch = document.getElementById('showDiscountSwitch');
+    const showHsnSwitch = document.getElementById('showHsnSwitch');
+    const gstEnabled = !!(gstSwitch && gstSwitch.checked);
+    const taxEnabled = !!(taxSwitch && taxSwitch.checked);
+    const showPaidDue = !!(showPaidDueSwitch && showPaidDueSwitch.checked);
+    const showUnit = !!(showUnitSwitch && showUnitSwitch.checked);
+    const showDiscount = !!(showDiscountSwitch && showDiscountSwitch.checked);
+    const showHsn = !!(showHsnSwitch && showHsnSwitch.checked);
+    const showTaxColumns = taxEnabled && gstEnabled;
+    const showHsnColumn = showTaxColumns && showHsn;
+    const discountCol = document.getElementById('previewDiscountCol');
+    const discountCell = document.getElementById('previewDiscountCell');
+    const hsnCol = document.getElementById('previewHsnCol');
+    const hsnCell = document.getElementById('previewHsnCell');
+    const taxRateCol = document.getElementById('previewTaxRateCol');
+    const taxAmtCol = document.getElementById('previewTaxAmtCol');
     const taxCells = document.querySelectorAll('.preview-tax-cell');
-    if (!taxCol) return;
+    const qtyCell = document.getElementById('previewQtyCell');
+    const paidDueRow = document.getElementById('previewPaidDueRow');
+    const taxSummaryRow = document.getElementById('previewTaxSummaryRow');
+    const statusWrap = document.getElementById('previewStatusWrap');
 
-    if (!taxEnabled || !gstEnabled) {
-        taxCol.style.display = 'none';
-        taxCells.forEach(c => c.style.display = 'none');
-    } else {
-        taxCol.style.display = '';
-        taxCells.forEach(c => c.style.display = '');
-    }
+    if (discountCol) discountCol.style.display = showDiscount ? '' : 'none';
+    if (discountCell) discountCell.style.display = showDiscount ? '' : 'none';
+    if (hsnCol) hsnCol.style.display = showHsnColumn ? '' : 'none';
+    if (hsnCell) hsnCell.style.display = showHsnColumn ? '' : 'none';
+    if (taxRateCol) taxRateCol.style.display = showTaxColumns ? '' : 'none';
+    if (taxAmtCol) taxAmtCol.style.display = showTaxColumns ? '' : 'none';
+    taxCells.forEach(c => c.style.display = showTaxColumns ? '' : 'none');
+    if (qtyCell) qtyCell.textContent = showUnit ? '2 Pcs' : '2';
+    if (paidDueRow) paidDueRow.style.display = showPaidDue ? 'block' : 'none';
+    if (statusWrap) statusWrap.style.display = showPaidDue ? 'block' : 'none';
+    if (taxSummaryRow) taxSummaryRow.style.display = showTaxColumns ? 'block' : 'none';
 }
 
 // Attach live preview listeners
@@ -528,10 +620,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const sigField = document.querySelector('input[name="invoice_signature_label"]');
     const taxSwitch = document.getElementById('enableTaxSwitch');
     const gstSwitch = document.getElementById('enableGstSwitch');
+    const showPaidDueSwitch = document.getElementById('showPaidDueSwitch');
+    const showUnitSwitch = document.getElementById('showUnitSwitch');
+    const showDiscountSwitch = document.getElementById('showDiscountSwitch');
+    const showHsnSwitch = document.getElementById('showHsnSwitch');
     if (titleField) titleField.addEventListener('input', updatePreview);
     if (sigField) sigField.addEventListener('input', updatePreview);
     if (taxSwitch) taxSwitch.addEventListener('change', toggleTaxFields);
     if (gstSwitch) gstSwitch.addEventListener('change', toggleGstFields);
+    if (showPaidDueSwitch) showPaidDueSwitch.addEventListener('change', updatePreviewLayout);
+    if (showUnitSwitch) showUnitSwitch.addEventListener('change', updatePreviewLayout);
+    if (showDiscountSwitch) showDiscountSwitch.addEventListener('change', updatePreviewLayout);
+    if (showHsnSwitch) showHsnSwitch.addEventListener('change', updatePreviewLayout);
 
     // CSP-safe tab click handling.
     document.querySelectorAll('.settings-tab').forEach(function(tab) {
@@ -545,5 +645,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize state
     toggleTaxFields();
+    updatePreview();
+    updatePreviewLayout();
 });
 </script>

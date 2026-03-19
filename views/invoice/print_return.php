@@ -7,7 +7,7 @@
     $documentTitle = 'Credit Note';
     $documentNumber = $data['return_number'] ?? '';
     $documentDate = $data['return_date'] ?? date('Y-m-d');
-    $noteText = $data['reason'] ?? '';
+    $noteText = $data['note'] ?? '';
     ?>
     <title><?= Helper::escape($documentTitle) ?> - <?= Helper::escape($documentNumber) ?></title>
     <?php include __DIR__ . '/_partials/_styles.php'; ?>
@@ -31,10 +31,10 @@
         <div style="text-align:right;">
             <div class="label">Against Invoice</div>
             <div style="font-weight:600;"><?= Helper::escape($data['invoice_number'] ?? 'N/A') ?></div>
-            <?php if (!empty($data['reason'])): ?>
+            <?php if (!empty($data['note'])): ?>
             <div style="margin-top:6px;">
                 <div class="label">Reason</div>
-                <div style="font-size:12px; color:#666;"><?= Helper::escape($data['reason']) ?></div>
+                <div style="font-size:12px; color:#666;"><?= Helper::escape($data['note']) ?></div>
             </div>
             <?php endif; ?>
         </div>

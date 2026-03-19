@@ -13,20 +13,30 @@ class SecurityHeadersMiddleware implements MiddlewareInterface {
         header("X-XSS-Protection: 1; mode=block");
         header("Referrer-Policy: strict-origin-when-cross-origin");
         header("Permissions-Policy: camera=(), microphone=(), geolocation=()");
-        header("Strict-Transport-Security: max-age=31536000; includeSubDomains; preload");
         header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
         header("Pragma: no-cache");
+
+        $isHttps = (
+            (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
+            || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443)
+            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string)$_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+        );
+        if ($isHttps) {
+            header("Strict-Transport-Security: max-age=31536000; includeSubDomains; preload");
+        }
 
         // Generate per-request CSP nonce for inline scripts
         $GLOBALS['csp_nonce'] = base64_encode(random_bytes(16));
         $nonce = $GLOBALS['csp_nonce'];
 
         header("Content-Security-Policy: default-src 'self'; "
-            . "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://code.jquery.com; "
+            . "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://code.jquery.com https://checkout.razorpay.com; "
             . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
-            . "img-src 'self' data: blob:; "
+            . "img-src 'self' data: blob: https://*.razorpay.com; "
             . "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
-            . "connect-src 'self'; frame-ancestors 'self';");
+            . "connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com; "
+            . "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com; "
+            . "frame-ancestors 'self';");
 
         $next($request);
     }

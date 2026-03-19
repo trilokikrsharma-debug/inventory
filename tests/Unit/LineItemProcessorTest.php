@@ -3,7 +3,7 @@
  * Unit Tests — LineItemProcessor
  */
 
-require_once __DIR__ . '/BaseTestCase.php';
+require_once __DIR__ . '/../BaseTestCase.php';
 
 class LineItemProcessorTest extends BaseTestCase {
     private LineItemProcessor $processor;

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run InvenBill scheduler every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=invenbill-scheduler.service
+
+[Install]
+WantedBy=timers.target

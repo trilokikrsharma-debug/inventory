@@ -56,11 +56,23 @@ document.addEventListener('DOMContentLoaded', function () {
             const mode = this.checked ? 'dark' : 'light';
             document.documentElement.setAttribute('data-theme', mode);
 
+            const csrfToken = getCsrfToken();
+            const payload = new URLSearchParams();
+            payload.set('theme_mode', mode);
+            if (csrfToken) {
+                payload.set('_csrf_token', csrfToken);
+            }
+
             // Save to server
             fetch(APP_URL + '/index.php?page=profile&action=updateTheme', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'theme_mode=' + mode
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {})
+                },
+                body: payload.toString(),
+                credentials: 'same-origin'
             });
 
             localStorage.setItem('theme', mode);
@@ -262,6 +274,19 @@ document.addEventListener('DOMContentLoaded', function () {
 // GLOBAL VARIABLES & CONSTANTS
 // ============================================================
 const APP_URL = document.querySelector('link[href*="style.css"]')?.href.split('/assets/')[0] || '';
+
+/**
+ * Resolve the CSRF token from the injected meta tag or a hidden form field.
+ */
+function getCsrfToken() {
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    if (metaToken && metaToken.getAttribute('content')) {
+        return metaToken.getAttribute('content');
+    }
+
+    const inputToken = document.querySelector('input[name="_csrf_token"], input[name="csrf_token"]');
+    return inputToken ? inputToken.value : '';
+}
 
 // ============================================================
 // UTILITY FUNCTIONS

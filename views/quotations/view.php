@@ -2,6 +2,8 @@
 $company      = (new SettingsModel())->getSettings();
 $pageTitle    = 'Quotation: ' . Helper::escape($quote['quotation_number']);
 $statusColors = ['draft' => 'secondary', 'sent' => 'info', 'converted' => 'success', 'cancelled' => 'danger'];
+$isTaxEnabled = !isset($company['enable_tax']) || !empty($company['enable_tax']);
+$isGstEnabled = !isset($company['enable_gst']) || !empty($company['enable_gst']);
 ?>
 <div class="page-header">
     <nav aria-label="breadcrumb"><ol class="breadcrumb">
@@ -90,7 +92,7 @@ $statusColors = ['draft' => 'secondary', 'sent' => 'info', 'converted' => 'succe
                 <!-- Items -->
                 <table class="table">
                     <thead class="table-light">
-                        <tr><th>#</th><th>Product</th><th class="text-center">Qty</th><th class="text-end">Price</th><th class="text-end">Disc</th><?php if(!isset($company['enable_tax']) || $company['enable_tax']): ?><th class="text-end">Tax</th><?php endif; ?><th class="text-end">Total</th></tr>
+                        <tr><th>#</th><th>Product</th><th class="text-center">Qty</th><th class="text-end">Price</th><th class="text-end">Disc</th><?php if($isTaxEnabled && $isGstEnabled): ?><th class="text-end">Tax</th><?php endif; ?><th class="text-end">Total</th></tr>
                     </thead>
                     <tbody>
                     <?php $i=0; foreach ($quote['items'] as $item): $i++; ?>
@@ -100,7 +102,7 @@ $statusColors = ['draft' => 'secondary', 'sent' => 'info', 'converted' => 'succe
                         <td class="text-center"><?= Helper::formatQty($item['quantity']) ?></td>
                         <td class="text-end"><?= Helper::formatCurrency($item['unit_price']) ?></td>
                         <td class="text-end"><?= Helper::formatCurrency($item['discount']) ?></td>
-                        <?php if(!isset($company['enable_tax']) || $company['enable_tax']): ?>
+                        <?php if($isTaxEnabled && $isGstEnabled): ?>
                         <td class="text-end"><?= Helper::formatCurrency($item['tax_amount']) ?></td>
                         <?php endif; ?>
                         <td class="text-end fw-bold"><?= Helper::formatCurrency($item['total']) ?></td>
@@ -114,7 +116,7 @@ $statusColors = ['draft' => 'secondary', 'sent' => 'info', 'converted' => 'succe
                     <div class="col-md-5">
                         <table class="table table-sm">
                             <tr><td>Subtotal</td><td class="text-end"><?= Helper::formatCurrency($quote['subtotal']) ?></td></tr>
-                            <tr><td>Tax</td><td class="text-end"><?= Helper::formatCurrency($quote['tax_amount']) ?></td></tr>
+                            <?php if ($isTaxEnabled && $isGstEnabled): ?><tr><td>Tax</td><td class="text-end"><?= Helper::formatCurrency($quote['tax_amount']) ?></td></tr><?php endif; ?>
                             <?php if ($quote['discount_amount'] > 0): ?><tr><td>Discount</td><td class="text-end text-danger">-<?= Helper::formatCurrency($quote['discount_amount']) ?></td></tr><?php endif; ?>
                             <?php if ($quote['shipping_cost'] > 0): ?><tr><td>Shipping</td><td class="text-end"><?= Helper::formatCurrency($quote['shipping_cost']) ?></td></tr><?php endif; ?>
                             <tr class="table-active fw-bold"><td>Grand Total</td><td class="text-end text-primary fs-5"><?= Helper::formatCurrency($quote['grand_total']) ?></td></tr>

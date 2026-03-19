@@ -7,6 +7,12 @@
 class ProductController extends Controller {
 
     protected $allowedActions = ['index', 'create', 'edit', 'view_product', 'delete', 'search'];
+    /**
+     * Cached products table columns for optional-field compatibility.
+     *
+     * @var array<string, bool>|null
+     */
+    private static $productColumnMap = null;
 
     public function index() {
         $this->requirePermission('products.view');
@@ -38,6 +44,7 @@ class ProductController extends Controller {
                 'name'           => 'required|string|min:2|max:200',
                 'sku'            => 'nullable|string|max:50',
                 'barcode'        => 'nullable|string|max:50',
+                'hsn_code'       => 'nullable|string|min:4|max:20|regex:/^[A-Za-z0-9\\.\\/-]+$/',
                 'purchase_price' => 'required|numeric|min:0',
                 'selling_price'  => 'required|numeric|min:0',
                 'mrp'            => 'nullable|numeric|min:0',
@@ -58,6 +65,21 @@ class ProductController extends Controller {
                 return;
             }
 
+            if (Tenant::id() !== null) {
+                $currentProducts = (int)Tenant::usageCount('max_products');
+                if (!Tenant::canUse('max_products', $currentProducts, 1)) {
+                    $limit = (int)(Tenant::usageLimit('max_products') ?? 0);
+                    $this->setFlash(
+                        'error',
+                        $limit > 0
+                            ? 'Product limit reached (' . $limit . '). Please upgrade your plan.'
+                            : 'Product limit reached for your plan. Please upgrade to add more products.'
+                    );
+                    $this->redirect('index.php?page=products&action=create');
+                    return;
+                }
+            }
+
             $productModel = new ProductModel();
             $data = [
                 'name'           => $this->sanitize($this->post('name')),
@@ -76,6 +98,9 @@ class ProductController extends Controller {
                 'description'    => $this->sanitize($this->post('description')),
                 'is_active'      => $this->post('is_active', 1),
             ];
+            $data = $this->appendOptionalProductFields($data, [
+                'hsn_code' => $this->normalizeHsnCode((string)$this->post('hsn_code', '')),
+            ]);
 
             // Handle image upload
             if (!empty($_FILES['image']['name'])) {
@@ -85,7 +110,13 @@ class ProductController extends Controller {
                 }
             }
 
-            $productId = $productModel->create($data);
+            try {
+                $productId = $productModel->create($data);
+            } catch (\RuntimeException $e) {
+                $this->setFlash('error', $e->getMessage());
+                $this->redirect('index.php?page=products&action=create');
+                return;
+            }
 
             // Create opening stock history entry (stock is already set via create())
             if ($data['opening_stock'] > 0) {
@@ -125,6 +156,23 @@ class ProductController extends Controller {
 
         if ($this->isPost()) {
             $this->validateCSRF();
+            $v = Validator::make($_POST, [
+                'name'           => 'required|string|min:2|max:200',
+                'sku'            => 'nullable|string|max:50',
+                'barcode'        => 'nullable|string|max:50',
+                'hsn_code'       => 'nullable|string|min:4|max:20|regex:/^[A-Za-z0-9\\.\\/-]+$/',
+                'purchase_price' => 'required|numeric|min:0',
+                'selling_price'  => 'required|numeric|min:0',
+                'mrp'            => 'nullable|numeric|min:0',
+                'tax_rate'       => 'nullable|numeric|min:0|max:100',
+                'low_stock_alert'=> 'nullable|integer|min:0',
+            ]);
+            if ($v->fails()) {
+                $this->setFlash('error', $v->firstError());
+                $this->redirect('index.php?page=products&action=edit&id=' . $id);
+                return;
+            }
+
             $data = [
                 'name'           => $this->sanitize($this->post('name')),
                 'sku'            => $this->sanitize($this->post('sku')) ?: null,
@@ -140,6 +188,9 @@ class ProductController extends Controller {
                 'description'    => $this->sanitize($this->post('description')),
                 'is_active'      => $this->post('is_active', 1),
             ];
+            $data = $this->appendOptionalProductFields($data, [
+                'hsn_code' => $this->normalizeHsnCode((string)$this->post('hsn_code', '')),
+            ]);
 
             if (!empty($_FILES['image']['name'])) {
                 $result = Helper::uploadFile($_FILES['image'], 'products', ALLOWED_IMAGE_TYPES);
@@ -243,5 +294,45 @@ class ProductController extends Controller {
             }
         }
         $this->json($results);
+    }
+
+    /**
+     * Normalize and sanitize HSN/SAC code.
+     */
+    private function normalizeHsnCode(string $value): ?string {
+        $value = strtoupper(trim($value));
+        return $value !== '' ? $this->sanitize($value) : null;
+    }
+
+    /**
+     * Append only fields that exist in current products schema.
+     */
+    private function appendOptionalProductFields(array $data, array $optionalFields): array {
+        foreach ($optionalFields as $field => $value) {
+            if ($this->productColumnExists($field)) {
+                $data[$field] = $value;
+            }
+        }
+        return $data;
+    }
+
+    /**
+     * Check product table column existence with cached schema lookup.
+     */
+    private function productColumnExists(string $column): bool {
+        if (self::$productColumnMap === null) {
+            self::$productColumnMap = [];
+            try {
+                $rows = Database::getInstance()->query("SHOW COLUMNS FROM products")->fetchAll();
+                foreach ($rows as $row) {
+                    if (!empty($row['Field'])) {
+                        self::$productColumnMap[$row['Field']] = true;
+                    }
+                }
+            } catch (Throwable $e) {
+                self::$productColumnMap = [];
+            }
+        }
+        return !empty(self::$productColumnMap[$column]);
     }
 }

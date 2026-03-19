@@ -1,0 +1,12 @@
+﻿Field	Type	Null	Key	Default	Extra
+id	int(10) unsigned	NO	PRI	NULL	auto_increment
+company_id	int(10) unsigned	NO	MUL	1	
+sale_id	int(10) unsigned	NO	MUL	NULL	
+product_id	int(10) unsigned	NO	MUL	NULL	
+quantity	decimal(12,3)	NO		NULL	
+unit_price	decimal(15,2)	NO		NULL	
+discount	decimal(15,2)	YES		0.00	
+tax_rate	decimal(5,2)	YES		0.00	
+tax_amount	decimal(15,2)	YES		0.00	
+subtotal	decimal(15,2)	NO		NULL	
+total	decimal(15,2)	NO		NULL	

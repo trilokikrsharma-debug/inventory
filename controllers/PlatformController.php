@@ -194,9 +194,28 @@ class PlatformController extends Controller {
         $db = Database::getInstance();
         $tenants = $db->query("
             SELECT t.*, p.name as plan_name, 
-                   (SELECT email FROM users u WHERE u.company_id = t.id AND u.role_id = 1 LIMIT 1) as owner_email
+                   COALESCE(
+                       owner.email,
+                       (
+                           SELECT u.email
+                           FROM users u
+                           LEFT JOIN roles r ON r.id = u.role_id
+                           WHERE u.company_id = t.id
+                             AND u.deleted_at IS NULL
+                             AND IFNULL(u.is_super_admin, 0) = 0
+                           ORDER BY
+                               CASE
+                                   WHEN u.id = t.owner_user_id THEN 0
+                                   WHEN LOWER(COALESCE(r.name, '')) IN ('admin', 'tenant_admin', 'owner', 'administrator') THEN 1
+                                   ELSE 2
+                               END,
+                               u.id ASC
+                           LIMIT 1
+                       )
+                   ) as owner_email
             FROM companies t
             LEFT JOIN saas_plans p ON t.saas_plan_id = p.id
+            LEFT JOIN users owner ON owner.id = t.owner_user_id AND owner.deleted_at IS NULL
             ORDER BY t.created_at DESC
         ")->fetchAll();
 
@@ -251,10 +270,7 @@ class PlatformController extends Controller {
         $id = (int)$this->post('id');
         if ($id) {
             $db = Database::getInstance();
-            $owner = $db->query(
-                "SELECT * FROM users WHERE company_id = ? AND role_id = 1 AND deleted_at IS NULL LIMIT 1",
-                [$id]
-            )->fetch(\PDO::FETCH_ASSOC);
+            $owner = $this->findTenantOwnerUser($id);
             if ($owner) {
                 // Load the target company for tenant context
                 $company = $db->query(
@@ -495,5 +511,52 @@ class PlatformController extends Controller {
             'errorLogs' => $errorLogs,
             'sysHealth' => $sysHealth
         ]);
+    }
+
+    /**
+     * Resolve the safest owner-like tenant user for impersonation.
+     * Prefers owner_user_id and falls back to a tenant-local admin-style user.
+     */
+    private function findTenantOwnerUser(int $companyId): ?array {
+        $db = Database::getInstance();
+
+        try {
+            $company = $db->query(
+                "SELECT owner_user_id FROM companies WHERE id = ? LIMIT 1",
+                [$companyId]
+            )->fetch(\PDO::FETCH_ASSOC);
+
+            if (!empty($company['owner_user_id'])) {
+                $owner = $db->query(
+                    "SELECT * FROM users WHERE id = ? AND company_id = ? AND deleted_at IS NULL LIMIT 1",
+                    [(int)$company['owner_user_id'], $companyId]
+                )->fetch(\PDO::FETCH_ASSOC);
+                if ($owner) {
+                    return $owner;
+                }
+            }
+
+            $owner = $db->query(
+                "SELECT u.*
+                 FROM users u
+                 LEFT JOIN roles r ON r.id = u.role_id
+                 WHERE u.company_id = ?
+                   AND u.deleted_at IS NULL
+                   AND IFNULL(u.is_super_admin, 0) = 0
+                 ORDER BY
+                     CASE
+                         WHEN LOWER(COALESCE(r.name, '')) IN ('admin', 'tenant_admin', 'owner', 'administrator') THEN 0
+                         ELSE 1
+                     END,
+                     u.id ASC
+                 LIMIT 1",
+                [$companyId]
+            )->fetch(\PDO::FETCH_ASSOC);
+
+            return $owner ?: null;
+        } catch (\Throwable $e) {
+            error_log('[Platform] Failed to resolve tenant owner: ' . $e->getMessage());
+            return null;
+        }
     }
 }

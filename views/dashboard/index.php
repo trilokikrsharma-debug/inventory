@@ -181,101 +181,261 @@
 <script nonce="<?= $cspNonce ?>">
 // Load insights asynchronously
 document.addEventListener('DOMContentLoaded', function() {
-    fetch('<?= APP_URL ?>/index.php?page=insights&action=get_insights', {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(r => r.json())
-    .then(data => {
-        const container = document.getElementById('insightsContainer');
-        if (!data.success || !data.insights || data.insights.length === 0) {
-            container.innerHTML = '<p class="text-muted text-center mb-0"><i class="fas fa-check-circle text-success me-1"></i>Everything looks good! No urgent insights.</p>';
-            return;
+    const allowedInsightColors = new Set(['primary', 'success', 'warning', 'danger', 'info', 'secondary']);
+
+    function clearElement(element) {
+        while (element.firstChild) {
+            element.removeChild(element.firstChild);
         }
-        const top3 = data.insights.slice(0, 3);
-        let html = '<div class="row g-2">';
-        top3.forEach(i => {
-            const badge = i.priority === 'high' ? '<span class="badge bg-danger ms-1" style="font-size:0.6rem;">URGENT</span>' : '';
-            const arrow = i.action ? `<a href="${i.action}" class="text-muted" style="font-size:0.75rem;"><i class="fas fa-arrow-right"></i></a>` : '';
-            html += `<div class="col-md-4"><div class="p-2 rounded" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);">
-                <div class="d-flex align-items-center mb-1"><span style="font-size:1.2rem;">${i.icon}</span><strong class="ms-2 text-${i.color}" style="font-size:0.85rem;">${i.title}</strong>${badge}</div>
-                <p style="font-size:0.8rem;color:#b7b9cc;margin-bottom:0.25rem;">${i.message}</p>
-                <div class="d-flex justify-content-between align-items-center"><span class="fw-bold text-${i.color}">${i.value}</span>${arrow}</div>
-            </div></div>`;
+    }
+
+    function getSafeColor(color) {
+        return allowedInsightColors.has(color) ? color : 'info';
+    }
+
+    function isSafeInsightAction(action) {
+        if (typeof action !== 'string') {
+            return false;
+        }
+
+        const trimmed = action.trim();
+        if (!trimmed || /^(javascript|data|vbscript):/i.test(trimmed)) {
+            return false;
+        }
+
+        try {
+            const url = new URL(trimmed, window.location.origin);
+            return url.origin === window.location.origin && (url.protocol === 'http:' || url.protocol === 'https:');
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function renderEmptyState(container, message, iconClass, iconColorClass) {
+        clearElement(container);
+
+        const paragraph = document.createElement('p');
+        paragraph.className = 'text-muted text-center mb-0';
+
+        if (iconClass) {
+            const icon = document.createElement('i');
+            icon.className = iconClass + (iconColorClass ? ' ' + iconColorClass : '') + ' me-1';
+            paragraph.appendChild(icon);
+        }
+
+        paragraph.appendChild(document.createTextNode(message));
+        container.appendChild(paragraph);
+    }
+
+    function renderInsightCard(insight) {
+        const col = document.createElement('div');
+        col.className = 'col-md-4';
+
+        const card = document.createElement('div');
+        card.className = 'p-2 rounded';
+        card.style.background = 'rgba(255,255,255,0.03)';
+        card.style.border = '1px solid rgba(255,255,255,0.05)';
+
+        const header = document.createElement('div');
+        header.className = 'd-flex align-items-center mb-1';
+
+        const icon = document.createElement('span');
+        icon.style.fontSize = '1.2rem';
+        icon.textContent = insight.icon || '';
+        header.appendChild(icon);
+
+        const title = document.createElement('strong');
+        title.className = 'ms-2 text-' + getSafeColor(insight.color);
+        title.style.fontSize = '0.85rem';
+        title.textContent = insight.title || '';
+        header.appendChild(title);
+
+        if (insight.priority === 'high') {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-danger ms-1';
+            badge.style.fontSize = '0.6rem';
+            badge.textContent = 'URGENT';
+            header.appendChild(badge);
+        }
+
+        const message = document.createElement('p');
+        message.style.fontSize = '0.8rem';
+        message.style.color = '#b7b9cc';
+        message.style.marginBottom = '0.25rem';
+        message.textContent = insight.message || '';
+
+        const footer = document.createElement('div');
+        footer.className = 'd-flex justify-content-between align-items-center';
+
+        const value = document.createElement('span');
+        value.className = 'fw-bold text-' + getSafeColor(insight.color);
+        value.textContent = insight.value || '';
+        footer.appendChild(value);
+
+        if (isSafeInsightAction(insight.action)) {
+            const link = document.createElement('a');
+            link.className = 'text-muted';
+            link.style.fontSize = '0.75rem';
+            link.href = insight.action.trim();
+            link.setAttribute('aria-label', 'View insight details');
+
+            const arrow = document.createElement('i');
+            arrow.className = 'fas fa-arrow-right';
+            link.appendChild(arrow);
+
+            footer.appendChild(link);
+        }
+
+        card.appendChild(header);
+        card.appendChild(message);
+        card.appendChild(footer);
+        col.appendChild(card);
+        return col;
+    }
+
+    let insightsLoaded = false;
+    const loadInsights = function() {
+        if (insightsLoaded) return;
+        insightsLoaded = true;
+
+        fetch('<?= APP_URL ?>/index.php?page=insights&action=get_insights', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('insightsContainer');
+            if (!container) return;
+
+            if (!data.success || !data.insights || data.insights.length === 0) {
+                renderEmptyState(container, 'Everything looks good! No urgent insights.', 'fas fa-check-circle', 'text-success');
+                return;
+            }
+
+            const top3 = data.insights.slice(0, 3);
+
+            clearElement(container);
+            const row = document.createElement('div');
+            row.className = 'row g-2';
+            top3.forEach((insight) => {
+                row.appendChild(renderInsightCard(insight));
+            });
+            container.appendChild(row);
+        })
+        .catch(() => {
+            const container = document.getElementById('insightsContainer');
+            if (container) {
+                renderEmptyState(container, 'Unable to load insights.', null, null);
+            }
         });
-        html += '</div>';
-        container.innerHTML = html;
-    })
-    .catch(() => {
-        document.getElementById('insightsContainer').innerHTML = '<p class="text-muted text-center mb-0">Unable to load insights.</p>';
-    });
+    };
+
+    const container = document.getElementById('insightsContainer');
+    if (!container) return;
+
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    observer.disconnect();
+                    loadInsights();
+                }
+            });
+        }, { rootMargin: '120px 0px' });
+        observer.observe(container);
+    } else {
+        loadInsights();
+    }
 });
 </script>
 
 <?php $inlineScript = "
 document.addEventListener('DOMContentLoaded', function () {
-    const ctx = document.getElementById('salesPurchaseChart');
-    if (!ctx) return;
+    const canvas = document.getElementById('salesPurchaseChart');
+    if (!canvas) return;
 
-    const initChart = function () {
-        if (typeof Chart === 'undefined') {
-            setTimeout(initChart, 60);
-            return;
-        }
+    const renderChart = function () {
+        if (canvas.dataset.chartRendered === '1') return;
+        canvas.dataset.chartRendered = '1';
 
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-        const textColor = isDark ? '#a8adc0' : '#858796';
-        const currencySymbol = " . json_encode(Helper::normalizeCurrencySymbol($company['currency_symbol'] ?? '₹')) . ";
+        const initChart = function () {
+            if (typeof Chart === 'undefined') {
+                setTimeout(initChart, 60);
+                return;
+            }
 
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
-                datasets: [{
-                    label: 'Sales',
-                    data: {$salesChartData},
-                    borderColor: '#1cc88a',
-                    backgroundColor: 'rgba(28,200,138,0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    pointBackgroundColor: '#1cc88a',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                },{
-                    label: 'Purchase',
-                    data: {$purchaseChartData},
-                    borderColor: '#4e73df',
-                    backgroundColor: 'rgba(78,115,223,0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    pointBackgroundColor: '#4e73df',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { labels: { color: textColor, usePointStyle: true, padding: 20 } }
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+            const textColor = isDark ? '#a8adc0' : '#858796';
+            const currencySymbol = " . json_encode(Helper::normalizeCurrencySymbol($company['currency_symbol'] ?? '₹')) . ";
+
+            new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+                    datasets: [{
+                        label: 'Sales',
+                        data: {$salesChartData},
+                        borderColor: '#1cc88a',
+                        backgroundColor: 'rgba(28,200,138,0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#1cc88a',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                    },{
+                        label: 'Purchase',
+                        data: {$purchaseChartData},
+                        borderColor: '#4e73df',
+                        backgroundColor: 'rgba(78,115,223,0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#4e73df',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                    }]
                 },
-                scales: {
-                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
-                    y: {
-                        grid: { color: gridColor },
-                        ticks: {
-                            color: textColor,
-                            callback: function (value) {
-                                return currencySymbol + ' ' + Number(value).toLocaleString();
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { labels: { color: textColor, usePointStyle: true, padding: 20 } }
+                    },
+                    scales: {
+                        x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                        y: {
+                            grid: { color: gridColor },
+                            ticks: {
+                                color: textColor,
+                                callback: function (value) {
+                                    return currencySymbol + ' ' + Number(value).toLocaleString();
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
+            });
+        };
+
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(initChart, { timeout: 1000 });
+        } else {
+            setTimeout(initChart, 0);
+        }
     };
 
-    initChart();
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    observer.disconnect();
+                    renderChart();
+                }
+            });
+        }, { rootMargin: '120px 0px' });
+        observer.observe(canvas);
+    } else {
+        renderChart();
+    }
 });
 "; ?>
 

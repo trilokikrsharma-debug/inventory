@@ -38,6 +38,7 @@
                     <td>
                         <div class="fw-bold"><?= Helper::escape($p['name']) ?></div>
                         <?php if ($p['brand_name']): ?><small class="text-muted"><?= Helper::escape($p['brand_name']) ?></small><?php endif; ?>
+                        <?php if (!empty($p['hsn_code'])): ?><br><small class="text-muted">HSN: <?= Helper::escape($p['hsn_code']) ?></small><?php endif; ?>
                     </td>
                     <td><code><?= Helper::escape($p['sku'] ?? '-') ?></code></td>
                     <td><span class="badge bg-secondary bg-opacity-10 text-secondary"><?= Helper::escape($p['category_name'] ?? '-') ?></span></td>

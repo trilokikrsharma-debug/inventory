@@ -6,13 +6,26 @@
     <meta name="description" content="InvenBill Pro - Professional Inventory & Billing Management System">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title><?= $pageTitle ?? 'Dashboard' ?> | <?= APP_NAME ?></title>
+    <?php
+    $assetSuffix = '?v=' . rawurlencode((string)ASSET_VERSION);
+    $cssAsset = '/assets/css/style.css';
+    $appJsAsset = '/assets/js/app.js';
+    if (defined('APP_ENV') && APP_ENV === 'production') {
+        if (is_file(ASSET_PATH . '/css/style.min.css')) {
+            $cssAsset = '/assets/css/style.min.css';
+        }
+        if (is_file(ASSET_PATH . '/js/app.min.js')) {
+            $appJsAsset = '/assets/js/app.min.js';
+        }
+    }
+    ?>
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Custom CSS -->
-    <link href="<?= APP_URL ?>/assets/css/style.css" rel="stylesheet">
+    <link href="<?= APP_URL . $cssAsset . $assetSuffix ?>" rel="stylesheet">
     
     <!-- PWA Setup -->
     <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
@@ -80,11 +93,11 @@
     <!-- SweetAlert2 (must load before app.js since both use defer — execution is in source order) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js" defer></script>
     <!-- App JS -->
-    <script src="<?= APP_URL ?>/assets/js/app.js" defer></script>
+    <script src="<?= APP_URL . $appJsAsset . $assetSuffix ?>" defer></script>
 
     <?php if (isset($pageScripts)): ?>
         <?php foreach ($pageScripts as $script): ?>
-            <script src="<?= APP_URL ?>/assets/js/<?= $script ?>"></script>
+            <script src="<?= APP_URL ?>/assets/js/<?= $script ?><?= $assetSuffix ?>" defer></script>
         <?php endforeach; ?>
     <?php endif; ?>
 

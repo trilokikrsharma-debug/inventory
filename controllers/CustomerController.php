@@ -21,48 +21,82 @@ class CustomerController extends Controller {
 
     public function create() {
         $this->requirePermission('customers.create');
+        $old = [];
         if ($this->isPost()) {
             $this->validateCSRF();
-            
-            // Enterprise validation
+            $old = $_POST;
+
             $v = Validator::make($_POST, [
                 'name'            => 'required|string|min:2|max:100',
-                'email'           => 'nullable|email',
-                'phone'           => 'nullable|string|max:20',
-                'address'         => 'nullable|string|max:255',
+                'email'           => 'nullable|email|max:255',
+                'phone'           => 'nullable|string|min:7|max:20|regex:/^[0-9+()\\-\\s]{7,20}$/',
+                'address'         => 'nullable|string|max:500',
                 'city'            => 'nullable|string|max:100',
                 'state'           => 'nullable|string|max:100',
-                'zip'             => 'nullable|string|max:20',
-                'tax_number'      => 'nullable|string|max:50',
-                'opening_balance' => 'nullable|numeric|min:0',
+                'zip'             => 'nullable|string|min:2|max:20|regex:/^[A-Za-z0-9\\-\\s]{2,20}$/',
+                'tax_number'      => 'nullable|string|min:6|max:20|regex:/^[A-Za-z0-9\\/-]{6,20}$/',
+                'opening_balance' => 'nullable|numeric|min:-999999999|max:999999999',
             ]);
-            
+
             if ($v->fails()) {
                 $this->setFlash('error', $v->firstError());
-                $this->view('customers.create', ['pageTitle' => 'Add Customer']);
+                $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old]);
                 return;
             }
-            
+
             $clean = $v->validated();
+            $customerModel = new CustomerModel();
+
+            $name = $this->sanitize($clean['name'] ?? '');
+            $email = !empty($clean['email']) ? strtolower($this->sanitize($clean['email'])) : null;
+            $phone = !empty($clean['phone']) ? $this->sanitize($clean['phone']) : null;
+            $openingBalance = round((float)($clean['opening_balance'] ?? 0), 2);
+
+            if ($name === '') {
+                $this->setFlash('error', 'Name is required.');
+                $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old]);
+                return;
+            }
+
+            if ($email && $customerModel->emailExists($email)) {
+                $this->setFlash('error', 'Email already exists for another customer.');
+                $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old]);
+                return;
+            }
+
+            if ($phone && $customerModel->phoneExists($phone)) {
+                $this->setFlash('error', 'Phone already exists for another customer.');
+                $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old]);
+                return;
+            }
+
             $data = [
-                'name'            => $clean['name'],
-                'email'           => $clean['email'] ?: null,
-                'phone'           => $clean['phone'] ?: null,
-                'address'         => $clean['address'] ?? '',
-                'city'            => $clean['city'] ?? '',
-                'state'           => $clean['state'] ?? '',
-                'zip'             => $clean['zip'] ?? '',
-                'tax_number'      => $clean['tax_number'] ?? '',
-                'opening_balance' => (float)($clean['opening_balance'] ?? 0),
-                'current_balance' => (float)($clean['opening_balance'] ?? 0),
+                'name'            => $name,
+                'email'           => $email,
+                'phone'           => $phone,
+                'address'         => $this->sanitize($clean['address'] ?? ''),
+                'city'            => $this->sanitize($clean['city'] ?? ''),
+                'state'           => $this->sanitize($clean['state'] ?? ''),
+                'zip'             => $this->sanitize($clean['zip'] ?? ''),
+                'tax_number'      => !empty($clean['tax_number']) ? strtoupper($this->sanitize($clean['tax_number'])) : '',
+                'opening_balance' => $openingBalance,
+                'current_balance' => $openingBalance,
             ];
-            $customerId = (new CustomerModel())->create($data);
-            $this->logActivity('Created customer: ' . $data['name'], 'customers', $customerId, 'Opening balance: ' . $data['opening_balance']);
-            Logger::audit('customer_created', 'customers', $customerId, ['name' => $data['name'], 'balance' => $data['opening_balance']]);
-            $this->setFlash('success', 'Customer created successfully.');
-            $this->redirect('index.php?page=customers');
+
+            try {
+                $customerId = $customerModel->create($data);
+                $this->logActivity('Created customer: ' . $data['name'], 'customers', $customerId, 'Opening balance: ' . $data['opening_balance']);
+                Logger::audit('customer_created', 'customers', $customerId, ['name' => $data['name'], 'balance' => $data['opening_balance']]);
+                $this->setFlash('success', 'Customer created successfully.');
+                $this->redirect('index.php?page=customers');
+            } catch (Throwable $e) {
+                error_log('[CustomerController::create] ' . $e->getMessage());
+                $this->setFlash('error', 'Unable to create customer right now. Please try again.');
+                $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old]);
+                return;
+            }
         }
-        $this->view('customers.create', ['pageTitle' => 'Add Customer']);
+        $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old]);
     }
 
     public function edit() {
@@ -76,20 +110,70 @@ class CustomerController extends Controller {
 
         if ($this->isPost()) {
             $this->validateCSRF();
+            $old = $_POST;
+
+            $v = Validator::make($_POST, [
+                'name'       => 'required|string|min:2|max:100',
+                'email'      => 'nullable|email|max:255',
+                'phone'      => 'nullable|string|min:7|max:20|regex:/^[0-9+()\\-\\s]{7,20}$/',
+                'address'    => 'nullable|string|max:500',
+                'city'       => 'nullable|string|max:100',
+                'state'      => 'nullable|string|max:100',
+                'zip'        => 'nullable|string|min:2|max:20|regex:/^[A-Za-z0-9\\-\\s]{2,20}$/',
+                'tax_number' => 'nullable|string|min:6|max:20|regex:/^[A-Za-z0-9\\/-]{6,20}$/',
+            ]);
+
+            if ($v->fails()) {
+                $this->setFlash('error', $v->firstError());
+                $this->view('customers.edit', ['pageTitle' => 'Edit Customer', 'customer' => array_merge($customer, $old)]);
+                return;
+            }
+
+            $clean = $v->validated();
+            $name = $this->sanitize($clean['name'] ?? '');
+            $email = !empty($clean['email']) ? strtolower($this->sanitize($clean['email'])) : null;
+            $phone = !empty($clean['phone']) ? $this->sanitize($clean['phone']) : null;
+
+            if ($name === '') {
+                $this->setFlash('error', 'Name is required.');
+                $this->view('customers.edit', ['pageTitle' => 'Edit Customer', 'customer' => array_merge($customer, $old)]);
+                return;
+            }
+
+            if ($email && $email !== ($customer['email'] ?? null) && $customerModel->emailExists($email, $id)) {
+                $this->setFlash('error', 'Email already exists for another customer.');
+                $this->view('customers.edit', ['pageTitle' => 'Edit Customer', 'customer' => array_merge($customer, $old)]);
+                return;
+            }
+
+            if ($phone && $phone !== ($customer['phone'] ?? null) && $customerModel->phoneExists($phone, $id)) {
+                $this->setFlash('error', 'Phone already exists for another customer.');
+                $this->view('customers.edit', ['pageTitle' => 'Edit Customer', 'customer' => array_merge($customer, $old)]);
+                return;
+            }
+
             $data = [
-                'name'       => $this->sanitize($this->post('name')),
-                'email'      => $this->sanitize($this->post('email')) ?: null,
-                'phone'      => $this->sanitize($this->post('phone')) ?: null,
-                'address'    => $this->sanitize($this->post('address')),
-                'city'       => $this->sanitize($this->post('city')),
-                'state'      => $this->sanitize($this->post('state')),
-                'zip'        => $this->sanitize($this->post('zip')),
-                'tax_number' => $this->sanitize($this->post('tax_number')),
+                'name'       => $name,
+                'email'      => $email,
+                'phone'      => $phone,
+                'address'    => $this->sanitize($clean['address'] ?? ''),
+                'city'       => $this->sanitize($clean['city'] ?? ''),
+                'state'      => $this->sanitize($clean['state'] ?? ''),
+                'zip'        => $this->sanitize($clean['zip'] ?? ''),
+                'tax_number' => !empty($clean['tax_number']) ? strtoupper($this->sanitize($clean['tax_number'])) : '',
             ];
-            $customerModel->update($id, $data);
-            $this->logActivity('Updated customer: ' . $data['name'], 'customers', $id);
-            $this->setFlash('success', 'Customer updated successfully.');
-            $this->redirect('index.php?page=customers');
+
+            try {
+                $customerModel->update($id, $data);
+                $this->logActivity('Updated customer: ' . $data['name'], 'customers', $id);
+                $this->setFlash('success', 'Customer updated successfully.');
+                $this->redirect('index.php?page=customers');
+            } catch (Throwable $e) {
+                error_log('[CustomerController::edit] ' . $e->getMessage());
+                $this->setFlash('error', 'Unable to update customer right now. Please try again.');
+                $this->view('customers.edit', ['pageTitle' => 'Edit Customer', 'customer' => array_merge($customer, $old)]);
+                return;
+            }
         }
 
         $this->view('customers.edit', ['pageTitle' => 'Edit Customer', 'customer' => $customer]);
@@ -140,6 +224,21 @@ class CustomerController extends Controller {
 
         if ($paymentsCount > 0) {
             $this->setFlash('error', 'Cannot delete customer: ' . $paymentsCount . ' active payment(s)/receipt(s) exist. Delete them first.');
+            $this->redirect('index.php?page=customers');
+            return;
+        }
+
+        // Check for linked sale returns (including returns on soft-deleted sales).
+        $returnsCount = $db->query(
+            "SELECT COUNT(*)
+             FROM sale_returns sr
+             JOIN sales s ON sr.sale_id = s.id
+             WHERE s.customer_id = ? AND sr.deleted_at IS NULL" . (Tenant::id() !== null ? " AND s.company_id = ?" : ""),
+            Tenant::id() !== null ? [$id, Tenant::id()] : [$id]
+        )->fetchColumn();
+
+        if ($returnsCount > 0) {
+            $this->setFlash('error', 'Cannot delete customer: ' . $returnsCount . ' active sale return(s) exist. Delete/cancel return records first.');
             $this->redirect('index.php?page=customers');
             return;
         }

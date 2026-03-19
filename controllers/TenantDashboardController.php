@@ -22,7 +22,7 @@ class TenantDashboardController extends Controller {
 
         // Get tenant's current plan info
         $tenant = $db->query(
-            "SELECT t.*, p.name as plan_name, p.max_users, p.price, p.billing_cycle 
+            "SELECT t.*, p.name as plan_name, p.max_users, p.price, p.offer_price, p.billing_cycle, p.billing_type, p.duration_days, p.features
              FROM companies t 
              LEFT JOIN saas_plans p ON t.saas_plan_id = p.id 
              WHERE t.id = ?", 
@@ -39,7 +39,7 @@ class TenantDashboardController extends Controller {
         $userCount = $db->query("SELECT COUNT(*) FROM users WHERE company_id = ? AND deleted_at IS NULL", [$tenantId])->fetchColumn();
 
         // Get available plans to upgrade
-        $plans = $db->query("SELECT * FROM saas_plans WHERE is_active = 1")->fetchAll();
+        $plans = (new SaaSPlan())->listForCheckout();
 
         // Get recent billing history (last 5)
         $history = $db->query(

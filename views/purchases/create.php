@@ -24,10 +24,10 @@
                 <div class="card-header"><h6><i class="fas fa-list me-2"></i>Items</h6><button type="button" class="btn btn-sm btn-primary" id="addItemBtn"><i class="fas fa-plus me-1"></i>Add Item</button></div>
                 <div class="card-body p-0">
                     <div class="table-responsive"><table class="table mb-0" id="itemsTable">
-                        <thead><tr><th style="width:30%">Product</th><th>Qty</th><th>Price</th><th>Discount</th><th>Tax %</th><th>Total</th><th></th></tr></thead>
+                        <thead><tr><th style="width:30%">Product</th><th>Qty</th><th>Price</th><th>Discount</th><?php if((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])): ?><th>Tax %</th><?php endif; ?><th>Total</th><th></th></tr></thead>
                         <tbody id="itemsBody"></tbody>
                         <tfoot>
-                            <tr><td colspan="5" class="text-end fw-bold">Subtotal:</td><td class="fw-bold" id="subtotalDisplay">₹0.00</td><td></td></tr>
+                            <tr><td colspan="<?= ((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])) ? 5 : 4 ?>" class="text-end fw-bold">Subtotal:</td><td class="fw-bold" id="subtotalDisplay">₹0.00</td><td></td></tr>
                         </tfoot>
                     </table></div>
                 </div>
@@ -65,6 +65,8 @@
 <?php $inlineScript = "
 let itemIndex = 0;
 const currentTaxStatus = " . ((!isset($settings['enable_tax']) || $settings['enable_tax']) ? 'true' : 'false') . ";
+const currentGstStatus = " . ((!isset($settings['enable_gst']) || $settings['enable_gst']) ? 'true' : 'false') . ";
+const taxCalculationEnabled = currentTaxStatus && currentGstStatus;
 const APP = '" . APP_URL . "';
 document.getElementById('addItemBtn').addEventListener('click', addItem);
 
@@ -81,7 +83,7 @@ document.addEventListener('keydown', function(e) {
 function addItem() {
     const row = document.createElement('tr');
     
-    let taxColHtml = currentTaxStatus ? \"<td><input type=\\\"number\\\" name=\\\"item_tax_rate[]\\\" class=\\\"form-control form-control-sm tax\\\" step=\\\"0.01\\\" value=\\\"0\\\"></td>\" : \"<input type=\\\"hidden\\\" name=\\\"item_tax_rate[]\\\" class=\\\"tax\\\" value=\\\"0\\\">\";
+    let taxColHtml = taxCalculationEnabled ? \"<td><input type=\\\"number\\\" name=\\\"item_tax_rate[]\\\" class=\\\"form-control form-control-sm tax\\\" step=\\\"0.01\\\" value=\\\"0\\\"></td>\" : \"<input type=\\\"hidden\\\" name=\\\"item_tax_rate[]\\\" class=\\\"tax\\\" value=\\\"0\\\">\";
     
     row.innerHTML = `
         <td><input type=\"text\" class=\"form-control form-control-sm product-search\" placeholder=\"Search... (Alt+A to add new)\"><input type=\"hidden\" name=\"product_id[]\" class=\"product-id\"></td>
@@ -135,7 +137,7 @@ function showDD(products, row, input) {
             row.querySelector('.product-id').value = p.id;
             input.value = p.name_raw || p.name;
             row.querySelector('.price').value = p.purchase_price || 0;
-            row.querySelector('.tax').value = p.tax_rate || 0;
+            row.querySelector('.tax').value = taxCalculationEnabled ? (p.tax_rate || 0) : 0;
             dd.remove(); calc();
             if (input._kdHandler) input.removeEventListener('keydown', input._kdHandler);
             row.querySelector('.qty').focus();
@@ -198,7 +200,7 @@ function calc() {
         const q = parseFloat(r.querySelector('.qty')?.value)||0;
         const p = parseFloat(r.querySelector('.price')?.value)||0;
         const d = parseFloat(r.querySelector('.disc')?.value)||0;
-        const t = parseFloat(r.querySelector('.tax')?.value)||0;
+        const t = taxCalculationEnabled ? (parseFloat(r.querySelector('.tax')?.value)||0) : 0;
         const s = (q*p)-d;
         const tx = s*(t/100);
         r.querySelector('.row-total').textContent = '₹'+(s+tx).toFixed(2);
@@ -218,3 +220,4 @@ document.getElementById('discountInput').addEventListener('input', calc);
 document.getElementById('shippingInput').addEventListener('input', calc);
 addItem();
 "; ?>
+

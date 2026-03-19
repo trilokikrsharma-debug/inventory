@@ -1,0 +1,11 @@
+# InvenBill Cron Jobs (install with: crontab deploy/cron/invenbill.cron)
+# Run as www-data or deployment user with file access.
+
+# Queue worker health fallback: restart if not running (if not using systemd)
+*/5 * * * * pgrep -f "cli/worker.php --daemon" > /dev/null || /usr/bin/php /var/www/inventory/cli/worker.php --daemon >> /var/www/inventory/logs/queue-worker.log 2>&1
+
+# Application scheduler (cleanup + backup queueing)
+*/5 * * * * /usr/bin/php /var/www/inventory/cli/scheduler.php --task=all >> /var/www/inventory/logs/scheduler.log 2>&1
+
+# Daily queue cleanup hard-run (safety net)
+30 3 * * * /usr/bin/php /var/www/inventory/cli/worker.php --cleanup --days=14 >> /var/www/inventory/logs/queue-cleanup.log 2>&1

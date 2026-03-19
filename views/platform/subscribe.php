@@ -1,6 +1,68 @@
 <?php
 $currentPlanId = (int)($latestSubscription['plan_id'] ?? 0);
 $currentPlanStatus = (string)($latestSubscription['status'] ?? 'none');
+$gatewayConfigured = !empty($gatewayConfigured);
+$currentPlanName = (string)($latestSubscription['plan_name'] ?? '');
+
+$featureLabels = [
+    'inventory' => 'Inventory',
+    'invoicing' => 'Invoicing',
+    'api' => 'API',
+    'api_access' => 'API',
+    'crm' => 'CRM',
+    'hr' => 'HR',
+    'quotations' => 'Quotations',
+    'purchase_orders' => 'Purchase Orders',
+    'advanced_reports' => 'Advanced Reports',
+    'backup_restore' => 'Backup',
+    'backup' => 'Backup',
+    'bulk_import' => 'Bulk Import',
+    'webhooks' => 'Webhooks',
+    'ai_insights' => 'AI Insights',
+];
+
+$planFeatureSummary = static function (array $plan) use ($featureLabels): string {
+    $raw = $plan['features'] ?? null;
+    if (!is_string($raw) || trim($raw) === '') {
+        return 'Standard';
+    }
+
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded)) {
+        return 'Standard';
+    }
+
+    $enabled = [];
+    $isAssoc = array_keys($decoded) !== range(0, count($decoded) - 1);
+    if ($isAssoc) {
+        foreach ($decoded as $key => $val) {
+            if (!(bool)$val) {
+                continue;
+            }
+            $normalized = strtolower(str_replace([' ', '-'], '_', trim((string)$key)));
+            $normalized = preg_replace('/[^a-z0-9_]/', '', $normalized) ?: '';
+            if ($normalized === '') {
+                continue;
+            }
+            $enabled[] = $featureLabels[$normalized] ?? ucwords(str_replace('_', ' ', $normalized));
+        }
+    } else {
+        foreach ($decoded as $key) {
+            $normalized = strtolower(str_replace([' ', '-'], '_', trim((string)$key)));
+            $normalized = preg_replace('/[^a-z0-9_]/', '', $normalized) ?: '';
+            if ($normalized === '') {
+                continue;
+            }
+            $enabled[] = $featureLabels[$normalized] ?? ucwords(str_replace('_', ' ', $normalized));
+        }
+    }
+
+    $enabled = array_values(array_unique($enabled));
+    if (empty($enabled)) {
+        return 'Standard';
+    }
+    return implode(', ', array_slice($enabled, 0, 4));
+};
 ?>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
@@ -16,11 +78,19 @@ $currentPlanStatus = (string)($latestSubscription['status'] ?? 'none');
 <?php if ($currentPlanId > 0): ?>
 <div class="alert alert-info border-0 shadow-sm">
     <strong>Current subscription:</strong>
-    Plan #<?= (int)$currentPlanId ?>,
+    <?= e($currentPlanName !== '' ? $currentPlanName : ('Plan #' . (int)$currentPlanId)) ?>,
+    <?php if ($currentPlanName !== ''): ?>#<?= (int)$currentPlanId ?>,<?php endif; ?>
     Status <span class="badge bg-secondary text-uppercase"><?= e($currentPlanStatus) ?></span>
     <?php if (!empty($latestSubscription['current_end'])): ?>
         , valid until <?= e(date('Y-m-d', strtotime($latestSubscription['current_end']))) ?>
     <?php endif; ?>
+</div>
+<?php endif; ?>
+
+<?php if (!$gatewayConfigured): ?>
+<div class="alert alert-warning border-0 shadow-sm">
+    <strong>Payment gateway is not configured.</strong>
+    Add valid <code>RAZORPAY_KEY</code> and <code>RAZORPAY_SECRET</code> in your <code>.env</code> file to enable checkout.
 </div>
 <?php endif; ?>
 
@@ -56,7 +126,7 @@ $currentPlanStatus = (string)($latestSubscription['status'] ?? 'none');
             <?php
                 $basePrice = SaaSBillingHelper::effectivePlanPrice($plan);
                 $regularPrice = (float)$plan['price'];
-                $isCurrent = $currentPlanId === (int)$plan['id'] && in_array($currentPlanStatus, ['active', 'pending', 'trial'], true);
+                $isCurrent = $currentPlanId === (int)$plan['id'] && in_array($currentPlanStatus, ['active', 'trial'], true);
             ?>
             <div class="col-lg-4 col-md-6">
                 <div class="card h-100 border-0 shadow-sm <?= !empty($plan['is_featured']) ? 'border border-warning' : '' ?>">
@@ -83,6 +153,7 @@ $currentPlanStatus = (string)($latestSubscription['status'] ?? 'none');
                         <ul class="small text-muted ps-3 mb-4">
                             <li>Plan ID: <?= (int)$plan['id'] ?></li>
                             <li>Status: <?= e($plan['status']) ?></li>
+                            <li>Features: <?= e($planFeatureSummary($plan)) ?></li>
                             <li>Razorpay Plan: <?= !empty($plan['razorpay_plan_id']) ? e($plan['razorpay_plan_id']) : 'Not linked' ?></li>
                         </ul>
 
@@ -103,8 +174,9 @@ $currentPlanStatus = (string)($latestSubscription['status'] ?? 'none');
                                 class="btn btn-success btn-start-checkout"
                                 data-plan-id="<?= (int)$plan['id'] ?>"
                                 data-name="<?= e($plan['name']) ?>"
+                                <?= $gatewayConfigured ? '' : 'disabled' ?>
                             >
-                                <i class="fas fa-credit-card me-1"></i>Subscribe
+                                <i class="fas fa-credit-card me-1"></i><?= $gatewayConfigured ? 'Subscribe' : 'Gateway Required' ?>
                             </button>
                             <?php endif; ?>
                         </div>
@@ -127,7 +199,7 @@ $currentPlanStatus = (string)($latestSubscription['status'] ?? 'none');
 $inlineScript = "
 const csrfToken = " . json_encode($csrfToken ?? '') . ";
 const appUrl = " . json_encode(APP_URL) . ";
-const hasRazorpay = " . (!empty($razorpayKey) ? 'true' : 'false') . ";
+const hasRazorpay = " . ($gatewayConfigured ? 'true' : 'false') . ";
 
 let selectedPlanId = null;
 let appliedPromoByPlan = {};
@@ -176,7 +248,32 @@ async function postForm(url, payload) {
         credentials: 'same-origin',
         body: body.toString()
     });
-    return response.json();
+
+    const text = await response.text();
+    let data = null;
+    try {
+        data = JSON.parse(text);
+    } catch (err) {
+        data = {
+            success: false,
+            message: response.ok
+                ? 'Unexpected response received from server.'
+                : 'Server error (' + response.status + '). Please retry.'
+        };
+    }
+
+    if (!data || typeof data !== 'object') {
+        data = { success: false, message: 'Invalid server response.' };
+    }
+
+    if (!response.ok) {
+        data.success = false;
+        if (!data.message) {
+            data.message = 'Request failed with status ' + response.status + '.';
+        }
+    }
+
+    return data;
 }
 
 document.querySelectorAll('.btn-plan-select').forEach(btn => {
@@ -263,7 +360,10 @@ document.querySelectorAll('.btn-start-checkout').forEach(btn => {
                     setPromoMessage(verify.message || 'Payment verified successfully.', 'success');
                     window.location.reload();
                 } else {
-                    setPromoMessage(verify.message || 'Payment verification failed.', 'danger');
+                    setPromoMessage(
+                        verify.message || 'Payment verification failed.',
+                        verify.pending_capture ? 'warning' : 'danger'
+                    );
                 }
             };
             options.modal = {

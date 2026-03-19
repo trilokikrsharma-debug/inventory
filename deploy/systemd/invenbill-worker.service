@@ -1,0 +1,18 @@
+[Unit]
+Description=InvenBill Queue Worker
+After=network.target mysql.service redis-server.service
+Wants=redis-server.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/inventory
+ExecStart=/usr/bin/php /var/www/inventory/cli/worker.php --daemon
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/www/inventory/logs/queue-worker.log
+StandardError=append:/var/www/inventory/logs/queue-worker-error.log
+
+[Install]
+WantedBy=multi-user.target

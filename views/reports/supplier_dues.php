@@ -1,6 +1,13 @@
 <?php $pageTitle = 'Supplier Dues'; ?>
 <div class="page-header"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=reports">Reports</a></li><li class="breadcrumb-item active">Supplier Dues</li></ol></nav>
-    <button type="button" class="btn btn-outline-primary btn-sm" data-print-target="reportTable"><i class="fas fa-print me-1"></i>Print</button>
+    <div class="d-flex gap-2">
+        <form method="POST" action="<?= APP_URL ?>/index.php?page=reports&action=queue_export">
+            <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
+            <input type="hidden" name="report_type" value="supplier_dues">
+            <button type="submit" class="btn btn-outline-success btn-sm"><i class="fas fa-file-arrow-down me-1"></i>Queue CSV</button>
+        </form>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-print-target="reportTable"><i class="fas fa-print me-1"></i>Print</button>
+    </div>
 </div>
 <?php $totalDue = 0; if (!empty($suppliers)) foreach ($suppliers as $s) $totalDue += ($s['current_balance'] ?? 0); ?>
 <div class="stat-card stat-danger mb-3"><div class="stat-value"><?= Helper::formatCurrency($totalDue) ?></div><div class="stat-label">Total Supplier Dues</div></div>

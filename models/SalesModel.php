@@ -7,6 +7,21 @@
  */
 class SalesModel extends Model {
     protected $table = 'sales';
+    /**
+     * Cached products table columns for optional HSN compatibility.
+     *
+     * @var array<string, bool>|null
+     */
+    private static $productColumnMap = null;
+
+    /**
+     * Keep dashboard and report caches coherent after sales mutations.
+     */
+    private function flushAnalyticCaches(): void {
+        $tenantPrefix = 'c' . (Tenant::id() ?? 0) . '_';
+        Cache::flushPrefix($tenantPrefix . 'dash_');
+        Cache::flushPrefix($tenantPrefix . 'report_');
+    }
 
     /**
      * Get all sales with customer info (tenant-scoped)
@@ -15,6 +30,7 @@ class SalesModel extends Model {
         $offset = ($page - 1) * $perPage;
         $params = [];
         $where = ["s.deleted_at IS NULL"];
+        $customerJoin = "LEFT JOIN customers c ON s.customer_id = c.id";
 
         if (Tenant::id() !== null) {
             $where[] = "s.company_id = ?";
@@ -33,15 +49,31 @@ class SalesModel extends Model {
 
         $whereClause = implode(' AND ', $where);
 
-        $total = $this->db->query(
-            "SELECT COUNT(*) FROM {$this->table} s LEFT JOIN customers c ON s.customer_id = c.id WHERE {$whereClause}",
-            $params
-        )->fetchColumn();
+        $countSql = "SELECT COUNT(*) FROM {$this->table} s";
+        if ($search !== '') {
+            $countSql .= " {$customerJoin}";
+        }
+        $countSql .= " WHERE {$whereClause}";
+        $total = $this->db->query($countSql, $params)->fetchColumn();
 
         $data = $this->db->query(
-            "SELECT s.*, c.name as customer_name
+            "SELECT
+                s.id,
+                s.invoice_number,
+                s.customer_id,
+                s.sale_date,
+                s.subtotal,
+                s.discount_amount,
+                s.tax_amount,
+                s.grand_total,
+                s.paid_amount,
+                s.due_amount,
+                s.payment_status,
+                s.status,
+                s.created_at,
+                c.name as customer_name
              FROM {$this->table} s
-             LEFT JOIN customers c ON s.customer_id = c.id
+             {$customerJoin}
              WHERE {$whereClause}
              ORDER BY s.id DESC
              LIMIT {$perPage} OFFSET {$offset}",
@@ -69,9 +101,37 @@ class SalesModel extends Model {
         }
 
         $sale = $this->db->query(
-            "SELECT s.*, c.name as customer_name, c.phone as customer_phone, c.email as customer_email,
-                    c.address as customer_address, c.city as customer_city, c.state as customer_state,
-                    c.tax_number as customer_tax, u.full_name as created_by_name
+            "SELECT
+                s.id,
+                s.invoice_number,
+                s.customer_id,
+                s.sale_date,
+                s.reference_number,
+                s.subtotal,
+                s.discount_amount,
+                s.tax_amount,
+                s.gst_type,
+                s.shipping_cost,
+                s.freight_charge,
+                s.loading_charge,
+                s.round_off,
+                s.grand_total,
+                s.paid_amount,
+                s.due_amount,
+                s.payment_status,
+                s.status,
+                s.note,
+                s.created_by,
+                s.created_at,
+                c.name as customer_name,
+                c.phone as customer_phone,
+                c.email as customer_email,
+                c.address as customer_address,
+                c.city as customer_city,
+                c.state as customer_state,
+                c.tax_number as customer_tax,
+                c.tax_number as customer_tax_number,
+                u.full_name as created_by_name
              FROM {$this->table} s
              LEFT JOIN customers c ON s.customer_id = c.id
              LEFT JOIN users u ON s.created_by = u.id
@@ -80,8 +140,24 @@ class SalesModel extends Model {
         )->fetch();
 
         if ($sale) {
+            $hsnSelect = $this->productColumnExists('hsn_code')
+                ? ", p.hsn_code as hsn_code"
+                : ", NULL as hsn_code";
             $sale['items'] = $this->db->query(
-                "SELECT si.*, p.name as product_name, p.sku, un.short_name as unit_name
+                "SELECT
+                    si.id,
+                    si.sale_id,
+                    si.product_id,
+                    si.quantity,
+                    si.unit_price,
+                    si.discount,
+                    si.tax_rate,
+                    si.tax_amount,
+                    si.subtotal,
+                    si.total,
+                    p.name as product_name,
+                    p.sku,
+                    un.short_name as unit_name{$hsnSelect}
                  FROM sale_items si
                  LEFT JOIN products p ON si.product_id = p.id
                  LEFT JOIN units un ON p.unit_id = un.id
@@ -116,12 +192,16 @@ class SalesModel extends Model {
                 $productModel->updateStock($item['product_id'], -$item['quantity'], 'sale', $saleId, $userId, 'Sale #' . $saleData['invoice_number']);
             }
 
+            // Distribute any unapplied advance payments to this new sale
+            $paymentModel = new PaymentModel();
+            $paymentModel->recalculateCustomerSalesPublic((int)$saleData['customer_id']);
+
             // Update customer balance
             $customerModel = new CustomerModel();
-            $customerModel->updateBalance($saleData['customer_id'], $saleData['due_amount']);
+            $customerModel->recalculateBalance((int)$saleData['customer_id']);
 
             $db->commit();
-            Cache::flushPrefix('c' . (Tenant::id() ?? 0) . '_dash_');
+            $this->flushAnalyticCaches();
             return $saleId;
         } catch (Exception $e) {
             $db->rollback();
@@ -176,14 +256,18 @@ class SalesModel extends Model {
             // 4. Update sale header
             $this->update($id, $saleData);
 
-            // 5. Recalculate customer balance from scratch
-            $customerModel->recalculateBalance($saleData['customer_id']);
+            // 5. Recalculate payments and customer balance from scratch
+            $paymentModel = new PaymentModel();
+            $paymentModel->recalculateCustomerSalesPublic((int)$saleData['customer_id']);
+            $customerModel->recalculateBalance((int)$saleData['customer_id']);
+
             if ((int)$old['customer_id'] !== (int)$saleData['customer_id']) {
-                $customerModel->recalculateBalance($old['customer_id']);
+                $paymentModel->recalculateCustomerSalesPublic((int)$old['customer_id']);
+                $customerModel->recalculateBalance((int)$old['customer_id']);
             }
 
             $db->commit();
-            Cache::flushPrefix('c' . (Tenant::id() ?? 0) . '_dash_');
+            $this->flushAnalyticCaches();
         } catch (Exception $e) {
             $db->rollback();
             throw $e;
@@ -220,7 +304,7 @@ class SalesModel extends Model {
             $customerModel->recalculateBalance((int)$sale['customer_id']);
 
             $db->commit();
-            Cache::flushPrefix('c' . (Tenant::id() ?? 0) . '_dash_');
+            $this->flushAnalyticCaches();
         } catch (Exception $e) {
             $db->rollback();
             throw $e;
@@ -312,16 +396,25 @@ class SalesModel extends Model {
         if ($toDate) { $where[] = "s.sale_date <= ?"; $params[] = $toDate; }
 
         return $this->db->query(
-            "SELECT 
-                COALESCE(SUM(si.total), 0) as total_sales,
-                COALESCE(SUM(si.quantity * p.purchase_price), 0) as total_cost,
-                COALESCE(SUM(si.total - (si.quantity * p.purchase_price)), 0) as gross_profit,
-                COALESCE(SUM(s.discount_amount), 0) as total_discount,
-                COALESCE(SUM(si.total - (si.quantity * p.purchase_price)) - SUM(s.discount_amount), 0) as net_profit
-             FROM sale_items si
-             JOIN {$this->table} s ON si.sale_id = s.id
-             JOIN products p ON si.product_id = p.id
-             WHERE " . implode(' AND ', $where),
+            "SELECT
+                COALESCE(SUM(t.total_sales), 0) as total_sales,
+                COALESCE(SUM(t.total_cost), 0) as total_cost,
+                COALESCE(SUM(t.gross_profit), 0) as gross_profit,
+                COALESCE(SUM(t.discount_amount), 0) as total_discount,
+                COALESCE(SUM(t.gross_profit - t.discount_amount), 0) as net_profit
+             FROM (
+                SELECT
+                    s.id,
+                    COALESCE(SUM(si.total), 0) as total_sales,
+                    COALESCE(SUM(si.quantity * p.purchase_price), 0) as total_cost,
+                    COALESCE(SUM(si.total - (si.quantity * p.purchase_price)), 0) as gross_profit,
+                    COALESCE(MAX(s.discount_amount), 0) as discount_amount
+                FROM {$this->table} s
+                JOIN sale_items si ON si.sale_id = s.id
+                JOIN products p ON si.product_id = p.id
+                WHERE " . implode(' AND ', $where) . "
+                GROUP BY s.id
+             ) t",
             $params
         )->fetch();
     }
@@ -348,5 +441,25 @@ class SalesModel extends Model {
              LIMIT ?",
             $params
         )->fetchAll();
+    }
+
+    /**
+     * Check products table column existence with cached schema lookup.
+     */
+    private function productColumnExists(string $column): bool {
+        if (self::$productColumnMap === null) {
+            self::$productColumnMap = [];
+            try {
+                $rows = Database::getInstance()->query("SHOW COLUMNS FROM products")->fetchAll();
+                foreach ($rows as $row) {
+                    if (!empty($row['Field'])) {
+                        self::$productColumnMap[$row['Field']] = true;
+                    }
+                }
+            } catch (Throwable $e) {
+                self::$productColumnMap = [];
+            }
+        }
+        return !empty(self::$productColumnMap[$column]);
     }
 }

@@ -208,30 +208,27 @@ class TwoFactorController extends Controller {
      * Complete the login after 2FA verification.
      */
     private function completeLogin(int $userId): void {
-        $db = Database::getInstance();
-        $user = $db->query(
-            "SELECT u.*, c.name AS company_name, c.db_name AS company_db
-             FROM users u
-             LEFT JOIN companies c ON u.company_id = c.id
-             WHERE u.id = ?",
-            [$userId]
-        )->fetch(\PDO::FETCH_ASSOC);
-
-        if (!$user) {
+        $pendingUserId = (int)Session::get('twofa_pending_user_id');
+        if ($pendingUserId <= 0 || $pendingUserId !== $userId) {
             $this->redirect('index.php?page=login');
             return;
         }
 
-        // Clear pending state
-        Session::remove('twofa_pending_user_id');
+        $context = $this->loadLoginContext($userId);
+        if (!$context) {
+            Session::remove('twofa_pending_user_id');
+            Session::remove('twofa_pending_is_super_admin');
+            Session::remove('twofa_pending_company_id');
+            Session::remove('twofa_pending_company');
+            Session::remove('user');
+            Session::clearPermissionCache();
+            Tenant::reset();
+            Session::setFlash('error', 'Your login session expired. Please sign in again.');
+            $this->redirect('index.php?page=login');
+            return;
+        }
 
-        // Set full session
-        session_regenerate_id(true);
-        Session::set('user', $user);
-
-        Logger::info('Login completed (2FA verified)', ['user_id' => $userId]);
-
-        $this->redirect('index.php?page=dashboard');
+        $this->finalizeLogin($context['user'], $context['company_id'], $context['company'], $context['is_super_admin']);
     }
 
     private function requirePost(): void {
@@ -239,5 +236,123 @@ class TwoFactorController extends Controller {
             http_response_code(405);
             exit('Method not allowed');
         }
+    }
+
+    /**
+     * Rebuild the login context from the database after 2FA succeeds.
+     */
+    private function loadLoginContext(int $userId): ?array {
+        $db = Database::getInstance();
+        $row = $db->query(
+            "SELECT u.*, c.name AS company_name, c.status AS company_status, c.is_demo, c.plan, c.saas_plan_id,
+                    c.subscription_status, c.trial_ends_at, c.max_users, c.max_products
+             FROM users u
+             LEFT JOIN companies c ON u.company_id = c.id
+             WHERE u.id = ?",
+            [$userId]
+        )->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            return null;
+        }
+
+        $isSuperAdmin = !empty($row['is_super_admin']);
+        if (!$isSuperAdmin && !empty($row['role_id'])) {
+            try {
+                $role = $db->query(
+                    "SELECT is_super_admin FROM roles WHERE id = ?",
+                    [$row['role_id']]
+                )->fetch(\PDO::FETCH_ASSOC);
+                if ($role && !empty($role['is_super_admin'])) {
+                    $isSuperAdmin = true;
+                }
+            } catch (\Throwable $e) {
+                error_log('[RBAC] Failed to load role during 2FA login: ' . $e->getMessage());
+            }
+        }
+
+        $companyId = (int)($row['company_id'] ?? 0);
+        $company = null;
+
+        if (!$isSuperAdmin) {
+            if ($companyId <= 0) {
+                return null;
+            }
+
+            try {
+                $company = $db->query(
+                    "SELECT id, name, status, is_demo, plan, saas_plan_id, subscription_status, trial_ends_at, max_users, max_products
+                     FROM companies
+                     WHERE id = ? AND status = 'active'",
+                    [$companyId]
+                )->fetch(\PDO::FETCH_ASSOC);
+            } catch (\Throwable $e) {
+                $company = null;
+            }
+
+            if (!$company) {
+                return null;
+            }
+        }
+
+        return [
+            'user' => $row,
+            'company' => $company,
+            'company_id' => $companyId,
+            'is_super_admin' => $isSuperAdmin,
+        ];
+    }
+
+    /**
+     * Final login session rebuild used after 2FA succeeds.
+     */
+    private function finalizeLogin(array $user, int $companyId, ?array $company, bool $isSuperAdmin): void {
+        $sessionUser = $this->sanitizeSessionUser($user, $isSuperAdmin);
+        $sessionUser['twofa_pending'] = false;
+        $sessionUser['twofa_verified'] = true;
+
+        session_regenerate_id(true);
+        CSRF::rotateToken();
+        Session::initFingerprint();
+        Session::clearPermissionCache();
+
+        Session::remove('twofa_pending_user_id');
+        Session::remove('twofa_pending_is_super_admin');
+        Session::remove('twofa_pending_company_id');
+        Session::remove('twofa_pending_company');
+
+        Session::set('user', $sessionUser);
+
+        if ($isSuperAdmin) {
+            Tenant::reset();
+        } elseif ($companyId > 0 && $company) {
+            Tenant::set($companyId, $company);
+        } else {
+            Tenant::reset();
+        }
+
+        $this->logActivity('Login', 'auth', $sessionUser['id'],
+            $isSuperAdmin ? 'Platform super-admin logged in after 2FA' : 'Tenant user logged in after 2FA');
+
+        if ($isSuperAdmin) {
+            $this->redirect('index.php?page=platform&action=dashboard');
+        }
+
+        $this->redirect('index.php?page=dashboard');
+    }
+
+    /**
+     * Strip sensitive fields before placing the user in session.
+     */
+    private function sanitizeSessionUser(array $user, bool $isSuperAdmin): array {
+        unset(
+            $user['password'],
+            $user['twofa_secret'],
+            $user['twofa_recovery_codes'],
+            $user['company_status'],
+            $user['company_name']
+        );
+        $user['is_super_admin'] = $isSuperAdmin || !empty($user['is_super_admin']);
+        return $user;
     }
 }

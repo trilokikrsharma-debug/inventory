@@ -37,6 +37,11 @@ class SettingsModel extends Model {
                     'purchase_prefix' => 'PUR-',
                     'payment_prefix' => 'PAY-',
                     'receipt_prefix' => 'REC-',
+                    'show_paid_due_on_invoice' => 1,
+                    'show_unit_on_invoice' => 0,
+                    'show_discount_on_invoice' => 1,
+                    'show_hsn_on_invoice' => 1,
+                    'auto_round_off_rupee' => 0,
                 ];
             }
         }
@@ -52,24 +57,47 @@ class SettingsModel extends Model {
         $result = $this->db->query("SHOW COLUMNS FROM {$this->table}")->fetchAll();
         $columns = array_column($result, 'Field');
         $data = array_intersect_key($data, array_flip($columns));
+        if (empty($data)) {
+            return 0;
+        }
 
         $cid = Tenant::id();
-        $settings = $this->getSettings();
+        // Fetch the persisted row directly. getSettings() can return defaults without DB id.
+        $settingsRow = null;
+        if ($cid !== null) {
+            $settingsRow = $this->db->query(
+                "SELECT id FROM {$this->table} WHERE company_id = ? LIMIT 1",
+                [$cid]
+            )->fetch();
+        } else {
+            $settingsRow = $this->db->query(
+                "SELECT id FROM {$this->table} ORDER BY id ASC LIMIT 1"
+            )->fetch();
+        }
 
-        if ($settings && $cid !== null) {
-            // Update only own company's settings
+        if ($settingsRow && !empty($settingsRow['id'])) {
             $set = implode(' = ?, ', array_keys($data)) . ' = ?';
             $values = array_values($data);
-            $values[] = $settings['id'];
-            $values[] = $cid;
+            $values[] = (int)$settingsRow['id'];
+
+            if ($cid !== null) {
+                $values[] = $cid;
+                return $this->db->query(
+                    "UPDATE {$this->table} SET {$set} WHERE id = ? AND company_id = ?",
+                    $values
+                )->rowCount();
+            }
+
             return $this->db->query(
-                "UPDATE {$this->table} SET {$set} WHERE id = ? AND company_id = ?", $values
+                "UPDATE {$this->table} SET {$set} WHERE id = ?",
+                $values
             )->rowCount();
-        } elseif ($settings) {
-            return $this->update($settings['id'], $data);
         }
-        // Create new settings row for this tenant
-        if ($cid !== null) $data['company_id'] = $cid;
+
+        // First-time tenant bootstrap: create settings row.
+        if ($cid !== null) {
+            $data['company_id'] = $cid;
+        }
         return $this->create($data);
     }
 

@@ -5,10 +5,20 @@
 class PaymentModel extends Model {
     protected $table = 'payments';
 
+    /**
+     * Keep dashboard and report caches coherent after payment mutations.
+     */
+    private function flushAnalyticCaches(): void {
+        $tenantPrefix = 'c' . (Tenant::id() ?? 0) . '_';
+        Cache::flushPrefix($tenantPrefix . 'dash_');
+        Cache::flushPrefix($tenantPrefix . 'report_');
+    }
+
     public function getAllPaginated($type = '', $search = '', $fromDate = '', $toDate = '', $page = 1, $perPage = RECORDS_PER_PAGE) {
         $offset = ($page - 1) * $perPage;
         $params = [];
         $where = ["p.deleted_at IS NULL"];
+        $partyJoin = "LEFT JOIN customers c ON p.customer_id = c.id LEFT JOIN suppliers s ON p.supplier_id = s.id";
         if (Tenant::id() !== null) { $where[] = "p.company_id = ?"; $params[] = Tenant::id(); }
         if ($type) { $where[] = "p.type = ?"; $params[] = $type; }
         if ($search) {
@@ -20,11 +30,37 @@ class PaymentModel extends Model {
         if ($toDate) { $where[] = "p.payment_date <= ?"; $params[] = $toDate; }
         $whereClause = implode(' AND ', $where);
 
-        $total = $this->db->query(
-            "SELECT COUNT(*) FROM {$this->table} p LEFT JOIN customers c ON p.customer_id = c.id LEFT JOIN suppliers s ON p.supplier_id = s.id WHERE {$whereClause}", $params
-        )->fetchColumn();
+        $countSql = "SELECT COUNT(*) FROM {$this->table} p";
+        if ($search !== '') {
+            $countSql .= " {$partyJoin}";
+        }
+        $countSql .= " WHERE {$whereClause}";
+        $total = $this->db->query($countSql, $params)->fetchColumn();
         $data = $this->db->query(
-            "SELECT p.*, c.name as customer_name, s.name as supplier_name FROM {$this->table} p LEFT JOIN customers c ON p.customer_id = c.id LEFT JOIN suppliers s ON p.supplier_id = s.id WHERE {$whereClause} ORDER BY p.id DESC LIMIT {$perPage} OFFSET {$offset}", $params
+            "SELECT
+                p.id,
+                p.payment_number,
+                p.type,
+                p.customer_id,
+                p.supplier_id,
+                p.sale_id,
+                p.purchase_id,
+                p.amount,
+                p.payment_method,
+                p.payment_date,
+                p.reference_number,
+                p.bank_name,
+                p.note,
+                p.created_by,
+                p.created_at,
+                c.name as customer_name,
+                s.name as supplier_name
+             FROM {$this->table} p
+             {$partyJoin}
+             WHERE {$whereClause}
+             ORDER BY p.id DESC
+             LIMIT {$perPage} OFFSET {$offset}",
+            $params
         )->fetchAll();
         return ['data' => $data, 'total' => $total, 'page' => $page, 'perPage' => $perPage, 'totalPages' => ceil($total / $perPage)];
     }
@@ -77,7 +113,7 @@ class PaymentModel extends Model {
                 }
             }
             $db->commit();
-            Cache::flushPrefix('c' . (Tenant::id() ?? 0) . '_dash_');
+            $this->flushAnalyticCaches();
             return $paymentId;
         } catch (Exception $e) {
             $db->rollback();
@@ -126,7 +162,27 @@ class PaymentModel extends Model {
         $params = [$id];
         if (Tenant::id() !== null) { $where[] = "p.company_id = ?"; $params[] = Tenant::id(); }
         return $this->db->query(
-            "SELECT p.*, c.name as customer_name, c.phone as customer_phone, s.name as supplier_name, s.phone as supplier_phone, u.full_name as created_by_name
+            "SELECT
+                p.id,
+                p.payment_number,
+                p.type,
+                p.customer_id,
+                p.supplier_id,
+                p.sale_id,
+                p.purchase_id,
+                p.amount,
+                p.payment_method,
+                p.payment_date,
+                p.reference_number,
+                p.bank_name,
+                p.note,
+                p.created_by,
+                p.created_at,
+                c.name as customer_name,
+                c.phone as customer_phone,
+                s.name as supplier_name,
+                s.phone as supplier_phone,
+                u.full_name as created_by_name
              FROM {$this->table} p LEFT JOIN customers c ON p.customer_id = c.id LEFT JOIN suppliers s ON p.supplier_id = s.id LEFT JOIN users u ON p.created_by = u.id
              WHERE " . implode(' AND ', $where), $params
         )->fetch();
@@ -162,7 +218,7 @@ class PaymentModel extends Model {
                 (new SupplierModel())->recalculateBalance((int)$payment['supplier_id']);
             }
             $db->commit();
-            Cache::flushPrefix('c' . (Tenant::id() ?? 0) . '_dash_');
+            $this->flushAnalyticCaches();
         } catch (Exception $e) {
             $db->rollback();
             throw $e;
@@ -173,16 +229,31 @@ class PaymentModel extends Model {
         $db = $this->db;
         $cid = Tenant::id();
         $tenantFilter = $cid !== null ? " AND company_id = ?" : "";
-        $saleParams = [$customerId]; if ($cid !== null) $saleParams[] = $cid;
-        $sales = $db->query("SELECT id, grand_total FROM sales WHERE customer_id = ? AND deleted_at IS NULL {$tenantFilter} ORDER BY id ASC", $saleParams)->fetchAll();
+        $salesSql = "SELECT s.id, s.grand_total, COALESCE(SUM(sr.total_amount), 0) as returned_total
+                     FROM sales s
+                     LEFT JOIN sale_returns sr ON sr.sale_id = s.id AND sr.deleted_at IS NULL";
+        $salesParams = [];
+        if ($cid !== null) {
+            $salesSql .= " AND sr.company_id = ?";
+            $salesParams[] = $cid;
+        }
+        $salesSql .= " WHERE s.customer_id = ? AND s.deleted_at IS NULL";
+        $salesParams[] = $customerId;
+        if ($cid !== null) {
+            $salesSql .= " AND s.company_id = ?";
+            $salesParams[] = $cid;
+        }
+        $salesSql .= " GROUP BY s.id, s.grand_total ORDER BY s.id ASC";
+        $sales = $db->query($salesSql, $salesParams)->fetchAll();
+
         $receiptParams = [$customerId]; if ($cid !== null) $receiptParams[] = $cid;
         $totalReceipts = (float)$db->query("SELECT COALESCE(SUM(amount), 0) FROM {$this->table} WHERE customer_id = ? AND type = 'receipt' AND deleted_at IS NULL {$tenantFilter}", $receiptParams)->fetchColumn();
         $remaining = $totalReceipts;
         foreach ($sales as $sale) {
-            $grandTotal = (float)$sale['grand_total'];
-            $apply = min($remaining, $grandTotal);
-            $newPaid = $apply; $newDue = $grandTotal - $apply;
-            if ($newDue <= 0.009) { $status = 'paid'; $newDue = 0; $newPaid = $grandTotal; }
+            $effectiveTotal = max(0, (float)$sale['grand_total'] - (float)($sale['returned_total'] ?? 0));
+            $apply = min($remaining, $effectiveTotal);
+            $newPaid = $apply; $newDue = $effectiveTotal - $apply;
+            if ($newDue <= 0.009) { $status = 'paid'; $newDue = 0; $newPaid = $effectiveTotal; }
             elseif ($newPaid > 0.009) { $status = 'partial'; } else { $status = 'unpaid'; }
             $updateParams = [$newPaid, $newDue, $status, $sale['id']];
             if ($cid !== null) $updateParams[] = $cid;

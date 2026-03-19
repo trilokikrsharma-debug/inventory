@@ -44,8 +44,29 @@ class Request {
 
     /**
      * Create a Request from custom arrays (for testing).
+     *
+     * Backward compatibility:
+     * - Preferred signature: create(query, post, server, files, cookies)
+     * - Legacy signature:    create(server, query, post)
      */
-    public static function create(array $query = [], array $post = [], array $server = [], array $files = [], array $cookies = []): self {
+    public static function create(array $first = [], array $second = [], array $third = [], array $files = [], array $cookies = []): self {
+        $looksLikeServer = static function (array $candidate): bool {
+            return isset($candidate['REQUEST_METHOD'])
+                || isset($candidate['REQUEST_URI'])
+                || isset($candidate['HTTP_HOST'])
+                || isset($candidate['REMOTE_ADDR']);
+        };
+
+        if ($looksLikeServer($first)) {
+            $server = $first;
+            $query = $second;
+            $post = $third;
+        } else {
+            $query = $first;
+            $post = $second;
+            $server = $third;
+        }
+
         $server = array_merge(['REQUEST_METHOD' => 'GET', 'REMOTE_ADDR' => '127.0.0.1'], $server);
         return new self($query, $post, $server, $files, $cookies);
     }

@@ -31,6 +31,10 @@ class QuotationController extends Controller {
 
         if ($this->isPost()) {
             $this->validateCSRF();
+            $settings = (new SettingsModel())->getSettings();
+            $isTaxEnabled = !isset($settings['enable_tax']) || !empty($settings['enable_tax']);
+            $isGstEnabled = !isset($settings['enable_gst']) || !empty($settings['enable_gst']);
+            $allowTax = $isTaxEnabled && $isGstEnabled;
 
             $productIds = $this->post('product_id', []);
             $quantities = $this->post('quantity', []);
@@ -47,14 +51,18 @@ class QuotationController extends Controller {
                 $up    = (float)($unitPrices[$i] ?? 0);
                 $disc  = (float)($discounts[$i] ?? 0);
                 $taxR  = (float)($taxRates[$i] ?? 0);
+                if (!$allowTax) {
+                    $taxR = 0.0;
+                }
+                $lineBase = $qty * $up;
 
-                if ($qty < 0 || $up < 0 || $taxR < 0 || $taxR > 100 || $disc < 0 || $disc > 100) {
+                if ($qty <= 0 || $up < 0 || $taxR < 0 || $taxR > 100 || $disc < 0 || $disc > $lineBase) {
                     error_log("Invalid input values in Quotation create: qty=$qty, price=$up, tax=$taxR, disc=$disc");
-                    $this->setFlash('error', 'Invalid quantities, prices, taxes, or discounts provided. Values must be positive and percentages must be 0-100.');
+                    $this->setFlash('error', 'Invalid item values. Quantity must be greater than 0, tax must be 0-100, and discount cannot exceed line amount.');
                     $this->redirect('index.php?page=quotations&action=create');
                     return;
                 }
-                $sub   = ($qty * $up) - $disc;
+                $sub   = $lineBase - $disc;
                 $taxA  = $sub * $taxR / 100;
                 $total = $sub + $taxA;
                 $subtotal += $sub;

@@ -58,8 +58,9 @@ class FeatureFlag {
 
         // Check plan-based gating
         if (!empty($default['plans']) && class_exists('Tenant')) {
-            $plan = Tenant::plan() ?? 'starter';
-            return in_array($plan, $default['plans']);
+            $plan = self::normalizePlanKey(Tenant::plan() ?? 'starter');
+            $allowedPlans = array_map([self::class, 'normalizePlanKey'], (array)$default['plans']);
+            return in_array($plan, $allowedPlans, true);
         }
 
         return $default['enabled'];
@@ -130,5 +131,16 @@ class FeatureFlag {
      */
     public static function register(string $name, bool $defaultEnabled = false, array $plans = []): void {
         self::$defaults[$name] = ['enabled' => $defaultEnabled, 'plans' => $plans];
+    }
+
+    private static function normalizePlanKey(string $plan): string {
+        $plan = strtolower(trim($plan));
+        if ($plan === 'growth') {
+            return 'professional';
+        }
+        if ($plan === 'pro') {
+            return 'enterprise';
+        }
+        return $plan === '' ? 'starter' : $plan;
     }
 }

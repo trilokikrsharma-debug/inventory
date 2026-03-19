@@ -1,0 +1,12 @@
+[Unit]
+Description=InvenBill Scheduler Task Runner
+After=network.target mysql.service
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/inventory
+ExecStart=/usr/bin/php /var/www/inventory/cli/scheduler.php --task=all
+StandardOutput=append:/var/www/inventory/logs/scheduler.log
+StandardError=append:/var/www/inventory/logs/scheduler-error.log

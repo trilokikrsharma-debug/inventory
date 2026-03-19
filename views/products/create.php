@@ -15,13 +15,17 @@
                             <label class="form-label">Product Name <span class="text-danger">*</span></label>
                             <input type="text" name="name" class="form-control" required>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label">SKU</label>
                             <input type="text" name="sku" class="form-control" placeholder="e.g. PRD-001">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label">Barcode</label>
                             <input type="text" name="barcode" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">HSN / SAC</label>
+                            <input type="text" name="hsn_code" class="form-control" placeholder="e.g. 8471">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Category</label>

@@ -40,7 +40,7 @@
                 </form>
             </div>
             <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0">
-                <thead><tr><th>Date</th><th>Type</th><th>Invoice/Ref</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
+                <thead><tr><th>Date/Time</th><th>Type</th><th>Invoice/Ref</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
                 <tbody>
                 <?php if (!empty($ledger)):
                     $runningBal = (float)($customer['opening_balance'] ?? 0);
@@ -49,7 +49,7 @@
                         $badgeColor = $l['type'] === 'Sale' ? 'primary' : ($l['type'] === 'Receipt' ? 'success' : 'warning');
                 ?>
                 <tr>
-                    <td><?= Helper::formatDate($l['date']) ?></td>
+                    <td><?= Helper::formatDate($l['txn_at'] ?? $l['date'], 'd-m-Y H:i') ?></td>
                     <td><span class="badge bg-<?= $badgeColor ?>"><?= $l['type'] ?></span></td>
                     <td><?= Helper::escape($l['reference'] ?? '-') ?></td>
                     <td class="text-danger"><?= ($l['debit'] ?? 0) > 0 ? Helper::formatCurrency($l['debit']) : '-' ?></td>

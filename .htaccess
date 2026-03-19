@@ -1,23 +1,63 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Deny access to hidden files (.env, .git, etc.)
+    # Deny hidden files (.env, .git, etc.)
     RewriteRule ^\. - [F,L]
-    
-    # Deny access to specific sensitive directories explicitly
+
+    # Deny direct access to internal application folders
     RewriteRule ^(core|config|database|logs|cache|cli|backups|models|controllers|views)/ - [F,L]
-    
-    # Prevent directory listing globally
+
+    # Prevent directory listing
     Options -Indexes
 
-    # Route all traffic to index.php unless the file physically exists
+    # Route all non-file / non-directory requests to index.php
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ index.php?/$1 [L,QSA]
 </IfModule>
 
-<IfModule mod_headers.c>
-    # Prevent caching of dynamic authenticated states accidentally
-    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
-    Header set Pragma "no-cache"
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain text/html text/xml text/css
+    AddOutputFilterByType DEFLATE application/xml application/xhtml+xml application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript application/x-javascript text/javascript
+    AddOutputFilterByType DEFLATE application/json image/svg+xml
 </IfModule>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Static assets
+    ExpiresByType text/css "access plus 30 days"
+    ExpiresByType application/javascript "access plus 30 days"
+    ExpiresByType text/javascript "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/gif "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+    ExpiresByType image/x-icon "access plus 30 days"
+    ExpiresByType font/woff "access plus 30 days"
+    ExpiresByType font/woff2 "access plus 30 days"
+
+    # Dynamic defaults
+    ExpiresDefault "access plus 1 hour"
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Long cache for static assets
+    <FilesMatch "\.(css|js|jpg|jpeg|png|gif|webp|svg|ico|woff|woff2)$">
+        Header set Cache-Control "public, max-age=2592000, immutable"
+    </FilesMatch>
+
+    # No-store for dynamic PHP responses
+    <FilesMatch "\.php$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+    </FilesMatch>
+</IfModule>
+
+AddDefaultCharset UTF-8

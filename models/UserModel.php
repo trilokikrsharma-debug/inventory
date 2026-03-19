@@ -26,39 +26,91 @@ class UserModel extends Model {
      * @param string $password Raw password
      * @return array|false  User row on success, false on failure
      */
-    public function authenticate($username, $password) {
-        // Fetch ALL matching users across companies (with company status join)
-        // SECURITY FIX: Use LEFT JOIN so platform super-admins with company_id=NULL
-        // are still returned by the query. INNER JOIN excluded them entirely.
-        $users = $this->db->query(
-            "SELECT u.*, c.status AS company_status, c.name AS company_name 
-             FROM {$this->table} u
-             LEFT JOIN companies c ON u.company_id = c.id
-             WHERE (u.username = ? OR u.email = ?) 
-               AND u.is_active = 1 
-               AND u.deleted_at IS NULL
-             ORDER BY c.status = 'active' DESC, u.id ASC",
-            [$username, $username]
-        )->fetchAll();
+    public function authenticate($username, $password, $companyId = null) {
+        $username = trim((string)$username);
+        $password = (string)$password;
+        $companyId = $companyId !== null ? (int)$companyId : null;
 
-        foreach ($users as $user) {
-            if (password_verify($password, $user['password'])) {
-                // Platform super-admins (is_super_admin=1) bypass company check.
-                // They may have company_id=NULL — that's expected.
-                if (!empty($user['is_super_admin'])) {
+        if ($username === '' || $password === '') {
+            return false;
+        }
+
+        // If a tenant host resolved a company, search that tenant first so
+        // usernames cannot bleed across tenants. Super-admins are checked after.
+        if ($companyId !== null && $companyId > 0) {
+            $tenantUsers = $this->db->query(
+                "SELECT u.*, c.status AS company_status, c.name AS company_name
+                 FROM {$this->table} u
+                 INNER JOIN companies c ON c.id = u.company_id
+                 WHERE c.id = ?
+                   AND c.status = 'active'
+                   AND (u.username = ? OR u.email = ?)
+                   AND u.is_active = 1
+                   AND u.deleted_at IS NULL
+                 ORDER BY u.id ASC",
+                [$companyId, $username, $username]
+            )->fetchAll();
+
+            foreach ($tenantUsers as $user) {
+                if (password_verify($password, $user['password'])) {
                     unset($user['company_status'], $user['company_name']);
                     return $user;
                 }
+            }
+        }
 
-                // Tenant users: only allow login to active companies
-                if (($user['company_status'] ?? '') !== 'active') {
-                    continue; // Skip suspended/inactive companies
-                }
-                // Remove joined meta before returning
+        $superAdmins = $this->db->query(
+            "SELECT u.*, NULL AS company_status, NULL AS company_name
+             FROM {$this->table} u
+             WHERE (u.username = ? OR u.email = ?)
+               AND u.is_active = 1
+               AND u.deleted_at IS NULL
+               AND u.is_super_admin = 1
+             ORDER BY u.id ASC",
+            [$username, $username]
+        )->fetchAll();
+
+        foreach ($superAdmins as $user) {
+            if (password_verify($password, $user['password'])) {
                 unset($user['company_status'], $user['company_name']);
                 return $user;
             }
         }
+
+        // Fallback for legacy deployments without host-based tenant resolution.
+        if ($companyId !== null && $companyId > 0) {
+            return false;
+        }
+
+        $users = $this->db->query(
+            "SELECT u.*, c.status AS company_status, c.name AS company_name
+             FROM {$this->table} u
+             LEFT JOIN companies c ON u.company_id = c.id
+             WHERE (u.username = ? OR u.email = ?)
+               AND u.is_active = 1
+               AND u.deleted_at IS NULL
+             ORDER BY c.status = 'active' DESC, u.is_super_admin DESC, u.id ASC",
+            [$username, $username]
+        )->fetchAll();
+
+        foreach ($users as $user) {
+            if (!password_verify($password, $user['password'])) {
+                continue;
+            }
+
+            if (!empty($user['is_super_admin'])) {
+                unset($user['company_status'], $user['company_name']);
+                return $user;
+            }
+
+            if (($user['company_status'] ?? '') !== 'active') {
+                continue;
+            }
+
+            unset($user['company_status'], $user['company_name']);
+            return $user;
+        }
+
         return false;
     }
 
@@ -93,6 +145,11 @@ class UserModel extends Model {
             if (!preg_match('/[A-Z]/', $data['password']) || !preg_match('/[0-9]/', $data['password'])) {
                 return ['success' => false, 'message' => 'Password must contain at least 1 uppercase letter and 1 number.'];
             }
+        }
+
+        $limitCheck = $this->checkUserLimitBeforeCreate();
+        if (!$limitCheck['allowed']) {
+            return ['success' => false, 'message' => $limitCheck['message']];
         }
 
         $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
@@ -251,5 +308,27 @@ class UserModel extends Model {
             "SELECT COUNT(*) FROM {$this->table} WHERE " . implode(' AND ', $where),
             $params
         )->fetchColumn();
+    }
+
+    /**
+     * Enforce tenant user limits before creating a new account.
+     */
+    private function checkUserLimitBeforeCreate(): array {
+        $tenantId = Tenant::id();
+        if ($tenantId === null) {
+            return ['allowed' => true, 'message' => ''];
+        }
+
+        $currentUsers = (int)$this->getCompanyUserCount();
+        if (Tenant::canUse('max_users', $currentUsers, 1)) {
+            return ['allowed' => true, 'message' => ''];
+        }
+
+        $limit = (int)(Tenant::usageLimit('max_users') ?? 0);
+        $message = $limit > 0
+            ? 'User limit reached (' . $limit . '). Please upgrade to add more users.'
+            : 'User limit reached for your plan. Please upgrade to add more users.';
+
+        return ['allowed' => false, 'message' => $message];
     }
 }

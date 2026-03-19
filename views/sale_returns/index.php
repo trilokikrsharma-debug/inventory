@@ -54,7 +54,7 @@
                     <td><?= Helper::escape($r['customer_name'] ?? '-') ?></td>
                     <td class="fw-bold text-danger"><?= Helper::formatCurrency($r['total_amount']) ?></td>
                     <td><?= Helper::formatDate($r['return_date']) ?></td>
-                    <td><small class="text-muted"><?= Helper::escape($r['reason'] ?? '') ?></small></td>
+                    <td><small class="text-muted"><?= Helper::escape($r['note'] ?? '') ?></small></td>
                     <td>
                         <div class="d-flex gap-1">
                         <a href="<?= APP_URL ?>/index.php?page=sale_returns&action=detail&id=<?= $r['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a>

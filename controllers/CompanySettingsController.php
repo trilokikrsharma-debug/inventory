@@ -12,6 +12,7 @@ class CompanySettingsController extends Controller {
         $this->requirePermission('settings.manage');
         
         $company = Tenant::company();
+        $currentPlan = Tenant::currentPlan();
         $settings = (new SettingsModel())->getSettings();
 
         if ($this->isPost()) {
@@ -54,6 +55,7 @@ class CompanySettingsController extends Controller {
         $this->view('company.settings', [
             'pageTitle' => 'Company Settings',
             'company'   => $company,
+            'currentPlan' => $currentPlan,
             'settings'  => $settings,
         ]);
     }

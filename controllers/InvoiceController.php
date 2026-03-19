@@ -47,6 +47,10 @@ class InvoiceController extends Controller {
         $company = (new SettingsModel())->getSettings();
         $model   = new $modelClass();
         $data    = $model->$method($id);
+        $returnSummary = null;
+        if ($type === 'sale' && $id > 0) {
+            $returnSummary = (new SaleReturnModel())->getSaleReturnSummary($id);
+        }
 
         $this->authorizeRecordAccess($data, 'index.php?page=' . $redirectPage);
 
@@ -54,6 +58,7 @@ class InvoiceController extends Controller {
             'data'    => $data,
             'company' => $company,
             'type'    => $type,
+            'returnSummary' => $returnSummary,
         ]);
     }
 
@@ -81,7 +86,11 @@ class InvoiceController extends Controller {
         // so downloaded PDF matches what users see in the Invoice view.
         if (in_array($type, ['sale', 'purchase'], true)) {
             $company = (new SettingsModel())->getSettings();
-            $this->downloadUsingPrintTemplate($type, $data, $company);
+            $extraData = [];
+            if ($type === 'sale' && $id > 0) {
+                $extraData['returnSummary'] = (new SaleReturnModel())->getSaleReturnSummary($id);
+            }
+            $this->downloadUsingPrintTemplate($type, $data, $company, $extraData);
             return;
         }
 
@@ -139,12 +148,13 @@ class InvoiceController extends Controller {
     /**
      * Generate PDF from the same HTML template used by invoice print view.
      */
-    private function downloadUsingPrintTemplate(string $type, array $data, array $company): void {
+    private function downloadUsingPrintTemplate(string $type, array $data, array $company, array $extraData = []): void {
         $html = $this->renderTemplateToString('invoice.print', [
             'data' => $data,
             'company' => $company,
             'type' => $type,
             'forPdf' => true,
+            ...$extraData,
         ]);
 
         $number = $data['invoice_number'] ?? $data['reference_number'] ?? (string)($data['id'] ?? time());

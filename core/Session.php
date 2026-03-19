@@ -228,11 +228,13 @@ class Session {
             return true;
         }
 
-        // Lazy-load permissions into session cache
+        $cacheKey = self::permissionCacheKey();
         $permissions = self::get('user_permissions');
-        if ($permissions === null) {
+        $permissionsKey = self::get('user_permissions_key');
+        if ($permissions === null || $permissionsKey !== $cacheKey) {
             $permissions = self::loadPermissions();
             self::set('user_permissions', $permissions);
+            self::set('user_permissions_key', $cacheKey);
         }
 
         return in_array($permission, $permissions, true);
@@ -271,6 +273,7 @@ class Session {
      */
     public static function clearPermissionCache() {
         self::remove('user_permissions');
+        self::remove('user_permissions_key');
     }
 
     /**
@@ -283,21 +286,75 @@ class Session {
     private static function loadPermissions() {
         try {
             $user = self::get('user');
-            $roleId = $user['role_id'] ?? null;
+            $userId = (int)($user['id'] ?? 0);
+            $roleId = (int)($user['role_id'] ?? 0);
+            $companyId = (int)($user['company_id'] ?? 0);
 
-            if (!$roleId) {
+            if ($userId <= 0 || $roleId <= 0) {
                 return [];
             }
 
-            // Cache per session lifetime tied to the role ID
-            return Cache::remember('role_permissions_' . session_id(), SESSION_LIFETIME, function() use ($roleId) {
+            $cacheKey = self::permissionCacheKey($userId, $roleId, $companyId);
+
+            return Cache::remember($cacheKey, SESSION_LIFETIME, function() use ($roleId, $companyId, $userId) {
                 $db = Database::getInstance();
+                try {
+                    $role = $db->query(
+                        "SELECT id, company_id, is_super_admin
+                         FROM roles
+                         WHERE id = ?
+                         LIMIT 1",
+                        [$roleId]
+                    )->fetch();
+                } catch (\Throwable $e) {
+                    // Older databases may not yet have roles.company_id. Fall back safely.
+                    $role = $db->query(
+                        "SELECT id, is_super_admin
+                         FROM roles
+                         WHERE id = ?
+                         LIMIT 1",
+                        [$roleId]
+                    )->fetch();
+                    if ($role) {
+                        $role['company_id'] = null;
+                    }
+                }
+
+                if (!$role) {
+                    error_log('[RBAC] Role not found for permission load. role_id=' . $roleId);
+                    return [];
+                }
+
+                $roleCompanyId = isset($role['company_id']) && $role['company_id'] !== null
+                    ? (int)$role['company_id']
+                    : null;
+
+                // A tenant user must never inherit permissions from another tenant's role.
+                // Global/system roles (company_id = NULL) are allowed for backward compatibility.
+                if ($companyId > 0 && $roleCompanyId !== null && $roleCompanyId !== $companyId) {
+                    error_log('[RBAC] Cross-tenant role access blocked. user_company_id=' . $companyId . ' role_company_id=' . $roleCompanyId . ' role_id=' . $roleId);
+                    return [];
+                }
+
+                // Platform super-admin roles should only ever work when the session itself
+                // has already been marked super-admin during authentication.
+                if (!empty($role['is_super_admin']) && !self::isSuperAdmin()) {
+                    error_log('[RBAC] Super-admin role permissions denied to non-super-admin session. role_id=' . $roleId . ' user_id=' . $userId);
+                    return [];
+                }
+
                 $rows = $db->query(
                     "SELECT p.name
                      FROM permissions p
                      JOIN role_permissions rp ON rp.permission_id = p.id
-                     WHERE rp.role_id = ?",
-                    [$roleId]
+                     WHERE rp.role_id = ?
+                       AND EXISTS (
+                           SELECT 1
+                           FROM roles r
+                           WHERE r.id = rp.role_id
+                             AND (r.company_id IS NULL OR r.company_id = ?)
+                       )",
+                    [$roleId, $companyId]
                 )->fetchAll();
 
                 return array_column($rows, 'name');
@@ -307,5 +364,21 @@ class Session {
             error_log('[RBAC] Failed to load permissions: ' . $e->getMessage());
             return [];
         }
+    }
+
+    /**
+     * Build a cache key that is unique per user, role, and tenant.
+     *
+     * @return string
+     */
+    private static function permissionCacheKey(?int $userId = null, ?int $roleId = null, ?int $companyId = null): string {
+        if ($userId === null || $roleId === null || $companyId === null) {
+            $user = self::get('user') ?: [];
+            $userId = $userId ?? (int)($user['id'] ?? 0);
+            $roleId = $roleId ?? (int)($user['role_id'] ?? 0);
+            $companyId = $companyId ?? (int)($user['company_id'] ?? 0);
+        }
+
+        return 'role_permissions:u' . (int)$userId . ':r' . (int)$roleId . ':c' . (int)$companyId;
     }
 }

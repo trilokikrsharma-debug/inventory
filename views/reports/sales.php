@@ -1,6 +1,16 @@
 <?php $pageTitle = 'Sales Report'; ?>
 <div class="page-header"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=reports">Reports</a></li><li class="breadcrumb-item active">Sales</li></ol></nav>
-    <button type="button" class="btn btn-outline-primary btn-sm" data-print-target="reportTable"><i class="fas fa-print me-1"></i>Print</button>
+    <div class="d-flex gap-2">
+        <form method="POST" action="<?= APP_URL ?>/index.php?page=reports&action=queue_export">
+            <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
+            <input type="hidden" name="report_type" value="sales">
+            <input type="hidden" name="from_date" value="<?= Helper::escape($fromDate) ?>">
+            <input type="hidden" name="to_date" value="<?= Helper::escape($toDate) ?>">
+            <input type="hidden" name="customer_id" value="<?= (int)$customerId ?>">
+            <button type="submit" class="btn btn-outline-success btn-sm"><i class="fas fa-file-arrow-down me-1"></i>Queue CSV</button>
+        </form>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-print-target="reportTable"><i class="fas fa-print me-1"></i>Print</button>
+    </div>
 </div>
 <div class="card mb-3"><div class="card-body py-2">
     <form class="d-flex gap-2 flex-wrap align-items-end" method="GET"><input type="hidden" name="page" value="reports"><input type="hidden" name="action" value="sales">

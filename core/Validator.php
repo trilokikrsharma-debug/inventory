@@ -38,7 +38,12 @@ class Validator {
     private function validate() {
         foreach ($this->rules as $field => $ruleString) {
             $rules = explode('|', $ruleString);
-            $value = $this->data[$field] ?? null;
+            $ruleNames = [];
+            foreach ($rules as $ruleToken) {
+                $ruleNames[] = strpos($ruleToken, ':') !== false ? explode(':', $ruleToken, 2)[0] : $ruleToken;
+            }
+            $rawValue = $this->data[$field] ?? null;
+            $value = is_string($rawValue) ? trim($rawValue) : $rawValue;
             $label = ucfirst(str_replace('_', ' ', $field));
 
             foreach ($rules as $rule) {
@@ -47,7 +52,7 @@ class Validator {
                     [$rule, $param] = explode(':', $rule, 2);
                 }
 
-                $error = $this->applyRule($rule, $field, $value, $param, $label);
+                $error = $this->applyRule($rule, $field, $value, $param, $label, $ruleNames);
                 if ($error) {
                     $this->errors[$field] = $error;
                     break; // Stop on first error per field
@@ -55,7 +60,7 @@ class Validator {
             }
 
             if (!isset($this->errors[$field])) {
-                $this->validated[$field] = is_string($value) ? trim($value) : $value;
+                $this->validated[$field] = $value;
             }
         }
     }
@@ -63,7 +68,7 @@ class Validator {
     /**
      * Apply a single validation rule
      */
-    private function applyRule($rule, $field, $value, $param, $label) {
+    private function applyRule($rule, $field, $value, $param, $label, $allRules = []) {
         switch ($rule) {
             case 'required':
                 if ($value === null || $value === '' || $value === []) {
@@ -106,22 +111,50 @@ class Validator {
 
             case 'min':
                 if ($value !== null && $value !== '') {
-                    if (is_numeric($value) && (float)$value < (float)$param) {
+                    $stringMode = in_array('string', $allRules, true);
+                    $numericMode = in_array('numeric', $allRules, true) || in_array('float', $allRules, true) || in_array('integer', $allRules, true);
+
+                    if ($stringMode) {
+                        $len = function_exists('mb_strlen') ? mb_strlen((string)$value) : strlen((string)$value);
+                        if ($len < (int)$param) {
+                            return "{$label} must be at least {$param} characters.";
+                        }
+                    } elseif ($numericMode) {
+                        if (!is_numeric($value) || (float)$value < (float)$param) {
+                            return "{$label} must be at least {$param}.";
+                        }
+                    } elseif (is_string($value)) {
+                        $len = function_exists('mb_strlen') ? mb_strlen($value) : strlen($value);
+                        if ($len < (int)$param) {
+                            return "{$label} must be at least {$param} characters.";
+                        }
+                    } elseif (is_numeric($value) && (float)$value < (float)$param) {
                         return "{$label} must be at least {$param}.";
-                    }
-                    if (is_string($value) && !is_numeric($value) && strlen($value) < (int)$param) {
-                        return "{$label} must be at least {$param} characters.";
                     }
                 }
                 break;
 
             case 'max':
                 if ($value !== null && $value !== '') {
-                    if (is_numeric($value) && (float)$value > (float)$param) {
+                    $stringMode = in_array('string', $allRules, true);
+                    $numericMode = in_array('numeric', $allRules, true) || in_array('float', $allRules, true) || in_array('integer', $allRules, true);
+
+                    if ($stringMode) {
+                        $len = function_exists('mb_strlen') ? mb_strlen((string)$value) : strlen((string)$value);
+                        if ($len > (int)$param) {
+                            return "{$label} must not exceed {$param} characters.";
+                        }
+                    } elseif ($numericMode) {
+                        if (!is_numeric($value) || (float)$value > (float)$param) {
+                            return "{$label} must not exceed {$param}.";
+                        }
+                    } elseif (is_string($value)) {
+                        $len = function_exists('mb_strlen') ? mb_strlen($value) : strlen($value);
+                        if ($len > (int)$param) {
+                            return "{$label} must not exceed {$param} characters.";
+                        }
+                    } elseif (is_numeric($value) && (float)$value > (float)$param) {
                         return "{$label} must not exceed {$param}.";
-                    }
-                    if (is_string($value) && !is_numeric($value) && strlen($value) > (int)$param) {
-                        return "{$label} must not exceed {$param} characters.";
                     }
                 }
                 break;

@@ -24,8 +24,8 @@
                     <div class="col-6 text-end">
                         <div class="text-muted">Return Date</div>
                         <div class="fw-bold"><?= Helper::formatDate($return['return_date']) ?></div>
-                        <?php if ($return['reason']): ?>
-                        <div class="mt-2"><small class="text-muted">Reason: <?= Helper::escape($return['reason']) ?></small></div>
+                        <?php if (!empty($return['note'])): ?>
+                        <div class="mt-2"><small class="text-muted">Reason: <?= Helper::escape($return['note']) ?></small></div>
                         <?php endif; ?>
                     </div>
                 </div>

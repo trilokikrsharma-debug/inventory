@@ -4,6 +4,12 @@
  */
 class QuotationModel extends Model {
     protected $table = 'quotations';
+    /**
+     * Cached products table columns for optional HSN compatibility.
+     *
+     * @var array<string, bool>|null
+     */
+    private static $productColumnMap = null;
 
     public function getAllWithCustomer($search = '', $fromDate = '', $toDate = '', $status = '', $page = 1, $perPage = RECORDS_PER_PAGE) {
         $offset = ($page - 1) * $perPage;
@@ -27,13 +33,21 @@ class QuotationModel extends Model {
         $params = [$id];
         if (Tenant::id() !== null) { $where[] = "q.company_id = ?"; $params[] = Tenant::id(); }
         $quote = $this->db->query(
-            "SELECT q.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.email as customer_email, u.full_name as created_by_name
+            "SELECT q.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address, c.email as customer_email,
+                    c.state as customer_state, c.tax_number as customer_tax_number, u.full_name as created_by_name
              FROM {$this->table} q LEFT JOIN customers c ON q.customer_id = c.id LEFT JOIN users u ON q.created_by = u.id
              WHERE " . implode(' AND ', $where), $params
         )->fetch();
         if ($quote) {
+            $hsnSelect = $this->productColumnExists('hsn_code')
+                ? ", p.hsn_code as hsn_code"
+                : ", NULL as hsn_code";
             $quote['items'] = $this->db->query(
-                "SELECT qi.*, p.name as product_name, p.sku FROM quotation_items qi LEFT JOIN products p ON qi.product_id = p.id WHERE qi.quotation_id = ?" . (Tenant::id() !== null ? " AND qi.company_id = ?" : ""),
+                "SELECT qi.*, p.name as product_name, p.sku, u.short_name as unit_name{$hsnSelect}
+                 FROM quotation_items qi
+                 LEFT JOIN products p ON qi.product_id = p.id
+                 LEFT JOIN units u ON p.unit_id = u.id
+                 WHERE qi.quotation_id = ?" . (Tenant::id() !== null ? " AND qi.company_id = ?" : ""),
                 Tenant::id() !== null ? [$id, Tenant::id()] : [$id]
             )->fetchAll();
         }
@@ -143,5 +157,25 @@ class QuotationModel extends Model {
             "SELECT COUNT(*) as total, SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft, SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent, SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END) as converted, SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled, COALESCE(SUM(grand_total), 0) as total_value
              FROM {$this->table} WHERE " . implode(' AND ', $where), $params
         )->fetch();
+    }
+
+    /**
+     * Check products table column existence with cached schema lookup.
+     */
+    private function productColumnExists(string $column): bool {
+        if (self::$productColumnMap === null) {
+            self::$productColumnMap = [];
+            try {
+                $rows = $this->db->query("SHOW COLUMNS FROM products")->fetchAll();
+                foreach ($rows as $row) {
+                    if (!empty($row['Field'])) {
+                        self::$productColumnMap[$row['Field']] = true;
+                    }
+                }
+            } catch (Throwable $e) {
+                self::$productColumnMap = [];
+            }
+        }
+        return !empty(self::$productColumnMap[$column]);
     }
 }

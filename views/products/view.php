@@ -29,6 +29,7 @@
                     <tr><td class="text-muted">Category</td><td class="text-end"><?= Helper::escape($product['category_name'] ?? '-') ?></td></tr>
                     <tr><td class="text-muted">Brand</td><td class="text-end"><?= Helper::escape($product['brand_name'] ?? '-') ?></td></tr>
                     <tr><td class="text-muted">Unit</td><td class="text-end"><?= Helper::escape($product['unit_name'] ?? '-') ?></td></tr>
+                    <tr><td class="text-muted">HSN / SAC</td><td class="text-end"><?= !empty($product['hsn_code']) ? Helper::escape($product['hsn_code']) : '-' ?></td></tr>
                     <tr><td class="text-muted">Tax Rate</td><td class="text-end"><?= $product['tax_rate'] !== null ? $product['tax_rate'] . '%' : 'Default' ?></td></tr>
                 </table>
             </div>

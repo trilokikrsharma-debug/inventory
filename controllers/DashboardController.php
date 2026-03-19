@@ -28,17 +28,39 @@ class DashboardController extends Controller {
         $p = 'c' . (Tenant::id() ?? 0) . '_dash_';
         $ttl = defined('CACHE_TTL_DASHBOARD') ? CACHE_TTL_DASHBOARD : 300;
 
-        // All 8 queries cached at 5-minute TTL
-        $salesTotals = Cache::remember($p . 'sales_totals', $ttl, fn() => $salesModel->getDashboardTotals());
-        $purchaseTotals = Cache::remember($p . 'purchase_totals', $ttl, fn() => $purchaseModel->getDashboardTotals());
-        $stockValue = Cache::remember($p . 'stock_value', $ttl, fn() => $productModel->getTotalStockValue());
-        $lowStockProducts = Cache::remember($p . 'low_stock', $ttl, fn() => $productModel->getLowStock(10));
-        $customerDues = Cache::remember($p . 'customer_dues', $ttl, fn() => $customerModel->getTotalDues());
-        $supplierDues = Cache::remember($p . 'supplier_dues', $ttl, fn() => $supplierModel->getTotalDues());
-        $monthlySales = Cache::remember($p . 'monthly_sales_' . date('Y'), $ttl, fn() => $salesModel->getMonthlyData(date('Y')));
-        $monthlyPurchase = Cache::remember($p . 'monthly_purchase_' . date('Y'), $ttl, fn() => $purchaseModel->getMonthlyData(date('Y')));
-        $recentSales = Cache::remember($p . 'recent_sales', $ttl, fn() => $salesModel->getAllWithCustomer('', '', '', '', '', 1, 5));
-        $topProducts = Cache::remember($p . 'top_products', $ttl, fn() => $salesModel->getTopProducts(5));
+        // Single snapshot cache drastically reduces repeated cache file reads
+        // on every dashboard request while still keeping a short TTL.
+        $snapshot = Cache::remember($p . 'snapshot_v2_' . date('Y'), $ttl, function () use (
+            $salesModel,
+            $purchaseModel,
+            $productModel,
+            $customerModel,
+            $supplierModel
+        ) {
+            return [
+                'sales_totals' => $salesModel->getDashboardTotals(),
+                'purchase_totals' => $purchaseModel->getDashboardTotals(),
+                'stock_value' => $productModel->getTotalStockValue(),
+                'low_stock' => $productModel->getLowStock(10),
+                'customer_dues' => $customerModel->getTotalDues(),
+                'supplier_dues' => $supplierModel->getTotalDues(),
+                'monthly_sales' => $salesModel->getMonthlyData(date('Y')),
+                'monthly_purchase' => $purchaseModel->getMonthlyData(date('Y')),
+                'recent_sales' => $salesModel->getAllWithCustomer('', '', '', '', '', 1, 5),
+                'top_products' => $salesModel->getTopProducts(5),
+            ];
+        });
+
+        $salesTotals = $snapshot['sales_totals'] ?? ['today_amount' => 0, 'month_amount' => 0, 'all_amount' => 0];
+        $purchaseTotals = $snapshot['purchase_totals'] ?? ['today_amount' => 0, 'month_amount' => 0, 'all_amount' => 0];
+        $stockValue = $snapshot['stock_value'] ?? ['total_value' => 0, 'selling_value' => 0, 'total_products' => 0];
+        $lowStockProducts = $snapshot['low_stock'] ?? [];
+        $customerDues = $snapshot['customer_dues'] ?? 0;
+        $supplierDues = $snapshot['supplier_dues'] ?? 0;
+        $monthlySales = $snapshot['monthly_sales'] ?? [];
+        $monthlyPurchase = $snapshot['monthly_purchase'] ?? [];
+        $recentSales = $snapshot['recent_sales'] ?? ['data' => []];
+        $topProducts = $snapshot['top_products'] ?? [];
 
         // Map to view format
         $salesChartData = array_fill(1, 12, 0);

@@ -129,6 +129,8 @@ while ($processed < $maxJobs) {
             'DeliverWebhook',
             // Backup processing
             'ProcessBackup',
+            // Report export generation
+            'GenerateReportExport',
             // Invoice email (alias)
             'SendInvoiceEmail',
             // Add new job handlers here ↓

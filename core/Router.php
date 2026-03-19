@@ -24,6 +24,7 @@ class Router {
         'invoice'        => 'InvoiceController',
         'profile'        => 'ProfileController',
         'users'          => 'UserController',
+        'twoFactor'      => 'TwoFactorController',
         'sale_returns'   => 'SaleReturnController',
         'quotations'     => 'QuotationController',
         'backup'         => 'BackupController',
@@ -68,6 +69,20 @@ class Router {
         }
         if ($action === '') {
             $action = 'index';
+        }
+
+        // Pending 2FA logins are intentionally partial sessions.
+        // Keep them fenced into the verification flow until completion.
+        if ($this->hasPendingTwoFactorLogin()) {
+            if ($page === 'logout') {
+                $this->handleLogout();
+                return;
+            }
+
+            if (!$this->isPendingTwoFactorRoute($page, $action)) {
+                $this->redirect('index.php?page=twoFactor&action=verify');
+                return;
+            }
         }
 
         // Super-admins without tenant context should always land on platform dashboard.
@@ -238,6 +253,25 @@ class Router {
             }
         }
 
+        // Dynamic routing fallback (matches keys in $_GET created by .htaccess RewriteRule ^(.*)$ index.php?/$1)
+        foreach ($_GET as $key => $value) {
+            if (str_starts_with($key, '/')) {
+                $path = trim($key, '/');
+                if ($path === '') continue;
+
+                $parts = explode('/', $path);
+                $page = $parts[0];
+                
+                // Allow routing ONLY if the module is registered.
+                if (isset($this->controllerMap[$page])) {
+                    return [
+                        'page' => $page,
+                        'action' => $parts[1] ?? 'index'
+                    ];
+                }
+            }
+        }
+
         return null;
     }
 
@@ -290,6 +324,24 @@ class Router {
 
     private function logRouteThrowable(string $message, \Throwable $e): void {
         error_log('[ROUTER] ' . $message . ' | ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    }
+
+    /**
+     * Whether the current session is waiting for 2FA completion.
+     */
+    private function hasPendingTwoFactorLogin(): bool {
+        return Session::isLoggedIn() && !empty(Session::get('twofa_pending_user_id'));
+    }
+
+    /**
+     * Allow only the 2FA verification flow while login is pending.
+     */
+    private function isPendingTwoFactorRoute(string $page, string $action): bool {
+        if ($page !== 'twoFactor') {
+            return false;
+        }
+
+        return in_array($action, ['verify', 'verifyPost', 'recovery', 'recoveryPost'], true);
     }
 
     /**

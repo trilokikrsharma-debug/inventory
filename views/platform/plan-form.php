@@ -3,6 +3,15 @@ $isEdit = ($mode ?? 'create') === 'edit';
 $action = $isEdit
     ? APP_URL . '/index.php?page=saas_plans&action=edit&id=' . (int)($plan['id'] ?? 0)
     : APP_URL . '/index.php?page=saas_plans&action=create';
+$featuresPretty = '';
+if (!empty($plan['features'])) {
+    $decodedFeatures = json_decode((string)$plan['features'], true);
+    if (is_array($decodedFeatures)) {
+        $featuresPretty = (string)json_encode($decodedFeatures, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    } else {
+        $featuresPretty = (string)$plan['features'];
+    }
+}
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -70,6 +79,12 @@ $action = $isEdit
                            value="<?= e(isset($plan['duration_days']) ? (string)$plan['duration_days'] : '30') ?>">
                 </div>
 
+                <div class="col-md-3">
+                    <label class="form-label">Max Users *</label>
+                    <input type="number" name="max_users" min="1" max="1000000" required class="form-control"
+                           value="<?= e(isset($plan['max_users']) ? (string)$plan['max_users'] : '1') ?>">
+                </div>
+
                 <div class="col-md-4">
                     <label class="form-label">Razorpay Plan ID</label>
                     <input type="text" name="razorpay_plan_id" class="form-control"
@@ -100,6 +115,12 @@ $action = $isEdit
                         </label>
                     </div>
                 </div>
+
+                <div class="col-12">
+                    <label class="form-label">Features (JSON)</label>
+                    <textarea name="features" rows="6" class="form-control" placeholder='{"inventory":true,"invoicing":true,"api":false}'><?= e($featuresPretty) ?></textarea>
+                    <div class="form-text">Use JSON object (feature => true/false) or JSON list (enabled features).</div>
+                </div>
             </div>
         </div>
     </div>
@@ -111,4 +132,3 @@ $action = $isEdit
         <a href="<?= APP_URL ?>/index.php?page=saas_plans" class="btn btn-light border">Cancel</a>
     </div>
 </form>
-

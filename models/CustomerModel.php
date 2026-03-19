@@ -6,6 +6,15 @@ class CustomerModel extends Model {
     protected $table = 'customers';
 
     /**
+     * Keep dashboard and report caches coherent after customer/payments mutations.
+     */
+    private function flushAnalyticCaches(): void {
+        $tenantPrefix = 'c' . (Tenant::id() ?? 0) . '_';
+        Cache::flushPrefix($tenantPrefix . 'dash_');
+        Cache::flushPrefix($tenantPrefix . 'report_');
+    }
+
+    /**
      * Get all customers with pagination and search (tenant-scoped)
      */
     public function getAllPaginated($search = '', $page = 1, $perPage = RECORDS_PER_PAGE) {
@@ -27,7 +36,19 @@ class CustomerModel extends Model {
 
         $total = $this->db->query("SELECT COUNT(*) FROM {$this->table} WHERE {$whereClause}", $params)->fetchColumn();
         $data = $this->db->query(
-            "SELECT * FROM {$this->table} WHERE {$whereClause} ORDER BY name ASC LIMIT {$perPage} OFFSET {$offset}",
+            "SELECT
+                id,
+                name,
+                phone,
+                email,
+                city,
+                current_balance,
+                is_active,
+                created_at
+             FROM {$this->table}
+             WHERE {$whereClause}
+             ORDER BY name ASC
+             LIMIT {$perPage} OFFSET {$offset}",
             $params
         )->fetchAll();
 
@@ -51,7 +72,7 @@ class CustomerModel extends Model {
             $params[] = Tenant::id();
         }
         $res = $this->db->query($sql, $params);
-        Cache::flushPrefix('c' . (Tenant::id() ?? 0) . '_dash_');
+        $this->flushAnalyticCaches();
         return $res;
     }
 
@@ -60,10 +81,11 @@ class CustomerModel extends Model {
      */
     public function getLedger($customerId, $fromDate = null, $toDate = null) {
         $cid = Tenant::id();
-        $dateFilter = '';
         $params = [];
+        $salesDateFilter = '';
+        $paymentDateFilter = '';
+        $returnDateFilter = '';
 
-        // Build params for each UNION segment
         if ($fromDate && $toDate) {
             // Sales
             $params[] = $customerId;
@@ -77,7 +99,9 @@ class CustomerModel extends Model {
             $params[] = $customerId;
             if ($cid !== null) $params[] = $cid;
             $params[] = $fromDate; $params[] = $toDate;
-            $dateFilter = " AND date >= ? AND date <= ?";
+            $salesDateFilter = " AND sale_date >= ? AND sale_date <= ?";
+            $paymentDateFilter = " AND payment_date >= ? AND payment_date <= ?";
+            $returnDateFilter = " AND sr.return_date >= ? AND sr.return_date <= ?";
         } else {
             $params = [$customerId];
             if ($cid !== null) $params[] = $cid;
@@ -91,21 +115,26 @@ class CustomerModel extends Model {
         $tenantFilterS = $cid !== null ? " AND s.company_id = ?" : "";
 
         return $this->db->query(
-            "SELECT * FROM (
-                SELECT sale_date as date, invoice_number as reference, 'Sale' as type,
+            "SELECT txn_at, date, reference, type, debit, credit, id FROM (
+                SELECT COALESCE(created_at, CONCAT(sale_date, ' 00:00:00')) as txn_at,
+                       sale_date as date, invoice_number as reference, 'Sale' as type,
                        grand_total as debit, 0 as credit, id
-                FROM sales WHERE customer_id = ? AND deleted_at IS NULL {$tenantFilter} {$dateFilter}
+                FROM sales WHERE customer_id = ? AND deleted_at IS NULL {$tenantFilter} {$salesDateFilter}
                 UNION ALL
-                SELECT payment_date as date, payment_number as reference, 'Receipt' as type,
+                SELECT COALESCE(created_at, CONCAT(payment_date, ' 00:00:00')) as txn_at,
+                       payment_date as date, payment_number as reference, 'Receipt' as type,
                        0 as debit, amount as credit, id
-                FROM payments WHERE customer_id = ? AND type = 'receipt' AND deleted_at IS NULL {$tenantFilter} {$dateFilter}
+                FROM payments WHERE customer_id = ? AND type = 'receipt' AND deleted_at IS NULL {$tenantFilter} {$paymentDateFilter}
                 UNION ALL
-                SELECT sr.return_date as date, CONCAT('RET-', sr.id) as reference, 'Return' as type,
+                SELECT COALESCE(sr.created_at, CONCAT(sr.return_date, ' 00:00:00')) as txn_at,
+                       sr.return_date as date,
+                       COALESCE(NULLIF(sr.return_number, ''), CONCAT('RET-', LPAD(sr.id, 4, '0'))) as reference,
+                       'Return' as type,
                        0 as debit, sr.total_amount as credit, sr.id
                 FROM sale_returns sr
                 JOIN sales s ON sr.sale_id = s.id
-                WHERE s.customer_id = ? AND sr.deleted_at IS NULL {$tenantFilterS} {$dateFilter}
-            ) as ledger ORDER BY date ASC, id ASC",
+                WHERE s.customer_id = ? AND sr.deleted_at IS NULL {$tenantFilterS} {$returnDateFilter}
+            ) as ledger ORDER BY txn_at ASC, id ASC",
             $params
         )->fetchAll();
     }
@@ -125,9 +154,17 @@ class CustomerModel extends Model {
         $saleParams = [$customerId];
         if ($cid !== null) $saleParams[] = $cid;
 
-        $saleDue = (float)$this->db->query(
-            "SELECT COALESCE(SUM(due_amount), 0) FROM sales WHERE customer_id = ? AND deleted_at IS NULL" . $tenantFilter,
+        $saleTotal = (float)$this->db->query(
+            "SELECT COALESCE(SUM(grand_total), 0) FROM sales WHERE customer_id = ? AND deleted_at IS NULL" . $tenantFilter,
             $saleParams
+        )->fetchColumn();
+
+        $paymentParams = [$customerId];
+        if ($cid !== null) $paymentParams[] = $cid;
+
+        $paymentTotal = (float)$this->db->query(
+            "SELECT COALESCE(SUM(amount), 0) FROM payments WHERE customer_id = ? AND type = 'receipt' AND deleted_at IS NULL" . $tenantFilter,
+            $paymentParams
         )->fetchColumn();
 
         $returnParams = [$customerId];
@@ -141,7 +178,7 @@ class CustomerModel extends Model {
             $returnParams
         )->fetchColumn();
 
-        $correctBalance = $opening + $saleDue - $returnAmt;
+        $correctBalance = $opening + $saleTotal - $paymentTotal - $returnAmt;
 
         $updateSql = "UPDATE {$this->table} SET current_balance = ? WHERE id = ?";
         $updateParams = [$correctBalance, $customerId];
@@ -151,7 +188,7 @@ class CustomerModel extends Model {
         }
         $this->db->query($updateSql, $updateParams);
 
-        Cache::flushPrefix('c' . (Tenant::id() ?? 0) . '_dash_');
+        $this->flushAnalyticCaches();
         return $correctBalance;
     }
 
@@ -176,6 +213,50 @@ class CustomerModel extends Model {
     }
 
     /**
+     * Check whether an email already exists for another active customer (tenant-scoped).
+     */
+    public function emailExists($email, $excludeId = null) {
+        if ($email === null || $email === '') return false;
+
+        $where = ["email = ?", "deleted_at IS NULL"];
+        $params = [$email];
+        if (Tenant::id() !== null) {
+            $where[] = "company_id = ?";
+            $params[] = Tenant::id();
+        }
+        if ($excludeId) {
+            $where[] = "id != ?";
+            $params[] = (int)$excludeId;
+        }
+        return (int)$this->db->query(
+            "SELECT COUNT(*) FROM {$this->table} WHERE " . implode(' AND ', $where),
+            $params
+        )->fetchColumn() > 0;
+    }
+
+    /**
+     * Check whether a phone already exists for another active customer (tenant-scoped).
+     */
+    public function phoneExists($phone, $excludeId = null) {
+        if ($phone === null || $phone === '') return false;
+
+        $where = ["phone = ?", "deleted_at IS NULL"];
+        $params = [$phone];
+        if (Tenant::id() !== null) {
+            $where[] = "company_id = ?";
+            $params[] = Tenant::id();
+        }
+        if ($excludeId) {
+            $where[] = "id != ?";
+            $params[] = (int)$excludeId;
+        }
+        return (int)$this->db->query(
+            "SELECT COUNT(*) FROM {$this->table} WHERE " . implode(' AND ', $where),
+            $params
+        )->fetchColumn() > 0;
+    }
+
+    /**
      * Get customers with dues (tenant-scoped)
      */
     public function getWithDues() {
@@ -186,7 +267,15 @@ class CustomerModel extends Model {
             $params[] = Tenant::id();
         }
         return $this->db->query(
-            "SELECT * FROM {$this->table} WHERE " . implode(' AND ', $where) . " ORDER BY current_balance DESC",
+            "SELECT
+                id,
+                name,
+                phone,
+                city,
+                current_balance
+             FROM {$this->table}
+             WHERE " . implode(' AND ', $where) . "
+             ORDER BY current_balance DESC",
             $params
         )->fetchAll();
     }

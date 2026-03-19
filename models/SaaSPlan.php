@@ -99,9 +99,11 @@ class SaaSPlan extends Model {
         $razorpayPlanId = trim((string)($input['razorpay_plan_id'] ?? ''));
         $isFeatured = !empty($input['is_featured']) ? 1 : 0;
         $sortOrder = max(0, (int)($input['sort_order'] ?? 0));
+        $maxUsers = max(1, (int)($input['max_users'] ?? 1));
         $status = !empty($input['status']) && strtolower((string)$input['status']) === 'inactive'
             ? 'inactive'
             : 'active';
+        $featuresInput = trim((string)($input['features'] ?? ''));
 
         if ($name === '' || mb_strlen($name) < 2 || mb_strlen($name) > 120) {
             $errors[] = 'Plan name must be between 2 and 120 characters.';
@@ -136,8 +138,22 @@ class SaaSPlan extends Model {
             $errors[] = 'Duration days cannot exceed 3650.';
         }
 
+        if ($maxUsers > 1000000) {
+            $errors[] = 'Max users is too high.';
+        }
+
         if ($razorpayPlanId !== '' && !preg_match('/^[a-zA-Z0-9_]+$/', $razorpayPlanId)) {
             $errors[] = 'Razorpay plan id contains invalid characters.';
+        }
+
+        $features = null;
+        if ($featuresInput !== '') {
+            $features = $this->normalizeFeaturesPayload($featuresInput);
+            if ($features === null) {
+                $errors[] = 'Features must be a valid JSON object or JSON list.';
+            }
+        } else {
+            $features = $this->defaultFeaturesForPlan($slug, $name);
         }
 
         $payload = [
@@ -152,6 +168,8 @@ class SaaSPlan extends Model {
             'is_featured' => $isFeatured,
             'sort_order' => $sortOrder,
             'status' => $status,
+            'max_users' => $maxUsers,
+            'features' => $features,
             // Keep legacy columns in sync so old modules do not break.
             'billing_cycle' => $billingType,
             'is_active' => $status === 'active' ? 1 : 0,
@@ -445,5 +463,67 @@ class SaaSPlan extends Model {
         } catch (\Throwable $e) {
             Logger::error('SaaS plan schema check failed', ['error' => $e->getMessage()]);
         }
+    }
+
+    private function normalizeFeaturesPayload(string $json): ?string {
+        $decoded = json_decode($json, true);
+        if (!is_array($decoded)) {
+            return null;
+        }
+
+        $isAssoc = array_keys($decoded) !== range(0, count($decoded) - 1);
+        $normalized = [];
+
+        if ($isAssoc) {
+            foreach ($decoded as $key => $value) {
+                $k = $this->normalizeFeatureKey((string)$key);
+                if ($k === '') {
+                    continue;
+                }
+                $normalized[$k] = (bool)$value;
+            }
+        } else {
+            foreach ($decoded as $item) {
+                $k = $this->normalizeFeatureKey((string)$item);
+                if ($k === '') {
+                    continue;
+                }
+                $normalized[$k] = true;
+            }
+        }
+
+        ksort($normalized);
+        return json_encode($normalized, JSON_UNESCAPED_UNICODE);
+    }
+
+    private function normalizeFeatureKey(string $value): string {
+        $value = strtolower(trim($value));
+        $value = str_replace([' ', '-'], '_', $value);
+        return preg_replace('/[^a-z0-9_]/', '', $value) ?: '';
+    }
+
+    private function defaultFeaturesForPlan(string $slug, string $name): string {
+        $k = strtolower($slug !== '' ? $slug : $name);
+        $features = [
+            'inventory' => true,
+            'invoicing' => true,
+            'api' => false,
+            'crm' => false,
+            'hr' => false,
+        ];
+
+        if (strpos($k, 'professional') !== false || strpos($k, 'growth') !== false) {
+            $features['api'] = true;
+            $features['crm'] = true;
+        }
+
+        if (strpos($k, 'enterprise') !== false || $k === 'pro') {
+            $features['api'] = true;
+            $features['crm'] = true;
+            $features['hr'] = true;
+        }
+
+        ksort($features);
+        return json_encode($features, JSON_UNESCAPED_UNICODE);
     }
 }

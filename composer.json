@@ -47,6 +47,7 @@
     "scripts": {
         "test": "phpunit",
         "lint": "phpstan analyse --level=5 core/ models/ controllers/ services/",
-        "cs": "phpcs --standard=PSR12 core/ models/ controllers/ services/"
+        "cs": "phpcs --standard=PSR12 core/ models/ controllers/ services/",
+        "assets:build": "php cli/build_assets.php"
     }
 }

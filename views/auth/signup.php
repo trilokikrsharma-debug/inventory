@@ -1,3 +1,7 @@
+<?php
+$errors = is_array($errors ?? null) ? $errors : [];
+$minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_LENGTH) : 6;
+?>
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -72,66 +76,168 @@
         <?php if (!empty($error)): ?>
         <div class="alert alert-danger py-2" style="font-size:0.85rem;border-radius:0.5rem;">
             <i class="fas fa-exclamation-circle me-1"></i> <?= Helper::escape($error) ?>
+            <?php if (!empty($errors)): ?>
+                <ul class="mb-0 mt-2 ps-3 small">
+                    <?php foreach ($errors as $fieldError): ?>
+                        <li><?= Helper::escape((string)$fieldError) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 
-        <form method="POST" action="<?= APP_URL ?>/index.php?page=signup" id="signupForm" autocomplete="off">
+        <form method="POST" action="<?= APP_URL ?>/index.php?page=signup" id="signupForm" autocomplete="off" novalidate>
             <?= CSRF::field() ?>
 
             <div class="mb-3">
                 <label class="form-label">Company / Shop Name *</label>
-                <input type="text" class="form-control" name="company_name" 
-                    value="<?= Helper::escape($formData['companyName'] ?? '') ?>" 
-                    placeholder="e.g. Sharma Electronics" required minlength="2">
+                <input
+                    type="text"
+                    class="form-control <?= isset($errors['company_name']) ? 'is-invalid' : '' ?>"
+                    name="company_name"
+                    value="<?= Helper::escape($formData['companyName'] ?? '') ?>"
+                    placeholder="e.g. Sharma Electronics"
+                    required
+                    minlength="2"
+                    maxlength="120"
+                >
+                <div class="invalid-feedback"><?= Helper::escape($errors['company_name'] ?? 'Company name is required.') ?></div>
             </div>
 
             <div class="row g-2 mb-3">
                 <div class="col-md-6">
                     <label class="form-label">Your Full Name *</label>
-                    <input type="text" class="form-control" name="full_name" 
+                    <input
+                        type="text"
+                        class="form-control <?= isset($errors['full_name']) ? 'is-invalid' : '' ?>"
+                        name="full_name"
                         value="<?= Helper::escape($formData['ownerName'] ?? '') ?>"
-                        placeholder="e.g. Rahul Sharma" required minlength="2">
+                        placeholder="e.g. Rahul Sharma"
+                        required
+                        minlength="2"
+                        maxlength="120"
+                    >
+                    <div class="invalid-feedback"><?= Helper::escape($errors['full_name'] ?? 'Full name is required.') ?></div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Phone Number</label>
-                    <input type="tel" class="form-control" name="phone" 
+                    <input
+                        type="tel"
+                        class="form-control <?= isset($errors['phone']) ? 'is-invalid' : '' ?>"
+                        name="phone"
                         value="<?= Helper::escape($formData['phone'] ?? '') ?>"
-                        placeholder="e.g. 9876543210">
+                        placeholder="e.g. 9876543210"
+                        inputmode="tel"
+                        maxlength="20"
+                        pattern="\+?[0-9\s\-()]{7,20}"
+                    >
+                    <div class="invalid-feedback"><?= Helper::escape($errors['phone'] ?? 'Please enter a valid phone number.') ?></div>
                 </div>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Email Address *</label>
-                <input type="email" class="form-control" name="email" 
+                <input
+                    type="email"
+                    class="form-control <?= isset($errors['email']) ? 'is-invalid' : '' ?>"
+                    name="email"
                     value="<?= Helper::escape($formData['email'] ?? '') ?>"
-                    placeholder="you@example.com" required>
+                    placeholder="you@example.com"
+                    required
+                    maxlength="190"
+                    autocomplete="email"
+                >
+                <div class="invalid-feedback"><?= Helper::escape($errors['email'] ?? 'Please enter a valid email address.') ?></div>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Username *</label>
-                <input type="text" class="form-control" name="username" 
+                <input
+                    type="text"
+                    class="form-control <?= isset($errors['username']) ? 'is-invalid' : '' ?>"
+                    name="username"
+                    id="signupUsername"
                     value="<?= Helper::escape($formData['username'] ?? '') ?>"
-                    placeholder="Choose a username (lowercase)" required minlength="3" pattern="[a-z0-9_]+">
+                    placeholder="Choose a username (lowercase)"
+                    required
+                    minlength="3"
+                    maxlength="40"
+                    pattern="[a-z0-9_]{3,40}"
+                    autocomplete="username"
+                >
                 <div class="form-text" style="color:#6c757d;font-size:0.75rem;">Lowercase letters, numbers, and underscores only.</div>
+                <div class="invalid-feedback"><?= Helper::escape($errors['username'] ?? 'Username must be 3-40 lowercase characters.') ?></div>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Referral Code (Optional)</label>
-                <input type="text" class="form-control" name="referral_code"
+                <input
+                    type="text"
+                    class="form-control <?= isset($errors['referral_code']) ? 'is-invalid' : '' ?>"
+                    name="referral_code"
                     value="<?= Helper::escape($formData['referralCode'] ?? ($_GET['ref'] ?? '')) ?>"
-                    placeholder="e.g. ABC123XYZ">
+                    placeholder="e.g. ABC123XYZ"
+                    maxlength="40"
+                    pattern="[A-Za-z0-9_-]{4,40}"
+                >
                 <div class="form-text" style="color:#6c757d;font-size:0.75rem;">If someone invited you, enter their code.</div>
+                <div class="invalid-feedback"><?= Helper::escape($errors['referral_code'] ?? 'Referral code format is invalid.') ?></div>
             </div>
 
-            <div class="row g-2 mb-4">
+            <div class="row g-2 mb-2">
                 <div class="col-md-6">
                     <label class="form-label">Password *</label>
-                    <input type="password" class="form-control" name="password" placeholder="Min 6 characters" required minlength="6">
+                    <div class="input-group">
+                        <input
+                            type="password"
+                            class="form-control <?= isset($errors['password']) ? 'is-invalid' : '' ?>"
+                            id="signupPassword"
+                            name="password"
+                            placeholder="Min <?= (int)$minPasswordLength ?> characters"
+                            required
+                            minlength="<?= (int)$minPasswordLength ?>"
+                            autocomplete="new-password"
+                        >
+                        <button
+                            class="input-group-text"
+                            type="button"
+                            data-toggle-target="signupPassword"
+                            style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1);color:#858796;cursor:pointer;"
+                            aria-label="Toggle password visibility"
+                        >
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="invalid-feedback"><?= Helper::escape($errors['password'] ?? "Password must be at least {$minPasswordLength} characters.") ?></div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Confirm Password *</label>
-                    <input type="password" class="form-control" name="confirm_password" placeholder="Repeat password" required>
+                    <div class="input-group">
+                        <input
+                            type="password"
+                            class="form-control <?= isset($errors['confirm_password']) ? 'is-invalid' : '' ?>"
+                            id="signupConfirmPassword"
+                            name="confirm_password"
+                            placeholder="Repeat password"
+                            required
+                            minlength="<?= (int)$minPasswordLength ?>"
+                            autocomplete="new-password"
+                        >
+                        <button
+                            class="input-group-text"
+                            type="button"
+                            data-toggle-target="signupConfirmPassword"
+                            style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1);color:#858796;cursor:pointer;"
+                            aria-label="Toggle confirm password visibility"
+                        >
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="invalid-feedback"><?= Helper::escape($errors['confirm_password'] ?? 'Passwords must match.') ?></div>
                 </div>
+            </div>
+            <div class="form-text mb-4" style="color:#6c757d;font-size:0.75rem;">
+                Use at least <?= (int)$minPasswordLength ?> characters. Include uppercase + number if your security policy requires it.
             </div>
 
             <button type="submit" class="btn btn-primary">
@@ -157,5 +263,60 @@
         </div>
     </div>
 </div>
+
+<script nonce="<?= $cspNonce ?? '' ?>">
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('signupForm');
+    const password = document.getElementById('signupPassword');
+    const confirmPassword = document.getElementById('signupConfirmPassword');
+    const username = document.getElementById('signupUsername');
+
+    document.querySelectorAll('[data-toggle-target]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const targetId = this.getAttribute('data-toggle-target');
+            const field = targetId ? document.getElementById(targetId) : null;
+            if (!field) return;
+            const icon = this.querySelector('i');
+            const show = field.type === 'password';
+            field.type = show ? 'text' : 'password';
+            if (icon) {
+                icon.classList.toggle('fa-eye', !show);
+                icon.classList.toggle('fa-eye-slash', show);
+            }
+        });
+    });
+
+    if (username) {
+        username.addEventListener('input', function () {
+            this.value = this.value.toLowerCase();
+        });
+    }
+
+    const syncPasswordMatch = function () {
+        if (!password || !confirmPassword) return;
+        if (confirmPassword.value && password.value !== confirmPassword.value) {
+            confirmPassword.setCustomValidity('Passwords do not match.');
+        } else {
+            confirmPassword.setCustomValidity('');
+        }
+    };
+
+    if (password && confirmPassword) {
+        password.addEventListener('input', syncPasswordMatch);
+        confirmPassword.addEventListener('input', syncPasswordMatch);
+    }
+
+    if (form) {
+        form.addEventListener('submit', function (event) {
+            syncPasswordMatch();
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        });
+    }
+});
+</script>
 </body>
 </html>

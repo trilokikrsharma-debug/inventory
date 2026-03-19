@@ -1,50 +1,127 @@
 <?php
 /**
  * Subscription Guard Middleware
- * 
- * Restricts access to premium modules if subscription_status != active.
- * 
- * SECURITY FIX (API-6): Uses Tenant::company() instead of Session::get('company')
- * which was never set — causing the guard to NEVER activate.
- * Super-admins bypass this guard (they don't have tenant subscriptions).
+ *
+ * Blocks tenant users when the company trial or subscription has expired.
+ * Recovery routes remain available so the tenant can renew, log out, or
+ * complete 2FA without being trapped.
  */
 class SubscriptionGuardMiddleware implements MiddlewareInterface {
+    /**
+     * Routes that must stay reachable even when the tenant is blocked.
+     *
+     * @var array<string, string[]|null>
+     */
+    private array $recoveryRoutes = [
+        'logout' => null,
+        'profile' => ['index', 'edit', 'password', 'updateTheme'],
+        'twoFactor' => ['verify', 'verifyPost', 'recovery', 'recoveryPost', 'setup', 'enable', 'disable'],
+        'saas_billing' => ['index', 'subscribe', 'plans', 'create_checkout', 'verify_payment', 'validate_promo', 'upgrade', 'cancel'],
+    ];
+
     public function handle(Request $request, callable $next): void {
+        if (!Session::isLoggedIn() || Session::isSuperAdmin()) {
+            $next($request);
+            return;
+        }
+
         $page = $request->page();
-        
-        // Define premium modules that require an active subscription
-        $premiumModules = ['reports', 'insights', 'quotations', 'saas_dashboard', 'backup'];
-        
-        if (in_array($page, $premiumModules, true) && Session::isLoggedIn()) {
-            // Super-admins bypass subscription checks (platform-level access)
-            if (Session::isSuperAdmin()) {
+        $action = $request->action();
+        $uri = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
+
+        $companyId = Tenant::id();
+        $company = Tenant::company();
+
+        if ($companyId === null || !$company) {
+            if ($this->isRecoveryRoute($page, $action, $uri)) {
                 $next($request);
                 return;
             }
 
-            // SECURITY FIX (API-6): Use Tenant::company() — the actual source of truth.
-            // The old code read Session::get('company') which is NEVER set anywhere,
-            // meaning the guard never blocked anyone — all users had unlimited premium access.
-            $company = Tenant::company();
-            
-            if ($company) {
-                $status = $company['subscription_status'] ?? ($company['status'] ?? 'active');
-                
-                // Allow 'active' and 'trial' subscriptions
-                if (!in_array($status, ['active', 'trial'], true)) {
-                    if ($request->isAjax()) {
-                        header('Content-Type: application/json');
-                        http_response_code(403);
-                        echo json_encode(['success' => false, 'message' => 'Your subscription is inactive. Please upgrade to access this feature.']);
-                    } else {
-                        Session::setFlash('error', 'Your subscription is inactive. Please upgrade to access this feature.');
-                        header('Location: ' . APP_URL . '/index.php?page=pricing');
-                    }
-                    exit;
-                }
-            }
+            $this->deny($request, 'Tenant context is unavailable. Please contact support.');
         }
-        
-        $next($request);
+
+        $subscriptionModel = new TenantSubscription();
+        $state = $subscriptionModel->syncLifecycleState((int)$companyId, true);
+
+        $status = strtolower(trim((string)($state['status'] ?? ($company['subscription_status'] ?? $company['status'] ?? 'inactive'))));
+        $isActive = !empty($state['is_active']);
+        $isTrial = !empty($state['is_trial']);
+        $isExpired = !empty($state['is_expired']);
+        $isManuallyBlocked = !empty($state['is_manually_blocked']);
+
+        if ($isActive || $isTrial) {
+            $next($request);
+            return;
+        }
+
+        if ($this->isRecoveryRoute($page, $action, $uri)) {
+            $next($request);
+            return;
+        }
+
+        $this->deny($request, $this->buildDeniedMessage($status, $isExpired, $isManuallyBlocked));
+    }
+
+    private function isRecoveryRoute(string $page, string $action, string $uri = ''): bool {
+        if ($page === 'login' || $page === 'pricing' || $page === 'signup' || $page === 'demo_login') {
+            return true;
+        }
+
+        if ($page === 'logout') {
+            return true;
+        }
+
+        if ($page === 'twoFactor') {
+            return in_array($action, (array)($this->recoveryRoutes['twoFactor'] ?? []), true);
+        }
+
+        if ($page === 'profile') {
+            return in_array($action, (array)($this->recoveryRoutes['profile'] ?? []), true);
+        }
+
+        if ($page === 'saas_billing') {
+            return in_array($action, (array)($this->recoveryRoutes['saas_billing'] ?? []), true);
+        }
+
+        if ($uri !== '' && str_starts_with($uri, '/api/v1/tenant/subscription/')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function buildDeniedMessage(string $status, bool $isExpired, bool $isManuallyBlocked): string {
+        if ($isManuallyBlocked) {
+            return 'Your account is currently suspended. Please contact support or renew your plan.';
+        }
+
+        if ($isExpired) {
+            return 'Your trial or subscription has expired. Please renew to continue.';
+        }
+
+        if ($status === 'trial') {
+            return 'Your trial period has expired. Please choose a plan to continue.';
+        }
+
+        return 'Your subscription is inactive. Please renew to continue.';
+    }
+
+    private function deny(Request $request, string $message): void {
+        if ($request->isAjax() || $this->isApiRequest()) {
+            header('Content-Type: application/json; charset=UTF-8');
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => $message]);
+            exit;
+        }
+
+        Session::setFlash('error', $message);
+        header('Location: ' . APP_URL . '/index.php?page=saas_billing&action=subscribe');
+        exit;
+    }
+
+    private function isApiRequest(): bool {
+        $uri = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
+        return $uri !== '' && str_starts_with($uri, '/api/');
     }
 }

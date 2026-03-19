@@ -20,6 +20,59 @@
     $showPaidDue = ($company['show_paid_due_on_invoice'] ?? 1) ? true : false;
     $showUnit = ($company['show_unit_on_invoice'] ?? 0) ? true : false;
     $showDiscount = (!isset($company['show_discount_on_invoice']) || !empty($company['show_discount_on_invoice'])) ? true : false;
+    $showHsnOnInvoice = (!isset($company['show_hsn_on_invoice']) || !empty($company['show_hsn_on_invoice'])) ? true : false;
+    $returnedAmount = 0.0;
+    if ($type === 'sale') {
+        $returnedAmount = (float)($returnSummary['returned_amount'] ?? $data['returned_amount'] ?? 0);
+    }
+    $grandTotal = (float)($data['grand_total'] ?? 0);
+    $effectiveTotal = max(0, $grandTotal - $returnedAmount);
+    $displayPaid = ($type === 'sale')
+        ? min((float)($data['paid_amount'] ?? 0), $effectiveTotal)
+        : (float)($data['paid_amount'] ?? 0);
+    $displayDue = ($type === 'sale')
+        ? max(0, $effectiveTotal - $displayPaid)
+        : max(0, (float)($data['due_amount'] ?? 0));
+    $isFullyReturned = ($type === 'sale') && $returnedAmount > 0.009 && $effectiveTotal <= 0.009;
+    $displayStatus = strtolower((string)($data['payment_status'] ?? 'unpaid'));
+    if ($type === 'sale') {
+        if ($isFullyReturned) {
+            $displayStatus = 'returned';
+        } elseif ($displayDue <= 0.009) {
+            $displayStatus = 'paid';
+        } elseif ($displayPaid > 0.009) {
+            $displayStatus = 'partial';
+        } else {
+            $displayStatus = 'unpaid';
+        }
+    }
+    $freightCharge = (float)($data['freight_charge'] ?? $data['shipping_cost'] ?? 0);
+    $loadingCharge = (float)($data['loading_charge'] ?? 0);
+    $shippingCharge = (float)($data['shipping_cost'] ?? ($freightCharge + $loadingCharge));
+    $hasFreightColumn = array_key_exists('freight_charge', $data);
+    $hasLoadingColumn = array_key_exists('loading_charge', $data);
+    $showChargeBreakup = $hasFreightColumn || $hasLoadingColumn;
+    $normalizeState = static function ($value): string {
+        return preg_replace('/[^a-z0-9]/', '', strtolower(trim((string)$value)));
+    };
+    $gstType = strtolower((string)($data['gst_type'] ?? 'auto'));
+    if (!in_array($gstType, ['cgst_sgst', 'igst', 'none'], true)) {
+        $counterpartyState = $type === 'sale'
+            ? ($data['customer_state'] ?? '')
+            : ($data['supplier_state'] ?? '');
+        $companyState = $normalizeState($company['company_state'] ?? '');
+        $partyState = $normalizeState($counterpartyState);
+        $gstType = ($companyState !== '' && $partyState !== '' && $companyState !== $partyState)
+            ? 'igst'
+            : 'cgst_sgst';
+    }
+    if (!$isTaxEnabled || !$isGst) {
+        $gstType = 'none';
+    }
+    $showHsnColumn = $isTaxEnabled && $isGst && $showHsnOnInvoice;
+    $cgstAmount = ($gstType === 'cgst_sgst') ? ((float)($data['tax_amount'] ?? 0) / 2) : 0;
+    $sgstAmount = ($gstType === 'cgst_sgst') ? ((float)($data['tax_amount'] ?? 0) / 2) : 0;
+    $igstAmount = ($gstType === 'igst') ? (float)($data['tax_amount'] ?? 0) : 0;
     $forPdf = !empty($forPdf);
     $formatMoney = static function ($amount) use ($forPdf, $currencySymbol): string {
         return $forPdf
@@ -113,6 +166,7 @@
         .badge-paid { background: #d4edda; color: #155724; }
         .badge-unpaid { background: #f8d7da; color: #721c24; }
         .badge-partial { background: #fff3cd; color: #856404; }
+        .badge-returned { background: #cfe2ff; color: #084298; }
 
         @media print {
             body { margin: 0; }
@@ -176,7 +230,7 @@
             </div>
             <?php if ($showPaidDue): ?>
             <div style="margin-top:5px;">
-                <span class="badge badge-<?= $data['payment_status'] ?? 'unpaid' ?>"><?= strtoupper($data['payment_status'] ?? 'unpaid') ?></span>
+                <span class="badge badge-<?= Helper::escape($displayStatus) ?>"><?= strtoupper(Helper::escape($displayStatus)) ?></span>
             </div>
             <?php endif; ?>
         </div>
@@ -212,6 +266,7 @@
             <tr>
                 <th style="width:30px;">#</th>
                 <th>Product</th>
+                <?php if ($showHsnColumn): ?><th style="text-align:left; width:80px;">HSN/SAC</th><?php endif; ?>
                 <th style="text-align:center; width:60px;">Qty</th>
                 <th style="text-align:right; width:90px;">Rate</th>
                 <?php if ($isTaxEnabled && $isGst): ?>
@@ -231,6 +286,7 @@
         <tr>
             <td><?= $i ?></td>
             <td><?= Helper::escape($item['product_name'] ?? '') ?></td>
+            <?php if ($showHsnColumn): ?><td><?= !empty($item['hsn_code']) ? Helper::escape($item['hsn_code']) : '-' ?></td><?php endif; ?>
             <td style="text-align:center;">
                 <?= Helper::formatQty($item['quantity'] ?? 0) ?>
                 <?php if ($showUnit && isset($item['unit_name'])): ?> <?= Helper::escape($item['unit_name']) ?><?php endif; ?>
@@ -264,9 +320,11 @@
         <div class="summary">
             <div class="summary-row"><span>Subtotal</span><span><?= $formatMoney($data['subtotal'] ?? 0) ?></span></div>
             <?php if ($isTaxEnabled && ($data['tax_amount'] ?? 0) > 0): ?>
-                <?php if ($isGst): ?>
-                <div class="summary-row"><span>CGST</span><span><?= $formatMoney(($data['tax_amount'] ?? 0) / 2) ?></span></div>
-                <div class="summary-row"><span>SGST</span><span><?= $formatMoney(($data['tax_amount'] ?? 0) / 2) ?></span></div>
+                <?php if ($isGst && $gstType === 'igst'): ?>
+                <div class="summary-row"><span>IGST</span><span><?= $formatMoney($igstAmount) ?></span></div>
+                <?php elseif ($isGst && $gstType === 'cgst_sgst'): ?>
+                <div class="summary-row"><span>CGST</span><span><?= $formatMoney($cgstAmount) ?></span></div>
+                <div class="summary-row"><span>SGST</span><span><?= $formatMoney($sgstAmount) ?></span></div>
                 <?php else: ?>
                 <div class="summary-row"><span>Tax</span><span><?= $formatMoney($data['tax_amount']) ?></span></div>
                 <?php endif; ?>
@@ -274,17 +332,31 @@
             <?php if (($data['discount_amount'] ?? 0) > 0): ?>
             <div class="summary-row"><span>Discount</span><span>-<?= $formatMoney($data['discount_amount']) ?></span></div>
             <?php endif; ?>
-            <?php if (($data['shipping_cost'] ?? 0) > 0): ?>
+            <?php if ($showChargeBreakup): ?>
+                <?php if ($freightCharge > 0): ?>
+                <div class="summary-row"><span>Freight</span><span><?= $formatMoney($freightCharge) ?></span></div>
+                <?php endif; ?>
+                <?php if ($loadingCharge > 0): ?>
+                <div class="summary-row"><span>Loading</span><span><?= $formatMoney($loadingCharge) ?></span></div>
+                <?php endif; ?>
+                <?php if ($freightCharge > 0 && $loadingCharge > 0): ?>
+                <div class="summary-row"><span>Total Charges</span><span><?= $formatMoney($shippingCharge) ?></span></div>
+                <?php endif; ?>
+            <?php elseif (($data['shipping_cost'] ?? 0) > 0): ?>
             <div class="summary-row"><span>Shipping</span><span><?= $formatMoney($data['shipping_cost']) ?></span></div>
             <?php endif; ?>
             <?php if (isset($data['round_off']) && $data['round_off'] != 0): ?>
             <div class="summary-row"><span>Round Off</span><span><?= $formatMoney($data['round_off']) ?></span></div>
             <?php endif; ?>
-            <div class="summary-row total"><span>Grand Total</span><span><?= $formatMoney($data['grand_total'] ?? 0) ?></span></div>
+            <div class="summary-row total"><span>Grand Total</span><span><?= $formatMoney($grandTotal) ?></span></div>
+            <?php if ($type === 'sale' && $returnedAmount > 0): ?>
+            <div class="summary-row"><span>Returned</span><span style="color:#fd7e14;">-<?= $formatMoney($returnedAmount) ?></span></div>
+            <div class="summary-row"><span>Net Total</span><span><?= $formatMoney($effectiveTotal) ?></span></div>
+            <?php endif; ?>
             <?php if ($showPaidDue): ?>
-            <div class="summary-row"><span>Paid</span><span style="color:#28a745;"><?= $formatMoney($data['paid_amount'] ?? 0) ?></span></div>
-            <?php if (($data['due_amount'] ?? 0) > 0): ?>
-            <div class="summary-row"><span>Balance Due</span><span style="color:#dc3545; font-weight:600;"><?= $formatMoney($data['due_amount']) ?></span></div>
+            <div class="summary-row"><span>Paid</span><span style="color:#28a745;"><?= $formatMoney($displayPaid) ?></span></div>
+            <?php if ($displayDue > 0): ?>
+            <div class="summary-row"><span>Balance Due</span><span style="color:#dc3545; font-weight:600;"><?= $formatMoney($displayDue) ?></span></div>
             <?php endif; ?>
             <?php endif; ?>
         </div>

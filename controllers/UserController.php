@@ -233,8 +233,34 @@ class UserController extends Controller {
      */
     private function loadRoles() {
         try {
-            return Database::getInstance()->query(
-                "SELECT id, name, display_name, is_super_admin FROM roles ORDER BY id ASC"
+            $db = Database::getInstance();
+            $tenantId = Tenant::id();
+
+            if (Session::isSuperAdmin()) {
+                return $db->query(
+                    "SELECT id, name, display_name, company_id, is_super_admin
+                     FROM roles
+                     ORDER BY company_id IS NULL DESC, company_id ASC, display_name ASC, id ASC"
+                )->fetchAll();
+            }
+
+            if ($tenantId !== null) {
+                return $db->query(
+                    "SELECT id, name, display_name, company_id, is_super_admin
+                     FROM roles
+                     WHERE (company_id IS NULL OR company_id = ?)
+                       AND IFNULL(is_super_admin, 0) = 0
+                     ORDER BY company_id IS NULL DESC, display_name ASC, id ASC",
+                    [$tenantId]
+                )->fetchAll();
+            }
+
+            return $db->query(
+                "SELECT id, name, display_name, company_id, is_super_admin
+                 FROM roles
+                 WHERE company_id IS NULL
+                   AND IFNULL(is_super_admin, 0) = 0
+                 ORDER BY display_name ASC, id ASC"
             )->fetchAll();
         } catch (\Exception $e) {
             error_log('[RBAC] Failed to load roles: ' . $e->getMessage());
@@ -250,16 +276,23 @@ class UserController extends Controller {
      * @return array ['role_id' => int, 'role_name' => string, 'legacy_role' => string, 'is_super_admin' => bool]
      */
     private function resolveRoleById($roleId) {
-        $default = ['role_id' => 5, 'role_name' => 'Staff', 'legacy_role' => 'staff', 'is_super_admin' => false];
+        $default = $this->resolveFallbackRole();
         if ($roleId <= 0) return $default;
 
         try {
             $role = Database::getInstance()->query(
-                "SELECT id, name, display_name, is_super_admin FROM roles WHERE id = ?",
+                "SELECT id, name, display_name, company_id, is_super_admin
+                 FROM roles
+                 WHERE id = ?",
                 [$roleId]
             )->fetch();
 
-            if (!$role) return $default;
+            if (!$role || !$this->isRoleAssignable($role)) {
+                if ($role && !$this->isRoleAssignable($role)) {
+                    error_log('[RBAC] Blocked cross-tenant role assignment for role ID ' . $roleId);
+                }
+                return $default;
+            }
 
             $isSuperAdminRole = (bool)$role['is_super_admin'];
 
@@ -273,12 +306,109 @@ class UserController extends Controller {
             return [
                 'role_id'        => (int)$role['id'],
                 'role_name'      => $role['display_name'],
-                'legacy_role'    => $isSuperAdminRole ? 'admin' : 'staff',
+                'legacy_role'    => $this->legacyRoleFor($role),
                 'is_super_admin' => $isSuperAdminRole,
             ];
         } catch (\Exception $e) {
             error_log('[RBAC] Failed to resolve role: ' . $e->getMessage());
             return $default;
         }
+    }
+
+    /**
+     * Fall back to the safest tenant-visible role instead of assuming role ID 5.
+     */
+    private function resolveFallbackRole(): array {
+        try {
+            $db = Database::getInstance();
+            $tenantId = Tenant::id();
+
+            $sql = "SELECT id, name, display_name, company_id, is_super_admin
+                    FROM roles
+                    WHERE IFNULL(is_super_admin, 0) = 0";
+            $params = [];
+
+            if ($tenantId !== null) {
+                $sql .= " AND (company_id IS NULL OR company_id = ?)";
+                $params[] = $tenantId;
+            } else {
+                $sql .= " AND company_id IS NULL";
+            }
+
+            $sql .= " ORDER BY
+                        CASE
+                            WHEN LOWER(name) IN ('admin', 'tenant_admin', 'owner', 'administrator') THEN 0
+                            WHEN LOWER(display_name) LIKE '%admin%' THEN 1
+                            ELSE 2
+                        END,
+                        company_id IS NULL DESC,
+                        id ASC
+                      LIMIT 1";
+
+            $role = $db->query($sql, $params)->fetch();
+            if ($role) {
+                return [
+                    'role_id'        => (int)$role['id'],
+                    'role_name'      => $role['display_name'],
+                    'legacy_role'    => $this->legacyRoleFor($role),
+                    'is_super_admin' => false,
+                ];
+            }
+        } catch (\Throwable $e) {
+            error_log('[RBAC] Failed to resolve fallback role: ' . $e->getMessage());
+        }
+
+        return [
+            'role_id'        => null,
+            'role_name'      => 'Staff',
+            'legacy_role'    => 'staff',
+            'is_super_admin' => false,
+        ];
+    }
+
+    /**
+     * Check whether a role is visible to the current tenant session.
+     */
+    private function isRoleAssignable(array $role): bool {
+        if (Session::isSuperAdmin()) {
+            return true;
+        }
+
+        if (!empty($role['is_super_admin'])) {
+            return false;
+        }
+
+        $tenantId = Tenant::id();
+        $companyId = isset($role['company_id']) && $role['company_id'] !== null ? (int)$role['company_id'] : null;
+
+        if ($tenantId === null) {
+            return $companyId === null;
+        }
+
+        return $companyId === null || $companyId === (int)$tenantId;
+    }
+
+    /**
+     * Convert an RBAC role into the legacy admin/staff enum value.
+     */
+    private function legacyRoleFor(array $role): string {
+        $name = strtolower(trim((string)($role['name'] ?? '')));
+        $display = strtolower(trim((string)($role['display_name'] ?? '')));
+
+        if (!empty($role['is_super_admin'])) {
+            return 'admin';
+        }
+
+        if (
+            $name === 'admin'
+            || $name === 'tenant_admin'
+            || $name === 'owner'
+            || $name === 'administrator'
+            || strpos($display, 'admin') !== false
+        ) {
+            return 'admin';
+        }
+
+        return 'staff';
     }
 }

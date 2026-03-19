@@ -22,7 +22,7 @@ class BackupController extends Controller {
 
     protected $allowedActions = ['index', 'create', 'download', 'delete', 'restore'];
 
-    private $backupDir;
+    private string $backupDir;
 
     /**
      * Tables that contain per-tenant data (have company_id column).
@@ -47,10 +47,9 @@ class BackupController extends Controller {
     ];
 
     public function __construct() {
-        $this->backupDir = BASE_PATH . '/uploads/backups';
-        if (!is_dir($this->backupDir)) {
-            mkdir($this->backupDir, 0755, true);
-        }
+        $this->backupDir = $this->resolveBackupRoot();
+        $this->ensureDir($this->backupDir);
+        $this->ensureDir($this->getFullBackupDir());
     }
 
     // =========================================================
@@ -100,6 +99,25 @@ class BackupController extends Controller {
         // SECURITY: Only super-admin can create full backups
         if ($backupType === 'full') {
             $this->requireSuperAdmin();
+        }
+
+        $currentUser = Session::get('user') ?? [];
+        $queuePayload = [
+            'company_id' => $companyId,
+            'backup_type' => $backupType,
+            'is_super_admin' => (bool)$isSuperAdmin,
+            'user_id' => (int)($currentUser['id'] ?? 0),
+            'requested_at' => date(DATETIME_FORMAT_DB),
+        ];
+
+        try {
+            $jobId = JobDispatcher::dispatch('backup', 'ProcessBackup', $queuePayload, 2, 2);
+            $this->logActivity('Queued backup job #' . $jobId, 'backup', $jobId, $backupType);
+            $this->setFlash('success', 'Backup queued successfully. It will appear in the list once processing completes.');
+            $this->redirect('index.php?page=backup');
+            return;
+        } catch (\Throwable $queueError) {
+            error_log('[Backup] Queue dispatch failed, falling back to sync: ' . $queueError->getMessage());
         }
 
         try {
@@ -236,10 +254,10 @@ class BackupController extends Controller {
 
             if ($source === 'existing') {
                 $file = basename($this->post('backup_file'));
-                // Only allow restoring from full backup directory
-                $filepath = $this->getFullBackupDir() . '/' . $file;
+                // Only allow restoring from known full backup directories
+                $filepath = $this->resolveFullBackupPath($file);
 
-                if (!file_exists($filepath)) {
+                if (!$filepath || !file_exists($filepath)) {
                     throw new Exception("Backup file not found in full backup directory.");
                 }
 
@@ -567,12 +585,60 @@ class BackupController extends Controller {
     }
 
     /**
+     * Legacy full-backup directory from older deployments.
+     */
+    private function getLegacyFullBackupDir() {
+        return $this->legacyBackupRoot() . '/full';
+    }
+
+    /**
      * Ensure a directory exists.
      */
     private function ensureDir($dir) {
         if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+            if (!mkdir($dir, 0755, true) && !is_dir($dir)) {
+                throw new \RuntimeException('Unable to create backup directory: ' . $dir);
+            }
         }
+    }
+
+    /**
+     * Resolve the safest writable backup root.
+     *
+     * Preference order:
+     *  1. Outside the web root
+     *  2. System temp directory
+     *  3. Legacy uploads path for compatibility
+     */
+    private function resolveBackupRoot(): string {
+        $candidates = [
+            dirname(dirname(BASE_PATH)) . '/inventory_backups',
+            rtrim(sys_get_temp_dir(), '\\/') . '/invenbill_backups',
+            $this->legacyBackupRoot(),
+        ];
+
+        foreach ($candidates as $candidate) {
+            try {
+                if (!is_dir($candidate) && !mkdir($candidate, 0755, true) && !is_dir($candidate)) {
+                    continue;
+                }
+                if (is_writable($candidate)) {
+                    return $candidate;
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+
+        // Final fallback keeps the app functional even in constrained environments.
+        return $this->legacyBackupRoot();
+    }
+
+    /**
+     * Legacy upload-based backup location kept for restore compatibility.
+     */
+    private function legacyBackupRoot(): string {
+        return BASE_PATH . '/uploads/backups';
     }
 
     /**
@@ -592,7 +658,8 @@ class BackupController extends Controller {
         }
 
         // Check legacy root backup directory (pre-migration backups)
-        $legacyPath = $this->backupDir . '/' . $filename;
+        $legacyRoot = $this->legacyBackupRoot();
+        $legacyPath = $legacyRoot . '/' . $filename;
         if (file_exists($legacyPath) && $isSuperAdmin) {
             return $legacyPath;
         }
@@ -602,6 +669,11 @@ class BackupController extends Controller {
             $fullPath = $this->getFullBackupDir() . '/' . $filename;
             if (file_exists($fullPath)) {
                 return $fullPath;
+            }
+
+            $legacyFullPath = $this->getLegacyFullBackupDir() . '/' . $filename;
+            if (file_exists($legacyFullPath)) {
+                return $legacyFullPath;
             }
         }
 
@@ -629,17 +701,24 @@ class BackupController extends Controller {
             $this->scanBackupDir($this->getFullBackupDir(), $backups, 'full');
 
             // Legacy: root-level backup files (from before tenant isolation)
-            $legacyFiles = glob($this->backupDir . '/*.sql');
-            if ($legacyFiles) {
-                foreach ($legacyFiles as $file) {
-                    $backups[] = [
-                        'filename' => basename($file),
-                        'size'     => filesize($file),
-                        'created'  => date('Y-m-d H:i:s', filemtime($file)),
-                        'path'     => $file,
-                        'type'     => 'legacy',
-                    ];
+            $legacyRoot = $this->legacyBackupRoot();
+            if ($legacyRoot !== $this->backupDir) {
+                $legacyFiles = glob($legacyRoot . '/*.sql');
+                if ($legacyFiles) {
+                    foreach ($legacyFiles as $file) {
+                        $backups[] = [
+                            'filename' => basename($file),
+                            'size'     => filesize($file),
+                            'created'  => date('Y-m-d H:i:s', filemtime($file)),
+                            'path'     => $file,
+                            'type'     => 'legacy',
+                        ];
+                    }
                 }
+            }
+
+            if ($this->getLegacyFullBackupDir() !== $this->getFullBackupDir()) {
+                $this->scanBackupDir($this->getLegacyFullBackupDir(), $backups, 'legacy_full');
             }
         }
 
@@ -669,6 +748,23 @@ class BackupController extends Controller {
                 'type'     => $type,
             ];
         }
+    }
+
+    /**
+     * Resolve full-backup files from current and legacy locations.
+     */
+    private function resolveFullBackupPath(string $file): ?string {
+        $current = $this->getFullBackupDir() . '/' . $file;
+        if (file_exists($current)) {
+            return $current;
+        }
+
+        $legacy = $this->getLegacyFullBackupDir() . '/' . $file;
+        if (file_exists($legacy)) {
+            return $legacy;
+        }
+
+        return null;
     }
 
     // =========================================================

@@ -10,16 +10,33 @@
  * Local XAMPP defaults are used as fallback.
  */
 
-// SECURITY: Database credentials must come from environment variables.
-$dbUser = getenv('DB_USER');
-$dbPass = getenv('DB_PASS');
-if ($dbPass === false) {
-    // Optional compatibility alias.
-    $dbPass = getenv('DB_PASSWORD');
-}
+// SECURITY: Database credentials are loaded from environment variables.
+// Empty env values are treated as missing to avoid accidental blank overrides.
+$firstEnv = static function (array $keys, $default = null, bool $allowEmpty = false) {
+    foreach ($keys as $key) {
+        $value = getenv($key);
+        if ($value === false) {
+            continue;
+        }
+        if ($allowEmpty || trim((string)$value) !== '') {
+            return (string)$value;
+        }
+    }
+    return $default;
+};
+
+$dbUser = $firstEnv(
+    ['DB_USER', 'DB_USERNAME'],
+    (defined('APP_ENV') && APP_ENV !== 'production') ? 'root' : null
+);
+$dbPass = $firstEnv(
+    ['DB_PASS', 'DB_PASSWORD'],
+    (defined('APP_ENV') && APP_ENV !== 'production') ? '' : null,
+    true
+);
 
 if (defined('APP_ENV') && APP_ENV === 'production') {
-    if ($dbUser === false || trim((string)$dbUser) === '' || $dbPass === false || trim((string)$dbPass) === '') {
+    if ($dbUser === null || trim((string)$dbUser) === '' || $dbPass === null || trim((string)$dbPass) === '') {
         error_log('[FATAL] DB_USER and DB_PASS/DB_PASSWORD must be set in production.');
         http_response_code(503);
         die('Service unavailable: database configuration error. Check server environment.');
@@ -30,8 +47,8 @@ return [
     'host'     => getenv('DB_HOST') ?: 'localhost',
     'port'     => (int)(getenv('DB_PORT') ?: 3306),
     'database' => getenv('DB_NAME') ?: 'inventory_billing',
-    'username' => $dbUser !== false ? (string)$dbUser : '',
-    'password' => $dbPass !== false ? (string)$dbPass : '',
+    'username' => $dbUser !== null ? (string)$dbUser : '',
+    'password' => $dbPass !== null ? (string)$dbPass : '',
     'charset'  => 'utf8mb4',
     'collation'=> 'utf8mb4_unicode_ci',
     'options'  => [

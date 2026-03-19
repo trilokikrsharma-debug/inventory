@@ -6,17 +6,68 @@ class SettingsController extends Controller {
     public function index() {
         $this->requirePermission('settings.manage');
         $settings = (new SettingsModel())->getSettings();
+        $activeTab = (string)$this->get('tab', 'company');
         if ($this->isPost()) {
             $this->validateCSRF();
 
+            $validation = Validator::make($_POST, [
+                'company_name' => 'nullable|string|max:150',
+                'company_email' => 'nullable|email|max:255',
+                'company_phone' => 'nullable|string|max:30',
+                'company_address' => 'nullable|string|max:500',
+                'company_city' => 'nullable|string|max:100',
+                'company_state' => 'nullable|string|max:100',
+                'company_zip' => 'nullable|string|max:20',
+                'company_country' => 'nullable|string|max:100',
+                'company_website' => 'nullable|string|max:255',
+                'tax_number' => 'nullable|string|max:100',
+                'tax_number_nongst' => 'nullable|string|max:100',
+                'tax_rate' => 'nullable|numeric|min:0|max:100',
+                'tax_rate_nongst' => 'nullable|numeric|min:0|max:100',
+                'currency_symbol' => 'nullable|string|max:10',
+                'currency_code' => 'nullable|string|max:10',
+                'low_stock_threshold' => 'nullable|integer|min:0|max:100000',
+                'invoice_prefix' => 'nullable|string|max:20',
+                'purchase_prefix' => 'nullable|string|max:20',
+                'payment_prefix' => 'nullable|string|max:20',
+                'receipt_prefix' => 'nullable|string|max:20',
+                'invoice_title' => 'nullable|string|max:100',
+                'purchase_invoice_title' => 'nullable|string|max:100',
+                'invoice_footer_text' => 'nullable|string|max:255',
+                'invoice_terms' => 'nullable|string|max:1000',
+                'invoice_bank_details' => 'nullable|string|max:1000',
+                'invoice_signature_label' => 'nullable|string|max:100',
+                'auto_round_off_rupee' => 'nullable|boolean',
+                'show_hsn_on_invoice' => 'nullable|boolean',
+            ]);
+            if ($validation->fails()) {
+                $this->setFlash('error', $validation->firstError());
+                $this->redirect('index.php?page=settings&tab=' . urlencode($activeTab));
+                return;
+            }
+
             $enableGst = $this->post('enable_gst', 0) ? 1 : 0;
             $enableTax = $this->post('enable_tax', 0) ? 1 : 0;
+            if (!$enableGst) {
+                // Non-GST billing mode: no tax should be applied.
+                $enableTax = 0;
+            }
+            if (!$enableTax) {
+                // Tax is master switch; keep GST off for consistent rendering and reporting.
+                $enableGst = 0;
+            }
 
             // If non-GST, use the non-GST tax rate field if provided
             $taxRate = (float)$this->post('tax_rate', 18);
             if (!$enableGst && $this->post('tax_rate_nongst') !== null) {
                 $taxRate = (float)$this->post('tax_rate_nongst', 0);
             }
+            if (!$enableTax) {
+                $taxRate = 0.0;
+            }
+            $taxNumber = $enableGst
+                ? $this->sanitize($this->post('tax_number'))
+                : $this->sanitize($this->post('tax_number_nongst', $this->post('tax_number')));
 
             $data = [
                 // Company info
@@ -31,7 +82,7 @@ class SettingsController extends Controller {
                 'company_website' => $this->sanitize($this->post('company_website')),
 
                 // Tax & GST
-                'tax_number'  => $this->sanitize($this->post('tax_number')),
+                'tax_number'  => $taxNumber,
                 'enable_tax'  => $enableTax,
                 'enable_gst'  => $enableGst,
                 'tax_rate'    => $taxRate,
@@ -57,6 +108,8 @@ class SettingsController extends Controller {
                 'show_paid_due_on_invoice' => $this->post('show_paid_due_on_invoice', 0) ? 1 : 0,
                 'show_unit_on_invoice' => $this->post('show_unit_on_invoice', 0) ? 1 : 0,
                 'show_discount_on_invoice' => $this->post('show_discount_on_invoice', 0) ? 1 : 0,
+                'show_hsn_on_invoice' => $this->post('show_hsn_on_invoice', 0) ? 1 : 0,
+                'auto_round_off_rupee' => $this->post('auto_round_off_rupee', 0) ? 1 : 0,
 
                 'theme_color' => $this->post('theme_color', '#4e73df'),
             ];
@@ -72,6 +125,8 @@ class SettingsController extends Controller {
             $tenantPrefix = 'c' . (Tenant::id() ?? 0) . '_';
             Cache::delete($tenantPrefix . 'sidebar_lowstock');
             Cache::flushPrefix($tenantPrefix . 'dash_');
+            Cache::flushPrefix($tenantPrefix . 'report_');
+            Cache::flushPrefix($tenantPrefix . 'products_');
 
             // Log what changed at a high level (not every field)
             $changes = [];
@@ -83,7 +138,7 @@ class SettingsController extends Controller {
             $this->logActivity('Updated system settings', 'settings', null, !empty($changes) ? implode(', ', $changes) : null);
 
             $this->setFlash('success', 'Settings updated successfully.');
-            $this->redirect('index.php?page=settings');
+            $this->redirect('index.php?page=settings&tab=' . urlencode($activeTab));
         }
         $this->view('settings.index', ['pageTitle' => 'Settings', 'settings' => $settings]);
     }

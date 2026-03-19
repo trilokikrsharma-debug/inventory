@@ -18,6 +18,13 @@ class Database {
      * Adds connection timeout (5s) and retry-once on transient failure.
      */
     private function __construct() {
+        $this->connect();
+    }
+
+    /**
+     * Establish a PDO connection with retry support.
+     */
+    private function connect(int $maxRetries = 2): void {
         $config = require CONFIG_PATH . '/database.php';
         
         $dsn = sprintf(
@@ -38,7 +45,6 @@ class Database {
         $options[PDO::ATTR_EMULATE_PREPARES]   = false;
 
         // Retry-once on transient connection failure (e.g., MySQL restart, network blip)
-        $maxRetries = 2;
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
             try {
                 $this->pdo = new PDO($dsn, $config['username'], $config['password'], $options);
@@ -80,20 +86,58 @@ class Database {
      * Prepare and execute a query
      */
     public function query($sql, $params = []) {
-        try {
-            $this->statement = $this->pdo->prepare($sql);
-            $this->statement->execute($params);
-            return $this;
-        } catch (PDOException $e) {
-            if (class_exists('Logger')) {
-                Logger::log(Logger::ERROR, 'Database Exception', [
-                    'error' => $e->getMessage(),
-                    'sql' => $sql,
-                    'params' => $params
-                ], Logger::CHANNEL_ERROR);
+        $attempt = 0;
+        while (true) {
+            try {
+                $this->statement = $this->pdo->prepare($sql);
+                $this->statement->execute($params);
+                return $this;
+            } catch (PDOException $e) {
+                $canRetry = $attempt === 0
+                    && $this->isTransientDisconnect($e)
+                    && !$this->isInTransaction();
+
+                if ($canRetry) {
+                    $attempt++;
+                    if (class_exists('Logger')) {
+                        Logger::warning('Transient DB disconnect detected, reconnecting query once', [
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                    $this->connect();
+                    continue;
+                }
+
+                if (class_exists('Logger')) {
+                    Logger::log(Logger::ERROR, 'Database Exception', [
+                        'error' => $e->getMessage(),
+                        'sql' => $sql,
+                        'params_count' => is_countable($params) ? count($params) : 0,
+                    ], Logger::CHANNEL_ERROR);
+                }
+                throw $e;
             }
-            throw $e;
         }
+    }
+
+    private function isInTransaction(): bool {
+        try {
+            return $this->pdo instanceof PDO && $this->pdo->inTransaction();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function isTransientDisconnect(PDOException $e): bool {
+        $message = strtolower((string)$e->getMessage());
+        $driverCode = (int)($e->errorInfo[1] ?? 0);
+
+        if (in_array($driverCode, [2006, 2013], true)) {
+            return true;
+        }
+
+        return str_contains($message, 'server has gone away')
+            || str_contains($message, 'lost connection');
     }
 
     /**

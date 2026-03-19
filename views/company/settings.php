@@ -1,12 +1,26 @@
 <?php $pageTitle = 'Company Settings'; ?>
+<?php
+$planName = (string)($currentPlan['name'] ?? Tenant::planName() ?? 'Starter');
+$planStatus = strtolower((string)($company['subscription_status'] ?? 'trial'));
+$planStatusClass = 'secondary';
+$planStatusTextClass = '';
+if ($planStatus === 'active') {
+    $planStatusClass = 'success';
+} elseif ($planStatus === 'trial') {
+    $planStatusClass = 'warning';
+    $planStatusTextClass = 'text-dark';
+} elseif (in_array($planStatus, ['inactive', 'suspended', 'cancelled'], true)) {
+    $planStatusClass = 'danger';
+}
+?>
 
 <div class="row g-3 mb-4">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <h4 class="mb-0"><i class="fas fa-building me-2 text-primary"></i>Company Settings</h4>
             <?php if (Tenant::company()): ?>
-            <span class="badge bg-<?= Tenant::plan() === 'pro' ? 'success' : (Tenant::plan() === 'growth' ? 'primary' : 'secondary') ?>" style="font-size:0.8rem;">
-                <i class="fas fa-tag me-1"></i><?= ucfirst(Tenant::plan() ?? 'starter') ?> Plan
+            <span class="badge bg-<?= $planStatusClass ?> <?= $planStatusTextClass ?>" style="font-size:0.8rem;">
+                <i class="fas fa-tag me-1"></i><?= Helper::escape($planName) ?> Plan
             </span>
             <?php endif; ?>
         </div>
@@ -108,12 +122,21 @@
                 <div class="card-body">
                     <table class="table table-sm mb-0">
                         <tr><td class="text-muted">Company ID</td><td class="fw-bold">#<?= $company['id'] ?? '' ?></td></tr>
-                        <tr><td class="text-muted">Plan</td><td><span class="badge bg-primary"><?= ucfirst($company['plan'] ?? 'starter') ?></span></td></tr>
-                        <tr><td class="text-muted">Status</td><td><span class="badge bg-success"><?= ucfirst($company['status'] ?? 'active') ?></span></td></tr>
+                        <tr>
+                            <td class="text-muted">Plan</td>
+                            <td>
+                                <span class="badge bg-primary"><?= Helper::escape($planName) ?></span>
+                                <?php if (!empty($currentPlan['id'])): ?>
+                                    <small class="text-muted ms-1">#<?= (int)$currentPlan['id'] ?></small>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr><td class="text-muted">Subscription</td><td><span class="badge bg-<?= $planStatusClass ?> <?= $planStatusTextClass ?>"><?= ucfirst($planStatus) ?></span></td></tr>
+                        <tr><td class="text-muted">Account</td><td><span class="badge bg-success"><?= ucfirst($company['status'] ?? 'active') ?></span></td></tr>
                         <tr><td class="text-muted">Created</td><td><?= isset($company['created_at']) ? Helper::formatDate($company['created_at']) : '' ?></td></tr>
                     </table>
                     <div class="mt-2 text-center">
-                        <a href="<?= APP_URL ?>/index.php?page=pricing" class="btn btn-sm btn-outline-primary" target="_blank">
+                        <a href="<?= APP_URL ?>/index.php?page=saas_billing&action=subscribe" class="btn btn-sm btn-outline-primary">
                             <i class="fas fa-arrow-up me-1"></i>Upgrade Plan
                         </a>
                     </div>

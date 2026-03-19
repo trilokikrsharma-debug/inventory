@@ -21,28 +21,56 @@
         </div>
         <?php endif; ?>
 
-        <form method="POST" action="<?= APP_URL ?>/index.php?page=login" id="loginForm">
+        <form method="POST" action="<?= APP_URL ?>/index.php?page=login" id="loginForm" novalidate>
+            <?= CSRF::field() ?>
             <div class="mb-3">
                 <label class="form-label">Username or Email</label>
                 <div class="input-group">
                     <span class="input-group-text" style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1);color:#858796;">
                         <i class="fas fa-user"></i>
                     </span>
-                    <input type="text" class="form-control" name="username" value="<?= Helper::escape($username ?? '') ?>" placeholder="Enter username" required autofocus>
+                    <input
+                        type="text"
+                        class="form-control"
+                        name="username"
+                        value="<?= Helper::escape($username ?? '') ?>"
+                        placeholder="Enter username or email"
+                        required
+                        autofocus
+                        autocomplete="username"
+                    >
+                    <div class="invalid-feedback w-100">Please enter your username or email.</div>
                 </div>
             </div>
+
             <div class="mb-4">
                 <label class="form-label">Password</label>
                 <div class="input-group">
                     <span class="input-group-text" style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1);color:#858796;">
                         <i class="fas fa-lock"></i>
                     </span>
-                    <input type="password" class="form-control" name="password" placeholder="Enter password" required id="passwordField">
-                    <button class="input-group-text" type="button" id="togglePassword" style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1);color:#858796;cursor:pointer;">
+                    <input
+                        type="password"
+                        class="form-control"
+                        name="password"
+                        placeholder="Enter password"
+                        required
+                        id="passwordField"
+                        autocomplete="current-password"
+                    >
+                    <button
+                        class="input-group-text"
+                        type="button"
+                        id="togglePassword"
+                        style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1);color:#858796;cursor:pointer;"
+                        aria-label="Toggle password visibility"
+                    >
                         <i class="fas fa-eye"></i>
                     </button>
+                    <div class="invalid-feedback w-100">Please enter your password.</div>
                 </div>
             </div>
+
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-sign-in-alt me-2"></i> Sign In
             </button>
@@ -61,17 +89,35 @@
                 </a>
             </div>
         </div>
+    </div>
 </div>
-<script>
-document.getElementById('togglePassword').addEventListener('click', function() {
-    const field = document.getElementById('passwordField');
-    const icon = this.querySelector('i');
-    if (field.type === 'password') {
-        field.type = 'text';
-        icon.classList.replace('fa-eye', 'fa-eye-slash');
-    } else {
-        field.type = 'password';
-        icon.classList.replace('fa-eye-slash', 'fa-eye');
+
+<script nonce="<?= $cspNonce ?? '' ?>">
+document.addEventListener('DOMContentLoaded', function () {
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    const passwordField = document.getElementById('passwordField');
+    const loginForm = document.getElementById('loginForm');
+
+    if (togglePasswordBtn && passwordField) {
+        togglePasswordBtn.addEventListener('click', function () {
+            const icon = this.querySelector('i');
+            const show = passwordField.type === 'password';
+            passwordField.type = show ? 'text' : 'password';
+            if (icon) {
+                icon.classList.toggle('fa-eye', !show);
+                icon.classList.toggle('fa-eye-slash', show);
+            }
+        });
+    }
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', function (event) {
+            if (!loginForm.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            loginForm.classList.add('was-validated');
+        });
     }
 });
 </script>

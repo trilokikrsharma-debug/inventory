@@ -14,45 +14,76 @@ class ProductModel extends Model {
     private function flushStockCaches(): void {
         $tenantPrefix = 'c' . (Tenant::id() ?? 0) . '_';
         Cache::flushPrefix($tenantPrefix . 'dash_');
+        Cache::flushPrefix($tenantPrefix . 'report_');
+        Cache::flushPrefix($tenantPrefix . 'products_');
         Cache::delete($tenantPrefix . 'sidebar_lowstock');
     }
 
     /**
-     * Get all products with related data (tenant-scoped)
+     * Build a deterministic cache key for product list pages.
      */
-    public function getAllWithRelations($search = '', $categoryId = '', $page = 1, $perPage = RECORDS_PER_PAGE) {
+    private function productsCacheKey(string $search, string $categoryId, int $page, int $perPage): string {
+        $tenantId = Tenant::id() ?? 0;
+        return 'c' . $tenantId . '_products_list_' . md5(json_encode([
+            'search' => trim($search),
+            'category' => trim((string)$categoryId),
+            'page' => $page,
+            'per_page' => $perPage,
+        ]));
+    }
+
+    /**
+     * Query-only implementation for paginated product listing.
+     */
+    private function fetchAllWithRelations(string $search, string $categoryId, int $page, int $perPage): array {
         $offset = ($page - 1) * $perPage;
         $params = [];
         $where = ["p.deleted_at IS NULL"];
 
-        // Tenant scoping
         if (Tenant::id() !== null) {
             $where[] = "p.company_id = ?";
             $params[] = Tenant::id();
         }
 
-        if ($search) {
+        if ($search !== '') {
             $where[] = "(p.name LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?)";
             $searchTerm = "%{$search}%";
             $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm]);
         }
 
-        if ($categoryId) {
+        if ($categoryId !== '') {
             $where[] = "p.category_id = ?";
             $params[] = $categoryId;
         }
 
         $whereClause = implode(' AND ', $where);
 
-        // Count
-        $total = $this->db->query(
+        $total = (int)$this->db->query(
             "SELECT COUNT(*) FROM {$this->table} p WHERE {$whereClause}",
             $params
         )->fetchColumn();
 
-        // Data
         $data = $this->db->query(
-            "SELECT p.*, c.name as category_name, b.name as brand_name, u.short_name as unit_name
+            "SELECT
+                p.id,
+                p.name,
+                p.sku,
+                p.barcode,
+                p.category_id,
+                p.brand_id,
+                p.unit_id,
+                p.purchase_price,
+                p.selling_price,
+                p.mrp,
+                p.tax_rate,
+                p.opening_stock,
+                p.current_stock,
+                p.low_stock_alert,
+                p.is_active,
+                p.created_at,
+                c.name as category_name,
+                b.name as brand_name,
+                u.short_name as unit_name
              FROM {$this->table} p
              LEFT JOIN categories c ON p.category_id = c.id
              LEFT JOIN brands b ON p.brand_id = b.id
@@ -68,8 +99,30 @@ class ProductModel extends Model {
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
-            'totalPages' => ceil($total / $perPage),
+            'totalPages' => (int)ceil($total / max(1, $perPage)),
         ];
+    }
+
+    /**
+     * Get all products with related data (tenant-scoped)
+     */
+    public function getAllWithRelations($search = '', $categoryId = '', $page = 1, $perPage = RECORDS_PER_PAGE) {
+        $search = trim((string)$search);
+        $categoryId = trim((string)$categoryId);
+        $page = max(1, (int)$page);
+        $perPage = max(1, min(5000, (int)$perPage));
+
+        $canCache = $search === '' && $page <= 5;
+        if (!$canCache) {
+            return $this->fetchAllWithRelations($search, $categoryId, $page, $perPage);
+        }
+
+        $ttl = defined('CACHE_TTL_PRODUCTS') ? CACHE_TTL_PRODUCTS : 120;
+        $cacheKey = $this->productsCacheKey($search, $categoryId, $page, $perPage);
+
+        return Cache::remember($cacheKey, $ttl, function () use ($search, $categoryId, $page, $perPage) {
+            return $this->fetchAllWithRelations($search, $categoryId, $page, $perPage);
+        });
     }
 
     /**
@@ -132,6 +185,17 @@ class ProductModel extends Model {
      * Create product and refresh stock-related badges/counters.
      */
     public function create($data) {
+        if (Tenant::id() !== null) {
+            $currentProducts = (int)Tenant::usageCount('max_products');
+            if (!Tenant::canUse('max_products', $currentProducts, 1)) {
+                $limit = (int)(Tenant::usageLimit('max_products') ?? 0);
+                $message = $limit > 0
+                    ? 'Product limit reached (' . $limit . '). Please upgrade your plan.'
+                    : 'Product limit reached for your current plan. Please upgrade to add more products.';
+                throw new \RuntimeException($message);
+            }
+        }
+
         $id = parent::create($data);
         $this->flushStockCaches();
         return $id;

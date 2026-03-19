@@ -51,8 +51,8 @@ class SaleService {
                     $item['product_id'], 
                     $item['quantity'], 
                     'sale', 
-                    $saleId, 
-                    $userId
+                    $userId, 
+                    $saleId
                 );
             }
             unset($item);

@@ -41,8 +41,12 @@ class RateLimiter {
                     (int)(getenv('REDIS_PORT') ?: 6379),
                     1.0 // 1s timeout
                 );
-                if ($pass = getenv('REDIS_PASS')) {
-                    self::$redis->auth($pass);
+                $pass = getenv('REDIS_PASSWORD');
+                if ($pass === false || trim((string)$pass) === '') {
+                    $pass = getenv('REDIS_PASS'); // backward compatibility alias
+                }
+                if ($pass !== false && trim((string)$pass) !== '') {
+                    self::$redis->auth((string)$pass);
                 }
                 self::$driver = 'redis';
                 return 'redis';

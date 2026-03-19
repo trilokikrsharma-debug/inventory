@@ -29,7 +29,17 @@ class SaleReturnController extends Controller {
         // If sale_id is passed, fetch that specific sale
         $saleId    = (int)$this->get('sale_id', 0);
         $salesModel = new SalesModel();
+        $returnModel = new SaleReturnModel();
         $sale       = $saleId ? $salesModel->getWithDetails($saleId) : null;
+        if ($sale) {
+            $summary = $returnModel->getSaleReturnSummary($saleId);
+            $remainingAmount = max(0, (float)$sale['grand_total'] - (float)($summary['returned_amount'] ?? 0));
+            if ($remainingAmount <= 0.009) {
+                $this->setFlash('error', 'This invoice has already been fully returned.');
+                $this->redirect('index.php?page=sales&action=view_sale&id=' . $saleId);
+                return;
+            }
+        }
 
         if ($this->isPost()) {
             $this->validateCSRF();
@@ -37,6 +47,13 @@ class SaleReturnController extends Controller {
             $saleId   = (int)$this->post('sale_id');
             $sale     = $salesModel->getWithDetails($saleId);
             if (!$sale) { $this->setFlash('error', 'Invalid sale.'); $this->redirect('index.php?page=sale_returns&action=create'); return; }
+            $summary = $returnModel->getSaleReturnSummary($saleId);
+            $remainingAmount = max(0, (float)$sale['grand_total'] - (float)($summary['returned_amount'] ?? 0));
+            if ($remainingAmount <= 0.009) {
+                $this->setFlash('error', 'This invoice has already been fully returned.');
+                $this->redirect('index.php?page=sales&action=view_sale&id=' . $saleId);
+                return;
+            }
 
             $productIds = $this->post('product_id', []);
             $quantities = $this->post('quantity', []);
@@ -66,31 +83,30 @@ class SaleReturnController extends Controller {
                 return;
             }
 
-            $model      = new SaleReturnModel();
             $returnData = [
-                'return_number' => $model->getNextReturnNumber(),
+                'return_number' => $returnModel->getNextReturnNumber(),
                 'sale_id'       => $saleId,
                 // customer_id is NOT stored here - model fetches it from sales table
                 'total_amount'  => $totalAmount,
                 'return_date'   => $this->post('return_date', date('Y-m-d')),
-                'reason'        => $this->sanitize($this->post('reason')),
+                'note'          => $this->sanitize($this->post('reason')),
             ];
 
             try {
                 $userId   = Session::get('user')['id'];
-                $returnId = $model->createReturn($returnData, $items, $userId);
+                $returnId = $returnModel->createReturn($returnData, $items, $userId);
                 $this->logActivity('Created sale return: ' . $returnData['return_number'], 'sale_returns', $returnId, 'Against sale #' . $saleId . ', Amount: ' . $totalAmount);
                 $this->setFlash('success', 'Sale return created. Stock restored and balances updated.');
                 $this->redirect('index.php?page=sale_returns&action=detail&id=' . $returnId);
             } catch (Exception $e) {
                 error_log($e->getMessage());
-                $this->setFlash('error', 'An unexpected error occurred. Please try again.');
+                $this->setFlash('error', $e->getMessage());
                 $this->redirect('index.php?page=sale_returns&action=create&sale_id=' . $saleId);
             }
         }
 
         // Get recent sales for dropdown - show all sales with IN clause
-        $recentSales = (new SaleReturnModel())->getRecentSalesForReturn();
+        $recentSales = $returnModel->getRecentSalesForReturn();
 
         $this->view('sale_returns.create', [
             'pageTitle'   => 'New Sale Return',

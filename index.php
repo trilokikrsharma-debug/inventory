@@ -14,6 +14,7 @@
  */
 
 // ─── Bootstrap ───────────────────────────────────────────────
+header('Content-Type: text/html; charset=UTF-8');
 define('BASE_PATH', __DIR__);
 
 // Load configuration (defines paths, constants, APP_ENV, etc.)
@@ -27,6 +28,7 @@ ErrorHandler::register();
 
 // Wire DI container bindings
 require_once BASE_PATH . '/bootstrap/container.php';
+require_once BASE_PATH . '/middleware/RbacMiddleware.php';
 
 // ─── Capture Request ─────────────────────────────────────────
 $request = Request::capture();
@@ -44,6 +46,7 @@ $pipeline->pipe(new CsrfMiddleware());
 $pipeline->pipe(new AuthMiddleware());
 $pipeline->pipe(new TenantMiddleware());
 $pipeline->pipe(new SubscriptionGuardMiddleware());
+$pipeline->pipe(new RbacMiddleware());
 $pipeline->pipe(new DemoGuardMiddleware());
 
 // ─── Execute ─────────────────────────────────────────────────

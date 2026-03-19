@@ -34,6 +34,23 @@
                         $planDuration = (int)($plan['duration_days'] ?? ($planBilling === 'yearly' ? 365 : 30));
                         $planPrice = (float)($plan['price'] ?? 0);
                         $planOffer = isset($plan['offer_price']) ? (float)$plan['offer_price'] : null;
+                        $maxUsers = (int)($plan['max_users'] ?? 0);
+                        $enabledFeatureCount = 0;
+                        if (!empty($plan['features'])) {
+                            $decoded = json_decode((string)$plan['features'], true);
+                            if (is_array($decoded)) {
+                                $isAssoc = array_keys($decoded) !== range(0, count($decoded) - 1);
+                                if ($isAssoc) {
+                                    foreach ($decoded as $v) {
+                                        if ((bool)$v) {
+                                            $enabledFeatureCount++;
+                                        }
+                                    }
+                                } else {
+                                    $enabledFeatureCount = count($decoded);
+                                }
+                            }
+                        }
                     ?>
                     <tr>
                         <td class="ps-4">
@@ -44,6 +61,10 @@
                                 <?php endif; ?>
                             </div>
                             <div class="text-muted small"><?= e($planSlug !== '' ? $planSlug : 'n/a') ?></div>
+                            <div class="text-muted small">
+                                Users: <?= $maxUsers > 0 ? $maxUsers : '-' ?> |
+                                Features: <?= $enabledFeatureCount > 0 ? $enabledFeatureCount : '-' ?>
+                            </div>
                         </td>
                         <td>
                             <span class="badge bg-secondary text-uppercase"><?= e($planBilling) ?></span>

@@ -6,6 +6,8 @@ class TenantSubscription extends Model {
     protected $table = 'tenant_subscriptions';
     protected $tenantScoped = false;
     protected $softDelete = false;
+    private ?bool $requiresSubscriptionIdSeed = null;
+    private ?array $companyColumns = null;
 
     /**
      * Get latest subscription for company.
@@ -16,7 +18,14 @@ class TenantSubscription extends Model {
              FROM tenant_subscriptions ts
              LEFT JOIN saas_plans sp ON sp.id = ts.plan_id
              WHERE ts.company_id = ?
-             ORDER BY ts.id DESC
+             ORDER BY
+                CASE
+                    WHEN ts.status = 'active' THEN 0
+                    WHEN ts.status = 'trial' THEN 1
+                    WHEN ts.status = 'pending' THEN 2
+                    ELSE 3
+                END,
+                ts.id DESC
              LIMIT 1",
             [$companyId]
         )->fetch();
@@ -75,6 +84,157 @@ class TenantSubscription extends Model {
     }
 
     /**
+     * Return the latest billable subscription window for a company.
+     * The row is enriched with an effective expiry timestamp and flags.
+     */
+    public function latestBillableWindow(int $companyId): ?array {
+        $row = $this->db->query(
+            "SELECT ts.*, sp.name AS plan_name, sp.slug AS plan_slug, sp.billing_type, sp.duration_days
+             FROM tenant_subscriptions ts
+             LEFT JOIN saas_plans sp ON sp.id = ts.plan_id
+             WHERE ts.company_id = ?
+               AND ts.payment_status = 'paid'
+             ORDER BY
+                CASE
+                    WHEN ts.status = 'active' THEN 0
+                    WHEN ts.status = 'trial' THEN 1
+                    WHEN ts.status = 'pending' THEN 2
+                    WHEN ts.status = 'halted' THEN 3
+                    WHEN ts.status = 'cancelled' THEN 4
+                    ELSE 5
+                END,
+                COALESCE(ts.expires_at, ts.current_end, ts.started_at, ts.created_at) DESC,
+                ts.id DESC
+             LIMIT 1",
+            [$companyId]
+        )->fetch();
+
+        if (!$row) {
+            return null;
+        }
+
+        return $this->decorateLifecycleRow($row);
+    }
+
+    /**
+     * Return the current active billing window if it is still valid.
+     */
+    public function currentActiveWindow(int $companyId): ?array {
+        $row = $this->latestBillableWindow($companyId);
+        if (!$row || !empty($row['is_expired'])) {
+            return null;
+        }
+
+        return $row;
+    }
+
+    /**
+     * Evaluate and optionally persist the tenant lifecycle state.
+     *
+     * Return structure:
+     *  - status: active|trial|expired|inactive|suspended
+     *  - is_active / is_trial / is_expired / is_manually_blocked
+     *  - company / subscription / current_window
+     */
+    public function syncLifecycleState(int $companyId, bool $persist = true): array {
+        $company = $this->db->query(
+            "SELECT * FROM companies WHERE id = ? LIMIT 1",
+            [$companyId]
+        )->fetch();
+
+        if (!$company) {
+            return [
+                'status' => 'missing',
+                'is_active' => false,
+                'is_trial' => false,
+                'is_expired' => true,
+                'is_manually_blocked' => false,
+                'company' => null,
+                'subscription' => null,
+                'current_window' => null,
+            ];
+        }
+
+        $currentStatus = strtolower(trim((string)($company['subscription_status'] ?? 'inactive')));
+        $manualBlockStatuses = ['suspended'];
+        $isManuallyBlocked = in_array($currentStatus, $manualBlockStatuses, true);
+
+        $nowTs = time();
+        $trialEndsAt = $this->parseTimestamp($company['trial_ends_at'] ?? null);
+        $trialActive = $currentStatus === 'trial' && $trialEndsAt !== null && $trialEndsAt >= $nowTs;
+
+        $window = $this->latestBillableWindow($companyId);
+        $windowActive = $window && !empty($window['is_active_window']);
+        $windowExpired = $window && !empty($window['is_expired']);
+
+        $isActive = $windowActive || $currentStatus === 'active';
+        $isTrial = $trialActive;
+        $isExpired = false;
+        $targetStatus = $currentStatus;
+
+        if ($currentStatus === 'trial') {
+            if ($windowActive) {
+                $targetStatus = 'active';
+                $isActive = true;
+                $isTrial = false;
+            } elseif ($trialActive) {
+                $targetStatus = 'trial';
+                $isTrial = true;
+                $isActive = false;
+            } else {
+                $targetStatus = 'expired';
+                $isExpired = true;
+            }
+        } elseif ($currentStatus === 'active') {
+            if ($windowActive) {
+                $targetStatus = 'active';
+                $isActive = true;
+            } else {
+                $targetStatus = 'expired';
+                $isExpired = true;
+            }
+        } elseif ($currentStatus === 'expired') {
+            if ($windowActive) {
+                $targetStatus = 'active';
+                $isActive = true;
+                $isExpired = false;
+            } elseif ($trialActive) {
+                $targetStatus = 'trial';
+                $isTrial = true;
+                $isExpired = false;
+            } else {
+                $isExpired = true;
+            }
+        } elseif (!$isManuallyBlocked && $windowActive) {
+            $targetStatus = 'active';
+            $isActive = true;
+        } elseif (!$isManuallyBlocked && $trialActive) {
+            $targetStatus = 'trial';
+            $isTrial = true;
+        } else {
+            $isExpired = $windowExpired || ($trialEndsAt !== null && $trialEndsAt < $nowTs);
+        }
+
+        $subscription = $window;
+
+        if ($persist) {
+            $this->persistLifecycleState($company, $subscription, $targetStatus, $isActive, $isTrial, $isExpired, $isManuallyBlocked, $companyId);
+            $company['subscription_status'] = $targetStatus;
+        }
+
+        return [
+            'status' => $targetStatus,
+            'is_active' => $isActive && !$isExpired && !$isManuallyBlocked,
+            'is_trial' => $isTrial && !$isExpired && !$isManuallyBlocked,
+            'is_expired' => $isExpired || $windowExpired || (!$isManuallyBlocked && !$windowActive && !$trialActive && $targetStatus !== 'active' && $targetStatus !== 'trial'),
+            'is_manually_blocked' => $isManuallyBlocked,
+            'company' => $company,
+            'subscription' => $subscription,
+            'current_window' => $window,
+        ];
+    }
+
+    /**
      * Create pending local subscription and payment attempt.
      */
     public function createPendingCheckout(
@@ -105,6 +265,7 @@ class TenantSubscription extends Model {
             $subscriptionType = in_array((string)$plan['billing_type'], ['monthly', 'yearly'], true)
                 ? 'recurring'
                 : 'one_time';
+            $razorpaySubscriptionSeed = $this->subscriptionIdSeedValue();
 
             $db->query(
                 "INSERT INTO tenant_subscriptions
@@ -116,9 +277,10 @@ class TenantSubscription extends Model {
                     current_start, current_end, created_at, updated_at
                 )
                 VALUES
-                (?, NULL, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, NULL, NULL, ?, ?)",
+                (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, NULL, NULL, ?, ?)",
                 [
                     $companyId,
+                    $razorpaySubscriptionSeed,
                     (int)$plan['id'],
                     $subscriptionType,
                     $orderCode,
@@ -172,9 +334,16 @@ class TenantSubscription extends Model {
                 'plan_id' => $plan['id'] ?? null,
                 'error' => $e->getMessage(),
             ]);
+
+            $publicMessage = 'Failed to create checkout session.';
+            if (stripos($e->getMessage(), 'razorpay_subscription_id') !== false
+                && stripos($e->getMessage(), 'cannot be null') !== false) {
+                $publicMessage = 'Billing schema mismatch detected. Please run latest database migrations.';
+            }
+
             return [
                 'success' => false,
-                'message' => 'Failed to create checkout session.',
+                'message' => $publicMessage,
             ];
         }
     }
@@ -315,7 +484,7 @@ class TenantSubscription extends Model {
                      expires_at = ?,
                      last_payment_at = ?,
                      updated_at = ?
-                 WHERE id = ?",
+                 WHERE id = ? AND company_id = ?",
                 [
                     $paymentId,
                     $orderId,
@@ -327,19 +496,46 @@ class TenantSubscription extends Model {
                     $start,
                     SaaSBillingHelper::now(),
                     $subscriptionId,
+                    (int)$sub['company_id'],
                 ]
             );
 
-            // Ensure this plan becomes current company plan.
+            // Ensure this plan becomes current company plan + keep legacy fields aligned.
+            $planMeta = $db->query(
+                "SELECT id, name, slug, max_users FROM saas_plans WHERE id = ? LIMIT 1",
+                [(int)$sub['plan_id']]
+            )->fetch() ?: [];
+            $legacyPlanAlias = $this->legacyPlanAliasFromPlan($planMeta);
+
+            $companySet = [
+                "saas_plan_id = ?",
+                "subscription_status = 'active'",
+                "updated_at = ?",
+            ];
+            $companyParams = [
+                (int)$sub['plan_id'],
+                SaaSBillingHelper::now(),
+            ];
+
+            if ($this->companyHasColumn('plan')) {
+                $companySet[] = "plan = ?";
+                $companyParams[] = $legacyPlanAlias;
+            }
+
+            if ($this->companyHasColumn('max_users')) {
+                $planMaxUsers = (int)($planMeta['max_users'] ?? 0);
+                if ($planMaxUsers > 0) {
+                    $companySet[] = "max_users = ?";
+                    $companyParams[] = $planMaxUsers;
+                }
+            }
+
+            $companyParams[] = (int)$sub['company_id'];
             $db->query(
                 "UPDATE companies
-                 SET saas_plan_id = ?, subscription_status = 'active', updated_at = ?
+                 SET " . implode(', ', $companySet) . "
                  WHERE id = ?",
-                [
-                    (int)$sub['plan_id'],
-                    SaaSBillingHelper::now(),
-                    (int)$sub['company_id'],
-                ]
+                $companyParams
             );
 
             // Mark older active subscription rows as upgraded/replaced.
@@ -395,8 +591,8 @@ class TenantSubscription extends Model {
             );
 
             $updated = $db->query(
-                "SELECT * FROM tenant_subscriptions WHERE id = ? LIMIT 1",
-                [$subscriptionId]
+                "SELECT * FROM tenant_subscriptions WHERE id = ? AND company_id = ? LIMIT 1",
+                [$subscriptionId, (int)$sub['company_id']]
             )->fetch();
 
             $db->commit();
@@ -441,8 +637,12 @@ class TenantSubscription extends Model {
             $this->db->query(
                 "UPDATE tenant_subscriptions
                  SET status = 'failed', payment_status = 'failed', updated_at = ?
-                 WHERE id = ?",
-                [SaaSBillingHelper::now(), $subscriptionId]
+                 WHERE id = ? AND company_id = ?",
+                [
+                    SaaSBillingHelper::now(),
+                    $subscriptionId,
+                    (int)$sub['company_id'],
+                ]
             );
 
             $this->db->query(
@@ -486,8 +686,8 @@ class TenantSubscription extends Model {
                  SET status = 'cancelled',
                      cancelled_at = ?,
                      updated_at = ?
-                 WHERE id = ?",
-                [SaaSBillingHelper::now(), SaaSBillingHelper::now(), $subscriptionId]
+                 WHERE id = ? AND company_id = ?",
+                [SaaSBillingHelper::now(), SaaSBillingHelper::now(), $subscriptionId, $companyId]
             );
 
             $this->db->query(
@@ -546,13 +746,197 @@ class TenantSubscription extends Model {
         );
     }
 
-    public function updateStatusByGatewaySubscription(string $gatewaySubscriptionId, string $status): void {
-        $this->db->query(
-            "UPDATE tenant_subscriptions
-             SET status = ?, updated_at = ?
-             WHERE razorpay_subscription_id = ?",
-            [$status, SaaSBillingHelper::now(), $gatewaySubscriptionId]
-        );
+    public function updateStatusByGatewaySubscription(string $gatewaySubscriptionId, string $status, ?int $companyId = null): void {
+        $sql = "UPDATE tenant_subscriptions
+                SET status = ?, updated_at = ?
+                WHERE razorpay_subscription_id = ?";
+        $params = [$status, SaaSBillingHelper::now(), $gatewaySubscriptionId];
+
+        if ($companyId !== null) {
+            $sql .= " AND company_id = ?";
+            $params[] = $companyId;
+        }
+
+        $this->db->query($sql, $params);
+    }
+
+    /**
+     * Build lifecycle flags for a subscription row.
+     */
+    private function decorateLifecycleRow(array $row): array {
+        $effectiveExpiresAt = $row['expires_at'] ?? $row['current_end'] ?? $row['last_payment_at'] ?? $row['started_at'] ?? $row['created_at'] ?? null;
+        $effectiveExpiresTs = $this->parseTimestamp($effectiveExpiresAt);
+        $status = strtolower(trim((string)($row['status'] ?? '')));
+        $nowTs = time();
+
+        $row['effective_expires_at'] = $effectiveExpiresAt;
+        $row['effective_expires_ts'] = $effectiveExpiresTs;
+        $row['is_expired'] = $effectiveExpiresTs !== null ? $effectiveExpiresTs < $nowTs : false;
+        $row['is_active_window'] = $effectiveExpiresTs !== null
+            && $effectiveExpiresTs >= $nowTs
+            && in_array($status, ['active', 'trial'], true);
+
+        return $row;
+    }
+
+    /**
+     * Parse a datetime value into a unix timestamp.
+     */
+    private function parseTimestamp($value): ?int {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $ts = strtotime((string)$value);
+        return $ts === false ? null : $ts;
+    }
+
+    /**
+     * Persist lifecycle changes in an idempotent, tenant-safe way.
+     */
+    private function persistLifecycleState(
+        array $company,
+        ?array $subscription,
+        string $targetStatus,
+        bool $isActive,
+        bool $isTrial,
+        bool $isExpired,
+        bool $isManuallyBlocked,
+        int $companyId
+    ): void {
+        if ($isManuallyBlocked) {
+            return;
+        }
+
+        $currentStatus = strtolower(trim((string)($company['subscription_status'] ?? 'inactive')));
+        $companyNeedsUpdate = $currentStatus !== $targetStatus;
+        $subscriptionNeedsUpdate = false;
+        $subscriptionId = $subscription['id'] ?? null;
+
+        if ($targetStatus === 'expired' && $subscription && !in_array(strtolower((string)($subscription['status'] ?? '')), ['halted', 'cancelled'], true)) {
+            $subscriptionNeedsUpdate = true;
+        }
+
+        if (!$companyNeedsUpdate && !$subscriptionNeedsUpdate) {
+            return;
+        }
+
+        $db = $this->db;
+        $db->beginTransaction();
+
+        try {
+            if ($companyNeedsUpdate) {
+                $db->query(
+                    "UPDATE companies
+                     SET subscription_status = ?, updated_at = ?
+                     WHERE id = ?",
+                    [$targetStatus, SaaSBillingHelper::now(), $companyId]
+                );
+            }
+
+            if ($subscriptionNeedsUpdate && $subscriptionId !== null) {
+                $db->query(
+                    "UPDATE tenant_subscriptions
+                     SET status = 'halted', updated_at = ?
+                     WHERE id = ? AND company_id = ?",
+                    [SaaSBillingHelper::now(), (int)$subscriptionId, $companyId]
+                );
+            }
+
+            $db->commit();
+        } catch (\Throwable $e) {
+            $db->rollback();
+            Logger::warning('Failed to sync subscription lifecycle state', [
+                'company_id' => $companyId,
+                'target_status' => $targetStatus,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Legacy schema compatibility:
+     * old tenant_subscriptions schemas had razorpay_subscription_id as NOT NULL without a default.
+     * For order-mode checkout, we must seed an empty string instead of NULL.
+     */
+    private function subscriptionIdSeedValue(): ?string {
+        return $this->requiresSubscriptionIdSeedValue() ? '' : null;
+    }
+
+    private function requiresSubscriptionIdSeedValue(): bool {
+        if ($this->requiresSubscriptionIdSeed !== null) {
+            return $this->requiresSubscriptionIdSeed;
+        }
+
+        try {
+            $column = $this->db->query(
+                "SELECT IS_NULLABLE, COLUMN_DEFAULT
+                 FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = ?
+                   AND COLUMN_NAME = 'razorpay_subscription_id'
+                 LIMIT 1",
+                [$this->table]
+            )->fetch();
+
+            if (!$column) {
+                $this->requiresSubscriptionIdSeed = false;
+                return false;
+            }
+
+            $isNullable = strtoupper((string)($column['IS_NULLABLE'] ?? 'YES')) === 'YES';
+            $hasDefault = array_key_exists('COLUMN_DEFAULT', $column) && $column['COLUMN_DEFAULT'] !== null;
+            $this->requiresSubscriptionIdSeed = !$isNullable && !$hasDefault;
+            return $this->requiresSubscriptionIdSeed;
+        } catch (\Throwable $e) {
+            $this->requiresSubscriptionIdSeed = false;
+            return false;
+        }
+    }
+
+    private function companyHasColumn(string $column): bool {
+        if ($this->companyColumns === null) {
+            $this->companyColumns = [];
+            try {
+                $rows = $this->db->query(
+                    "SELECT COLUMN_NAME
+                     FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = DATABASE()
+                       AND TABLE_NAME = 'companies'"
+                )->fetchAll();
+                foreach ($rows as $row) {
+                    $name = (string)($row['COLUMN_NAME'] ?? '');
+                    if ($name !== '') {
+                        $this->companyColumns[$name] = true;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Fail-open: avoid breaking payment success in restricted environments.
+                $this->companyColumns = [];
+            }
+        }
+
+        return !empty($this->companyColumns[$column]);
+    }
+
+    private function legacyPlanAliasFromPlan(array $plan): string {
+        $slug = strtolower(trim((string)($plan['slug'] ?? '')));
+        $name = strtolower(trim((string)($plan['name'] ?? '')));
+        $candidate = $slug !== '' ? $slug : $name;
+
+        if ($candidate === '') {
+            return 'starter';
+        }
+
+        if (strpos($candidate, 'enterprise') !== false || $candidate === 'pro' || $candidate === 'premium') {
+            return 'pro';
+        }
+
+        if (strpos($candidate, 'professional') !== false || strpos($candidate, 'growth') !== false || $candidate === 'business') {
+            return 'growth';
+        }
+
+        return 'starter';
     }
 
     public function dashboardMetrics(): array {
@@ -580,4 +964,3 @@ class TenantSubscription extends Model {
         ];
     }
 }
-

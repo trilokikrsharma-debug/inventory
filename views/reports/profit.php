@@ -1,5 +1,13 @@
 <?php $pageTitle = 'Profit & Loss'; ?>
-<div class="page-header"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=reports">Reports</a></li><li class="breadcrumb-item active">Profit & Loss</li></ol></nav></div>
+<div class="page-header"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=reports">Reports</a></li><li class="breadcrumb-item active">Profit & Loss</li></ol></nav>
+    <form method="POST" action="<?= APP_URL ?>/index.php?page=reports&action=queue_export">
+        <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
+        <input type="hidden" name="report_type" value="profit">
+        <input type="hidden" name="from_date" value="<?= Helper::escape($fromDate) ?>">
+        <input type="hidden" name="to_date" value="<?= Helper::escape($toDate) ?>">
+        <button type="submit" class="btn btn-outline-success btn-sm"><i class="fas fa-file-arrow-down me-1"></i>Queue CSV</button>
+    </form>
+</div>
 <div class="card mb-3"><div class="card-body py-2">
     <form class="d-flex gap-2 align-items-end" method="GET"><input type="hidden" name="page" value="reports"><input type="hidden" name="action" value="profit">
         <div><label class="form-label small mb-0">From</label><input type="date" name="from_date" class="form-control form-control-sm" value="<?= Helper::escape($fromDate) ?>"></div>

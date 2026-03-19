@@ -1,4 +1,9 @@
-<?php $pageTitle = 'Purchase: ' . Helper::escape($purchase['invoice_number']); ?>
+<?php
+$pageTitle = 'Purchase: ' . Helper::escape($purchase['invoice_number']);
+$company = (new SettingsModel())->getSettings();
+$isTaxEnabled = !isset($company['enable_tax']) || !empty($company['enable_tax']);
+$isGstEnabled = !isset($company['enable_gst']) || !empty($company['enable_gst']);
+?>
 <div class="page-header">
     <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=purchases">Purchases</a></li><li class="breadcrumb-item active"><?= Helper::escape($purchase['invoice_number']) ?></li></ol></nav>
     <div class="d-flex gap-2">
@@ -18,7 +23,7 @@
                     <div class="col-md-6 text-md-end"><strong>Date:</strong> <?= Helper::formatDate($purchase['purchase_date']) ?><br><small class="text-muted">Ref: <?= Helper::escape($purchase['reference_number'] ?? '-') ?></small></div>
                 </div>
                 <div class="table-responsive"><table class="table table-sm">
-                    <thead><tr><th>#</th><th>Product</th><th>Qty</th><th>Price</th><th>Discount</th><th>Tax</th><th class="text-end">Total</th></tr></thead>
+                    <thead><tr><th>#</th><th>Product</th><th>Qty</th><th>Price</th><th>Discount</th><?php if($isTaxEnabled && $isGstEnabled): ?><th>Tax</th><?php endif; ?><th class="text-end">Total</th></tr></thead>
                     <tbody>
                     <?php if (!empty($purchase['items'])): $i=0; foreach ($purchase['items'] as $item): $i++; ?>
                     <tr>
@@ -27,7 +32,7 @@
                         <td><?= Helper::formatQty($item['quantity']) ?></td>
                         <td><?= Helper::formatCurrency($item['unit_price']) ?></td>
                         <td><?= Helper::formatCurrency($item['discount']) ?></td>
-                        <td><?= $item['tax_rate'] ?>% (<?= Helper::formatCurrency($item['tax_amount']) ?>)</td>
+                        <?php if($isTaxEnabled && $isGstEnabled): ?><td><?= $item['tax_rate'] ?>% (<?= Helper::formatCurrency($item['tax_amount']) ?>)</td><?php endif; ?>
                         <td class="text-end fw-bold"><?= Helper::formatCurrency($item['total']) ?></td>
                     </tr>
                     <?php endforeach; endif; ?>
@@ -41,7 +46,7 @@
             <div class="card-header"><h6>Summary</h6></div>
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-2"><span>Subtotal</span><span><?= Helper::formatCurrency($purchase['subtotal']) ?></span></div>
-                <div class="d-flex justify-content-between mb-2"><span>Tax</span><span><?= Helper::formatCurrency($purchase['tax_amount']) ?></span></div>
+                <?php if ($isTaxEnabled && $isGstEnabled): ?><div class="d-flex justify-content-between mb-2"><span>Tax</span><span><?= Helper::formatCurrency($purchase['tax_amount']) ?></span></div><?php endif; ?>
                 <?php if ($purchase['discount_amount'] > 0): ?><div class="d-flex justify-content-between mb-2"><span>Discount</span><span class="text-danger">-<?= Helper::formatCurrency($purchase['discount_amount']) ?></span></div><?php endif; ?>
                 <?php if ($purchase['shipping_cost'] > 0): ?><div class="d-flex justify-content-between mb-2"><span>Shipping</span><span><?= Helper::formatCurrency($purchase['shipping_cost']) ?></span></div><?php endif; ?>
                 <hr>

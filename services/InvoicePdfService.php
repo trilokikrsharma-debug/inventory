@@ -123,8 +123,10 @@ class InvoicePdfService {
     private static function renderTemplate(array $data): string {
         $s = $data['settings'];
         $currency = Helper::pdfCurrencySymbol($s['currency_symbol'] ?? '₹');
-        $companyName = $s['company_name'] ?? 'My Company';
-        $invoiceTitle = $s['invoice_title'] ?? 'Tax Invoice';
+        $companyName = Helper::escape($s['company_name'] ?? 'My Company');
+        $invoiceTitle = Helper::escape($s['invoice_title'] ?? 'Tax Invoice');
+        $invoiceNumber = Helper::escape($data['invoice_number'] ?? '');
+        $customerName = Helper::escape($data['customer_name'] ?? '');
 
         // Format date
         $dateFormat = $s['date_format'] ?? 'd-m-Y';
@@ -164,7 +166,7 @@ class InvoicePdfService {
 <html>
 <head>
 <meta charset="UTF-8">
-<title>{$invoiceTitle} - {$data['invoice_number']}</title>
+<title>{$invoiceTitle} - {$invoiceNumber}</title>
 <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size:12px; color:#333; }
@@ -231,7 +233,7 @@ HTML;
         <div class="invoice-meta">
             <h2>{$invoiceTitle}</h2>
             <table>
-                <tr><td>Invoice #</td><td><strong>{$data['invoice_number']}</strong></td></tr>
+                <tr><td>Invoice #</td><td><strong>{$invoiceNumber}</strong></td></tr>
                 <tr><td>Date</td><td>{$saleDate}</td></tr>
                 <tr><td>Status</td><td>{$paymentBadge}</td></tr>
             </table>
@@ -242,7 +244,7 @@ HTML;
         <div class="party">
             <h3>Bill To</h3>
             <p>
-                <strong>{$data['customer_name']}</strong><br>
+                <strong>{$customerName}</strong><br>
 HTML;
 
         if (!empty($data['customer_address'])) $html .= Helper::escape($data['customer_address']) . '<br>';
