@@ -52,13 +52,20 @@ git clone <YOUR_REPO_URL> /var/www/inventory
 cd /var/www/inventory
 cp deploy/env/.env.production.example .env
 nano .env
-composer install --no-dev --optimize-autoloader
-composer assets:build || true
+composer install --no-dev --optimize-autoloader --classmap-authoritative --prefer-dist
+composer run-script assets:build
+php cli/migrate.php --status
 php cli/migrate.php
 sudo chown -R www-data:www-data /var/www/inventory/cache /var/www/inventory/logs /var/www/inventory/uploads
 sudo chmod -R 775 /var/www/inventory/cache /var/www/inventory/logs /var/www/inventory/uploads
 sudo chmod 640 /var/www/inventory/.env
 ```
+
+Recommended final permissions:
+- App code: owned by your deploy user or root
+- Runtime dirs: `www-data:www-data`
+- `.env`: readable by web server only if required, otherwise keep `640`
+- Never make `database/`, `cli/`, `config/`, or `vendor/` web-writable
 
 ## 5) Nginx Virtual Host
 
@@ -68,6 +75,12 @@ sudo ln -s /etc/nginx/sites-available/invenbill.conf /etc/nginx/sites-enabled/in
 sudo nginx -t
 sudo systemctl reload nginx
 ```
+
+Production Nginx behavior:
+- Blocks direct access to `.env`, `.sql`, logs, cache, vendor, and source directories
+- Forces HTTPS
+- Returns `403` for the health route by default
+- Uses long-lived cache headers for static assets
 
 ## 6) Domain + Wildcard Tenant DNS
 
@@ -167,7 +180,12 @@ App logs:
 
 Health endpoint:
 - `GET /index.php?page=health`
-- Keep public mode OFF in production (`HEALTH_PUBLIC_MODE=false`).
+- Keep public mode OFF in production (`HEALTH_PUBLIC_MODE=false`)
+- Current Nginx/Apache configs block public health access; use CLI/server-local checks instead unless you intentionally open an internal probe route
+
+Useful server-local checks:
+- `php cli/verify_hardening.php`
+- `php cli/diag_db.php`
 
 Recommended monitors:
 - Uptime checks for app + webhook endpoint
@@ -180,6 +198,12 @@ Recommended monitors:
 ```bash
 sudo bash /var/www/inventory/deploy/scripts/deploy.sh
 ```
+
+Deployment script behavior:
+- Fails fast if `.env` or `database/schema.sql` is missing
+- Validates composer config before migration
+- Runs `php cli/migrate.php --status` before migrating
+- Normalizes ownership on `cache/`, `logs/`, and `uploads/`
 
 Script file:
 - [deploy/scripts/deploy.sh](/var/www/inventory/deploy/scripts/deploy.sh)

@@ -337,8 +337,17 @@ function showToast(message, type = 'success') {
 
     const alert = document.createElement('div');
     alert.className = `alert alert-${alertClass} alert-dismissible fade show`;
-    alert.innerHTML = `<i class="fas fa-${icons[type] || 'info-circle'} me-2"></i>${message}
-        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>`;
+    const icon = document.createElement('i');
+    icon.className = `fas fa-${icons[type] || 'info-circle'} me-2`;
+    alert.appendChild(icon);
+    alert.appendChild(document.createTextNode(String(message ?? '')));
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'btn-close btn-close-sm';
+    closeBtn.setAttribute('data-bs-dismiss', 'alert');
+    closeBtn.setAttribute('aria-label', 'Close');
+    alert.appendChild(closeBtn);
     container.appendChild(alert);
 
     setTimeout(() => {

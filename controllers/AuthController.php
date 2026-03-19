@@ -18,7 +18,7 @@ class AuthController extends Controller {
     public function index() {
         // If already logged in, redirect to dashboard
         if (Session::isLoggedIn()) {
-            if (!empty(Session::get('twofa_pending_user_id'))) {
+            if (Session::isTwoFactorPending()) {
                 $this->redirect('index.php?page=twoFactor&action=verify');
                 return;
             }
@@ -230,6 +230,8 @@ class AuthController extends Controller {
         $pendingUser['twofa_pending'] = true;
         $pendingUser['twofa_verified'] = false;
 
+        session_regenerate_id(true);
+        CSRF::rotateToken();
         // Keep a partial session so AuthMiddleware can pass the verification page,
         // but fence all other routes in Router until verification completes.
         Session::set('user', $pendingUser);

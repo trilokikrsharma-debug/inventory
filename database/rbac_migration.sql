@@ -38,14 +38,10 @@ CREATE TABLE IF NOT EXISTS `role_permissions` (
 
 -- 4. ADD role_id TO USERS (nullable, keeps existing role ENUM untouched)
 -- Check if column exists first to make this idempotent
-SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'role_id');
-SET @sql = IF(@col_exists = 0, 
-    'ALTER TABLE `users` ADD COLUMN `role_id` INT UNSIGNED DEFAULT NULL AFTER `role`, ADD INDEX `idx_users_role_id` (`role_id`)',
-    'SELECT 1');
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `users`
+  ADD COLUMN IF NOT EXISTS `role_id` INT UNSIGNED DEFAULT NULL AFTER `role`;
+ALTER TABLE `users`
+  ADD INDEX `idx_users_role_id` (`role_id`);
 
 -- ============================================================
 -- SEED DEFAULT ROLES
@@ -183,3 +179,4 @@ UPDATE `users` SET `role_id` = 1 WHERE `role` = 'admin' AND `role_id` IS NULL;
 UPDATE `users` SET `role_id` = 5 WHERE `role` = 'staff' AND `role_id` IS NULL;
 -- Handle any 'user' role values that might exist
 UPDATE `users` SET `role_id` = 5 WHERE `role_id` IS NULL AND `deleted_at` IS NULL;
+

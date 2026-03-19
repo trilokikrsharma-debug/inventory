@@ -93,18 +93,18 @@
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <h6 class="mb-0">
                                             <i class="fas <?= $moduleIcons[$module] ?? 'fa-puzzle-piece' ?> me-1 text-primary"></i>
-                                            <?= ucfirst($module) ?>
+                                            <?= Helper::escape(ucfirst($module)) ?>
                                         </h6>
                                         <?php if (!$isSA): ?>
                                         <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none"
-                                                onclick="toggleModule('<?= $module ?>')">
+                                                onclick="toggleModule('<?= Helper::escape($module) ?>')">
                                             <small>Toggle</small>
                                         </button>
                                         <?php endif; ?>
                                     </div>
                                     <?php foreach ($perms as $p): ?>
                                     <div class="form-check">
-                                        <input class="form-check-input perm-checkbox module-<?= $module ?>"
+                                        <input class="form-check-input perm-checkbox module-<?= Helper::escape($module) ?>"
                                                type="checkbox" name="permissions[]"
                                                value="<?= $p['id'] ?>" id="perm_<?= $p['id'] ?>"
                                                <?= isset($rolePermIdsMap[$p['id']]) ? 'checked' : '' ?>

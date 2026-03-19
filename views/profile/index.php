@@ -316,12 +316,12 @@ if (!empty($user['full_name'])) {
 <!-- Profile Hero -->
 <div class="profile-hero animate-in">
     <div class="profile-hero-content">
-        <div class="profile-avatar-lg"><?= $initials ?></div>
+        <div class="profile-avatar-lg"><?= Helper::escape($initials) ?></div>
         <div class="profile-hero-info">
             <h2><?= Helper::escape($user['full_name'] ?? 'User') ?></h2>
             <div class="role-badge">
                 <i class="fas fa-<?= ($user['role'] ?? 'staff') === 'admin' ? 'shield-halved' : 'user' ?>"></i>
-                <?= ucfirst($user['role'] ?? 'staff') ?>
+                <?= Helper::escape(ucfirst($user['role'] ?? 'staff')) ?>
             </div>
             <?php if (!empty($user['created_at'])): ?>
             <div class="member-since">

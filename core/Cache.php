@@ -72,9 +72,10 @@ class Cache {
     private static function getDir(): string {
         if (self::$cacheDir === null) {
             self::$cacheDir = defined('CACHE_PATH') ? CACHE_PATH : (defined('BASE_PATH') ? BASE_PATH . '/cache' : __DIR__ . '/../cache');
-            if (!is_dir(self::$cacheDir)) {
-                @mkdir(self::$cacheDir, 0755, true);
-            }
+        }
+        // Ensure directory exists even if it was deleted after initialization.
+        if (!is_dir(self::$cacheDir)) {
+            @mkdir(self::$cacheDir, 0755, true);
         }
         return self::$cacheDir;
     }
@@ -346,5 +347,17 @@ class Cache {
                 }
             }
         } catch (\Exception $e) {}
+    }
+
+    /**
+     * Testing hook: reset static cache driver state between tests.
+     */
+    public static function resetForTests(?string $cacheDir = null): void {
+        self::$redis = null;
+        self::$redisChecked = false;
+        self::$cacheDir = $cacheDir;
+        if ($cacheDir !== null && !is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
+        }
     }
 }

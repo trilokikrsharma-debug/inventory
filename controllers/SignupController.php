@@ -12,6 +12,10 @@ class SignupController extends Controller {
     public function index() {
         // If already logged in, redirect to dashboard
         if (Session::isLoggedIn()) {
+            if (Session::isTwoFactorPending()) {
+                $this->redirect('index.php?page=twoFactor&action=verify');
+                return;
+            }
             $this->redirect('index.php?page=dashboard');
             return;
         }
@@ -252,6 +256,9 @@ class SignupController extends Controller {
     private function generateSlug($name) {
         $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '-', $name), '-'));
         $slug = substr($slug, 0, 50);
+        if ($slug === '') {
+            $slug = 'company';
+        }
 
         // Ensure uniqueness
         $db = Database::getInstance();

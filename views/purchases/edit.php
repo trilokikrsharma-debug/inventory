@@ -129,7 +129,14 @@ function showProductDropdown(products, row, input) {
     products.forEach(p => {
         const item = document.createElement('div');
         item.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:0.85rem;';
-        item.innerHTML = '<strong>' + p.name + '</strong> <span style=\"opacity:0.6\">(Stock: ' + p.current_stock + ')</span>';
+        const strong = document.createElement('strong');
+        strong.textContent = p.name || '';
+        const meta = document.createElement('span');
+        meta.style.opacity = '0.6';
+        meta.textContent = '(Stock: ' + (p.current_stock ?? '') + ')';
+        item.appendChild(strong);
+        item.appendChild(document.createTextNode(' '));
+        item.appendChild(meta);
         item.addEventListener('mouseenter', () => item.style.background = '#f0f0f0');
         item.addEventListener('mouseleave', () => item.style.background = 'transparent');
         item.addEventListener('click', () => {

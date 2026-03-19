@@ -12,20 +12,8 @@
 
 -- Step 1: Add company_id column to roles table (NULL = system-level role)
 -- Check if column exists first to make this idempotent
-SET @col_exists = (
-    SELECT COUNT(*) FROM information_schema.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() 
-      AND TABLE_NAME = 'roles' 
-      AND COLUMN_NAME = 'company_id'
-);
-
-SET @sql = IF(@col_exists = 0,
-    'ALTER TABLE `roles` ADD COLUMN `company_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id`',
-    'SELECT 1'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `roles`
+  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id`;
 
 -- Step 2: Add index for tenant-scoped queries
 CREATE INDEX IF NOT EXISTS `idx_roles_company` ON `roles`(`company_id`);

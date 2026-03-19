@@ -14,7 +14,7 @@ if (!empty($user['full_name'])) {
         <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
             <i class="fas fa-bars"></i>
         </button>
-        <h1 class="page-title d-none d-md-block"><?= $pageTitle ?? 'Dashboard' ?></h1>
+        <h1 class="page-title d-none d-md-block"><?= Helper::escape($pageTitle ?? 'Dashboard') ?></h1>
     </div>
 
     <div class="navbar-right">
@@ -42,7 +42,7 @@ if (!empty($user['full_name'])) {
         <!-- User Dropdown -->
         <div class="dropdown">
             <button class="user-dropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                <div class="user-avatar"><?= $initials ?></div>
+                <div class="user-avatar"><?= Helper::escape($initials) ?></div>
                 <div class="user-info d-none d-sm-block">
                     <div class="user-name"><?= Helper::escape($user['full_name'] ?? 'User') ?></div>
                     <div class="user-role"><?= Helper::escape($user['role'] ?? 'staff') ?></div>

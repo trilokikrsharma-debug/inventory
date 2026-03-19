@@ -71,6 +71,8 @@ class Router {
             $action = 'index';
         }
 
+        $page = $this->normalizePage($page);
+
         // Pending 2FA logins are intentionally partial sessions.
         // Keep them fenced into the verification flow until completion.
         if ($this->hasPendingTwoFactorLogin()) {
@@ -330,7 +332,7 @@ class Router {
      * Whether the current session is waiting for 2FA completion.
      */
     private function hasPendingTwoFactorLogin(): bool {
-        return Session::isLoggedIn() && !empty(Session::get('twofa_pending_user_id'));
+        return Session::isTwoFactorPending();
     }
 
     /**
@@ -342,6 +344,18 @@ class Router {
         }
 
         return in_array($action, ['verify', 'verifyPost', 'recovery', 'recoveryPost'], true);
+    }
+
+    /**
+     * Normalize old or case-variant page names to the registered controller key.
+     */
+    private function normalizePage(string $page): string {
+        $normalized = strtolower(trim($page));
+        if ($normalized === 'twofactor') {
+            return 'twoFactor';
+        }
+
+        return $page;
     }
 
     /**

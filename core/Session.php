@@ -18,7 +18,7 @@ class Session {
             ini_set('session.cookie_samesite', 'Lax');
             ini_set('session.gc_maxlifetime', SESSION_LIFETIME);
             session_name(SESSION_NAME);
-            $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+            $isSecure = self::isSecureRequest();
             session_set_cookie_params([
                 'lifetime' => SESSION_LIFETIME,
                 'path'     => '/',
@@ -62,10 +62,21 @@ class Session {
      * Destroy session completely
      */
     public static function destroy() {
+        $cookieParams = session_get_cookie_params();
         session_unset();
-        session_destroy();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_destroy();
+        }
         if (isset($_COOKIE[SESSION_NAME])) {
-            setcookie(SESSION_NAME, '', time() - 3600, '/');
+            setcookie(
+                SESSION_NAME,
+                '',
+                time() - 3600,
+                $cookieParams['path'] ?? '/',
+                $cookieParams['domain'] ?? '',
+                (bool)($cookieParams['secure'] ?? false),
+                (bool)($cookieParams['httponly'] ?? true)
+            );
         }
     }
 
@@ -158,7 +169,11 @@ class Session {
      * Check if user is admin
      */
     public static function isAdmin() {
-        return self::isLoggedIn() && self::get('user')['role'] === 'admin';
+        if (!self::isLoggedIn() || self::isTwoFactorPending()) {
+            return false;
+        }
+
+        return self::get('user')['role'] === 'admin';
     }
 
     /**
@@ -222,6 +237,10 @@ class Session {
             return false;
         }
 
+        if (self::isTwoFactorPending()) {
+            return false;
+        }
+
         // Super admin bypass — zero DB overhead
         // Check both legacy ENUM and new RBAC flag
         if (self::isAdmin() || self::isSuperAdmin()) {
@@ -257,7 +276,7 @@ class Session {
      * @return bool
      */
     public static function isSuperAdmin() {
-        if (!self::isLoggedIn()) return false;
+        if (!self::isLoggedIn() || self::isTwoFactorPending()) return false;
         $user = self::get('user');
         // Check role-based flag (set by AuthController on login)
         // OR direct user column flag (set only via DB)
@@ -380,5 +399,29 @@ class Session {
         }
 
         return 'role_permissions:u' . (int)$userId . ':r' . (int)$roleId . ':c' . (int)$companyId;
+    }
+
+    /**
+     * Check whether the current session is in the 2FA pending state.
+     */
+    public static function isTwoFactorPending(): bool {
+        return self::isLoggedIn() && !empty(self::get('twofa_pending_user_id'));
+    }
+
+    /**
+     * Best-effort HTTPS detection for secure cookies.
+     */
+    private static function isSecureRequest(): bool {
+        $https = strtolower((string)($_SERVER['HTTPS'] ?? ''));
+        if (in_array($https, ['on', '1', 'true'], true)) {
+            return true;
+        }
+
+        $forwardedProto = strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+        if ($forwardedProto === 'https') {
+            return true;
+        }
+
+        return false;
     }
 }

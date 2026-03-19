@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="InvenBill Pro - Professional Inventory & Billing Management System">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title><?= $pageTitle ?? 'Dashboard' ?> | <?= APP_NAME ?></title>
+    <title><?= Helper::escape($pageTitle ?? 'Dashboard') ?> | <?= Helper::escape(APP_NAME) ?></title>
     <?php
     $assetSuffix = '?v=' . rawurlencode((string)ASSET_VERSION);
     $cssAsset = '/assets/css/style.css';

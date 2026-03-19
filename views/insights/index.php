@@ -27,13 +27,17 @@
 <?php else: ?>
 <div class="row g-3">
     <?php foreach ($insights as $insight): ?>
+    <?php
+        $allowedColors = ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'dark', 'light'];
+        $insightColor = in_array(($insight['color'] ?? ''), $allowedColors, true) ? $insight['color'] : 'secondary';
+    ?>
     <div class="col-lg-6 col-xl-4">
-        <div class="card h-100 border-start border-4 border-<?= $insight['color'] ?>" 
+        <div class="card h-100 border-start border-4 border-<?= Helper::escape($insightColor) ?>" 
              style="transition: all 0.3s; cursor: <?= !empty($insight['action']) ? 'pointer' : 'default' ?>;"
-             <?php if (!empty($insight['action'])): ?>onclick="window.location='<?= APP_URL ?>/<?= $insight['action'] ?>'"<?php endif; ?>>
+             <?php if (!empty($insight['action'])): ?>onclick="window.location='<?= APP_URL ?>/<?= Helper::escape($insight['action']) ?>'"<?php endif; ?>>
             <div class="card-body">
                 <div class="d-flex align-items-center mb-2">
-                    <span style="font-size:1.5rem;margin-right:0.75rem;"><?= $insight['icon'] ?></span>
+                    <span style="font-size:1.5rem;margin-right:0.75rem;"><?= Helper::escape($insight['icon'] ?? '') ?></span>
                     <div>
                         <h6 class="mb-0 fw-bold"><?= Helper::escape($insight['title']) ?></h6>
                         <?php if ($insight['priority'] === 'high'): ?>
@@ -48,7 +52,7 @@
                 </p>
                 <?php if (!empty($insight['value'])): ?>
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="fw-bold text-<?= $insight['color'] ?>" style="font-size:1.1rem;">
+                    <span class="fw-bold text-<?= Helper::escape($insightColor) ?>" style="font-size:1.1rem;">
                         <?= Helper::escape($insight['value']) ?>
                     </span>
                     <?php if (!empty($insight['action'])): ?>

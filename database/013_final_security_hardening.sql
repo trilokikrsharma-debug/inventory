@@ -43,36 +43,20 @@ CREATE INDEX IF NOT EXISTS idx_sale_returns_company
 -- Skip if constraints already exist (idempotent).
 
 -- users.company_id → companies.id (SET NULL for super-admins)
-SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
-    WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND CONSTRAINT_NAME = 'fk_users_company');
-SET @sql = IF(@constraint_exists = 0, 
-    'ALTER TABLE users ADD CONSTRAINT fk_users_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+ALTER TABLE users
+    ADD CONSTRAINT fk_users_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL;
 
 -- sale_items.sale_id → sales.id (CASCADE delete)
-SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
-    WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'sale_items' AND CONSTRAINT_NAME = 'fk_sale_items_sale');
-SET @sql = IF(@constraint_exists = 0, 
-    'ALTER TABLE sale_items ADD CONSTRAINT fk_sale_items_sale FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+ALTER TABLE sale_items
+    ADD CONSTRAINT fk_sale_items_sale FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE;
 
 -- purchase_items.purchase_id → purchases.id (CASCADE delete)
-SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
-    WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'purchase_items' AND CONSTRAINT_NAME = 'fk_purchase_items_purchase');
-SET @sql = IF(@constraint_exists = 0, 
-    'ALTER TABLE purchase_items ADD CONSTRAINT fk_purchase_items_purchase FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+ALTER TABLE purchase_items
+    ADD CONSTRAINT fk_purchase_items_purchase FOREIGN KEY (purchase_id) REFERENCES purchases(id) ON DELETE CASCADE;
 
 -- company_settings.company_id → companies.id (CASCADE delete)
-SET @constraint_exists = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
-    WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'company_settings' AND CONSTRAINT_NAME = 'fk_company_settings_company');
-SET @sql = IF(@constraint_exists = 0, 
-    'ALTER TABLE company_settings ADD CONSTRAINT fk_company_settings_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE',
-    'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+ALTER TABLE company_settings
+    ADD CONSTRAINT fk_company_settings_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 
 
 -- ─── End of Migration ─────────────────────────────────────

@@ -13,21 +13,8 @@
 
 -- Step 1: Add is_super_admin to users table (if not exists)
 -- This is a defense-in-depth column; the primary check remains via roles
-SET @col_exists = (
-    SELECT COUNT(*) FROM information_schema.COLUMNS
-    WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'users'
-      AND COLUMN_NAME = 'is_super_admin'
-);
-
-SET @sql = IF(@col_exists = 0,
-    'ALTER TABLE users ADD COLUMN is_super_admin TINYINT(1) NOT NULL DEFAULT 0 COMMENT ''Platform super admin flag - cannot be changed via UI'' AFTER role_id',
-    'SELECT ''Column already exists'' AS status'
-);
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `users`
+  ADD COLUMN IF NOT EXISTS `is_super_admin` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Platform super admin flag - cannot be changed via UI' AFTER `role_id`;
 
 -- Step 2: Index for fast super-admin lookups (optional, for admin panels)
 -- Only useful if you need to list all super-admins quickly
@@ -70,3 +57,4 @@ DEALLOCATE PREPARE stmt;
 -- 5. Log all super-admin actions to activity_log
 -- 6. Periodically audit: SELECT * FROM users WHERE is_super_admin = 1;
 -- ============================================================================
+

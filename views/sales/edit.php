@@ -155,7 +155,14 @@ function showDD(products, row, input) {
         const d = document.createElement('div');
         d.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:0.85rem;color:var(--body-color, #212529);';
         let mrpText = p.mrp ? ' | MRP: ₹' + p.mrp : '';
-        d.innerHTML = '<strong>' + p.name + '</strong> <span style=\"opacity:0.6\">(Stock: ' + p.current_stock + mrpText + ')</span>';
+        const strong = document.createElement('strong');
+        strong.textContent = p.name || '';
+        const meta = document.createElement('span');
+        meta.style.opacity = '0.6';
+        meta.textContent = '(Stock: ' + (p.current_stock ?? '') + mrpText + ')';
+        d.appendChild(strong);
+        d.appendChild(document.createTextNode(' '));
+        d.appendChild(meta);
         d.onmouseenter = () => { currentIndex = idx; updateSelection(); };
         d.onmouseleave = () => { d.style.background = 'transparent'; };
         d.onclick = () => {

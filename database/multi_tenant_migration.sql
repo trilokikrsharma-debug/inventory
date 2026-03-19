@@ -139,19 +139,24 @@ ALTER TABLE `activity_log`
 -- Tenant-scoped unique constraints
 -- NOTE: these DROP statements are safe in normal upgrade path from schema.sql.
 ALTER TABLE `products`
-  DROP INDEX `sku`,
+  DROP INDEX `sku`;
+ALTER TABLE `products`
   ADD UNIQUE INDEX `uq_products_company_sku` (`company_id`, `sku`);
 ALTER TABLE `sales`
-  DROP INDEX `invoice_number`,
+  DROP INDEX `invoice_number`;
+ALTER TABLE `sales`
   ADD UNIQUE INDEX `uq_sales_company_invoice` (`company_id`, `invoice_number`);
 ALTER TABLE `purchases`
-  DROP INDEX `invoice_number`,
+  DROP INDEX `invoice_number`;
+ALTER TABLE `purchases`
   ADD UNIQUE INDEX `uq_purchases_company_invoice` (`company_id`, `invoice_number`);
 ALTER TABLE `payments`
-  DROP INDEX `payment_number`,
+  DROP INDEX `payment_number`;
+ALTER TABLE `payments`
   ADD UNIQUE INDEX `uq_payments_company_number` (`company_id`, `payment_number`);
 ALTER TABLE `users`
-  DROP INDEX `username`,
+  DROP INDEX `username`;
+ALTER TABLE `users`
   ADD UNIQUE INDEX `uq_users_company_username` (`company_id`, `username`);
 
 -- Tenant query performance indexes

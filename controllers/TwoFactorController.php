@@ -41,6 +41,7 @@ class TwoFactorController extends Controller {
 
         $qrUrl = TwoFactorService::getQrCodeUrl($secret, $email);
         $otpAuthUrl = TwoFactorService::getOtpAuthUrl($secret, $email);
+        CSRF::getToken();
 
         $this->view('twoFactor.setup', [
             'pageTitle' => 'Two-Factor Authentication',
@@ -129,11 +130,12 @@ class TwoFactorController extends Controller {
      */
     public function verify() {
         // User must have completed username/password but not yet full auth
-        if (!Session::get('twofa_pending_user_id')) {
+        if (!Session::isTwoFactorPending()) {
             $this->redirect('index.php?page=login');
             return;
         }
 
+        CSRF::getToken();
         $this->view('twoFactor.verify', [
             'pageTitle' => 'Enter Verification Code',
         ]);
@@ -143,9 +145,9 @@ class TwoFactorController extends Controller {
      * POST: Verify OTP code during login.
      */
     public function verifyPost() {
-        $userId = Session::get('twofa_pending_user_id');
-        if (!$userId) {
-            $this->redirect('?page=login');
+        $userId = (int)Session::get('twofa_pending_user_id');
+        if ($userId <= 0 || !Session::isTwoFactorPending()) {
+            $this->redirect('index.php?page=login');
             return;
         }
 
@@ -167,11 +169,12 @@ class TwoFactorController extends Controller {
      * Show recovery code input form.
      */
     public function recovery() {
-        if (!Session::get('twofa_pending_user_id')) {
+        if (!Session::isTwoFactorPending()) {
             $this->redirect('index.php?page=login');
             return;
         }
 
+        CSRF::getToken();
         $this->view('twoFactor.recovery', [
             'pageTitle' => 'Recovery Code',
         ]);
@@ -181,8 +184,8 @@ class TwoFactorController extends Controller {
      * POST: Verify recovery code during login.
      */
     public function recoveryPost() {
-        $userId = Session::get('twofa_pending_user_id');
-        if (!$userId) {
+        $userId = (int)Session::get('twofa_pending_user_id');
+        if ($userId <= 0 || !Session::isTwoFactorPending()) {
             $this->redirect('index.php?page=login');
             return;
         }

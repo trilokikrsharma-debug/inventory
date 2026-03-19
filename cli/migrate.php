@@ -140,6 +140,142 @@ function splitSqlStatements(string $sqlContent): array
     return $statements;
 }
 
+function normalizeMigrationStatement(string $statement): string
+{
+    $statement = trim($statement);
+    if ($statement === '') {
+        return '';
+    }
+
+    $statement = preg_replace('/\bCREATE\s+UNIQUE\s+INDEX\s+IF\s+NOT\s+EXISTS\b/i', 'CREATE UNIQUE INDEX', $statement) ?? $statement;
+    $statement = preg_replace('/\bCREATE\s+INDEX\s+IF\s+NOT\s+EXISTS\b/i', 'CREATE INDEX', $statement) ?? $statement;
+    $statement = preg_replace('/\bADD\s+UNIQUE\s+INDEX\s+IF\s+NOT\s+EXISTS\b/i', 'ADD UNIQUE INDEX', $statement) ?? $statement;
+    $statement = preg_replace('/\bADD\s+INDEX\s+IF\s+NOT\s+EXISTS\b/i', 'ADD INDEX', $statement) ?? $statement;
+    $statement = preg_replace('/\bDROP\s+INDEX\s+IF\s+EXISTS\b/i', 'DROP INDEX', $statement) ?? $statement;
+
+    return trim($statement);
+}
+
+function extractIndexOperationMetadata(string $statement): ?array
+{
+    $statement = trim($statement);
+    if ($statement === '') {
+        return null;
+    }
+
+    $patterns = [
+        '/^CREATE\s+(?:UNIQUE\s+)?INDEX\s+`?([a-zA-Z0-9_]+)`?\s+ON\s+`?([a-zA-Z0-9_]+)`?/i' => 'create',
+        '/^ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+ADD\s+(?:UNIQUE\s+)?INDEX\s+`?([a-zA-Z0-9_]+)`?/i' => 'create',
+        '/^ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+DROP\s+INDEX\s+`?([a-zA-Z0-9_]+)`?/i' => 'drop',
+        '/^DROP\s+INDEX\s+`?([a-zA-Z0-9_]+)`?\s+ON\s+`?([a-zA-Z0-9_]+)`?/i' => 'drop',
+    ];
+
+    foreach ($patterns as $pattern => $type) {
+        if (preg_match($pattern, $statement, $matches)) {
+            if ($pattern === '/^DROP\s+INDEX\s+`?([a-zA-Z0-9_]+)`?\s+ON\s+`?([a-zA-Z0-9_]+)`?/i') {
+                return [
+                    'type' => $type,
+                    'table' => strtolower((string)$matches[2]),
+                    'index' => strtolower((string)$matches[1]),
+                ];
+            }
+
+            if ($pattern === '/^CREATE\s+(?:UNIQUE\s+)?INDEX\s+`?([a-zA-Z0-9_]+)`?\s+ON\s+`?([a-zA-Z0-9_]+)`?/i') {
+                return [
+                    'type' => $type,
+                    'table' => strtolower((string)$matches[2]),
+                    'index' => strtolower((string)$matches[1]),
+                ];
+            }
+
+            return [
+                'type' => $type,
+                'table' => strtolower((string)$matches[1]),
+                'index' => strtolower((string)$matches[2]),
+            ];
+        }
+    }
+
+    return null;
+}
+
+function indexExists(PDO $pdo, string $tableName, string $indexName): bool
+{
+    $stmt = $pdo->prepare("
+        SELECT 1
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND INDEX_NAME = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$tableName, $indexName]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function shouldSkipIndexStatement(PDO $pdo, string $statement): bool
+{
+    $meta = extractIndexOperationMetadata($statement);
+    if ($meta === null) {
+        return false;
+    }
+
+    $exists = indexExists($pdo, $meta['table'], $meta['index']);
+    return $meta['type'] === 'create' ? $exists : !$exists;
+}
+
+function extractConstraintOperationMetadata(string $statement): ?array
+{
+    $statement = trim($statement);
+    if ($statement === '') {
+        return null;
+    }
+
+    if (preg_match('/^ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+ADD\s+CONSTRAINT\s+`?([a-zA-Z0-9_]+)`?\s+FOREIGN\s+KEY/i', $statement, $matches)) {
+        return [
+            'type' => 'create',
+            'table' => strtolower((string)$matches[1]),
+            'constraint' => strtolower((string)$matches[2]),
+        ];
+    }
+
+    if (preg_match('/^ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+DROP\s+FOREIGN\s+KEY\s+`?([a-zA-Z0-9_]+)`?/i', $statement, $matches)) {
+        return [
+            'type' => 'drop',
+            'table' => strtolower((string)$matches[1]),
+            'constraint' => strtolower((string)$matches[2]),
+        ];
+    }
+
+    return null;
+}
+
+function foreignKeyConstraintExists(PDO $pdo, string $tableName, string $constraintName): bool
+{
+    $stmt = $pdo->prepare("
+        SELECT 1
+        FROM information_schema.TABLE_CONSTRAINTS
+        WHERE CONSTRAINT_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND CONSTRAINT_NAME = ?
+          AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+        LIMIT 1
+    ");
+    $stmt->execute([$tableName, $constraintName]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function shouldSkipConstraintStatement(PDO $pdo, string $statement): bool
+{
+    $meta = extractConstraintOperationMetadata($statement);
+    if ($meta === null) {
+        return false;
+    }
+
+    $exists = foreignKeyConstraintExists($pdo, $meta['table'], $meta['constraint']);
+    return $meta['type'] === 'create' ? $exists : !$exists;
+}
+
 function extractCreatedTablesFromSql(string $sqlContent): array
 {
     $normalized = filterSqlComments($sqlContent);
@@ -184,6 +320,15 @@ function runSqlFile(PDO $pdo, string $path, string $databaseName): array
 
     foreach ($statements as $index => $statement) {
         try {
+            $statement = normalizeMigrationStatement($statement);
+            if ($statement === '') {
+                continue;
+            }
+
+            if (shouldSkipIndexStatement($pdo, $statement) || shouldSkipConstraintStatement($pdo, $statement)) {
+                continue;
+            }
+
             $result = $pdo->query($statement);
             if ($result instanceof PDOStatement) {
                 do {

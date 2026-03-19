@@ -19,6 +19,7 @@ class CacheTest extends BaseTestCase {
         if (is_dir($dir)) {
             array_map('unlink', glob($dir . '/*'));
         }
+        Cache::resetForTests($dir);
     }
 
     protected function tearDown(): void {

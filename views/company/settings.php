@@ -121,7 +121,7 @@ if ($planStatus === 'active') {
                 <div class="card-header"><h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Account Info</h6></div>
                 <div class="card-body">
                     <table class="table table-sm mb-0">
-                        <tr><td class="text-muted">Company ID</td><td class="fw-bold">#<?= $company['id'] ?? '' ?></td></tr>
+                        <tr><td class="text-muted">Company ID</td><td class="fw-bold">#<?= (int)($company['id'] ?? 0) ?></td></tr>
                         <tr>
                             <td class="text-muted">Plan</td>
                             <td>
