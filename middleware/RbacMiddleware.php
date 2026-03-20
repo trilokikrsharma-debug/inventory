@@ -14,6 +14,7 @@ class RbacMiddleware implements MiddlewareInterface {
         'signup',
         'pricing',
         'demo_login',
+        'home',
         'health',
         'twoFactor',
         'logout',

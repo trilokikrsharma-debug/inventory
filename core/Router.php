@@ -7,6 +7,7 @@
 class Router {
     /** @var array<string, string> */
     private array $controllerMap = [
+        'home'           => 'HomeController',
         'login'          => 'AuthController',
         'logout'         => 'AuthController',
         'dashboard'      => 'DashboardController',
@@ -65,7 +66,8 @@ class Router {
         }
 
         if ($page === '') {
-            $page = 'dashboard';
+            // Unauthenticated visitors see the landing page; logged-in users go to dashboard
+            $page = Session::isLoggedIn() ? 'dashboard' : 'home';
         }
         if ($action === '') {
             $action = 'index';

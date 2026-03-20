@@ -10,7 +10,7 @@
 class AuthMiddleware implements MiddlewareInterface {
     /** @var string[] Pages that do not require authentication */
     private array $publicPages = [
-        'login', 'install', 'signup', 'pricing', 'demo_login'
+        'login', 'install', 'signup', 'pricing', 'demo_login', 'home'
     ];
 
     public function handle(Request $request, callable $next): void {

@@ -64,7 +64,7 @@ class SubscriptionGuardMiddleware implements MiddlewareInterface {
     }
 
     private function isRecoveryRoute(string $page, string $action, string $uri = ''): bool {
-        if ($page === 'login' || $page === 'pricing' || $page === 'signup' || $page === 'demo_login') {
+        if ($page === 'login' || $page === 'pricing' || $page === 'signup' || $page === 'demo_login' || $page === 'home') {
             return true;
         }
 
