@@ -36,7 +36,8 @@ class DemoLoginController extends Controller {
             if (!$user) {
                 $roleId = $this->resolveDemoRoleId($db, $companyId);
                 $username = $this->generateDemoUsername($db, $companyId);
-                $hashedPassword = password_hash('demo123', PASSWORD_DEFAULT);
+                $demoPassword = getenv('DEMO_PASSWORD') ?: 'Demo@2026Secure';
+                $hashedPassword = password_hash($demoPassword, PASSWORD_BCRYPT, ['cost' => 12]);
 
                 try {
                     $db->query(
@@ -75,6 +76,8 @@ class DemoLoginController extends Controller {
                 exit;
             }
 
+            // SECURITY: Strip sensitive fields before storing in session
+            unset($user['password'], $user['twofa_secret'], $user['twofa_recovery_codes']);
             $user['is_super_admin'] = false;
 
             session_regenerate_id(true);

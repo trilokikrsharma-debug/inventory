@@ -59,10 +59,12 @@ return [
     'password' => $dbPass !== null ? (string)$dbPass : '',
     'charset'  => 'utf8mb4',
     'collation'=> 'utf8mb4_unicode_ci',
-    'options'  => [
+    'options'  => array_filter([
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES   => false,
-        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
-    ]
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
+        // Persistent connections for production (reduces connection overhead)
+        PDO::ATTR_PERSISTENT         => (defined('APP_ENV') && APP_ENV === 'production') ? true : null,
+    ], fn($v) => $v !== null)
 ];

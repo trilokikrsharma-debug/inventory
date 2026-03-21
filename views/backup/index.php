@@ -538,14 +538,20 @@
                                 </a>
                                 <?php if (!empty($isSuperAdmin) && ($backup['type'] ?? '') === 'full'): ?>
                                 <!-- Restore from existing (super-admin + full backup only) -->
-                                <button type="button" class="btn-action btn-restore-existing" title="Restore This Backup"
-                                        onclick="confirmRestoreExisting('<?= htmlspecialchars($backup['filename'], ENT_QUOTES) ?>')">
+                                <button
+                                    type="button"
+                                    class="btn-action btn-restore-existing js-restore-existing"
+                                    title="Restore This Backup"
+                                    data-backup-file="<?= htmlspecialchars((string)$backup['filename'], ENT_QUOTES, 'UTF-8') ?>">
                                     <i class="fas fa-rotate-left"></i>
                                 </button>
                                 <?php endif; ?>
                                 <!-- Delete -->
-                                <button type="button" class="btn-action btn-delete" title="Delete"
-                                        onclick="confirmDelete('<?= htmlspecialchars($backup['filename'], ENT_QUOTES) ?>')">
+                                <button
+                                    type="button"
+                                    class="btn-action btn-delete js-delete-backup"
+                                    title="Delete"
+                                    data-backup-file="<?= htmlspecialchars((string)$backup['filename'], ENT_QUOTES, 'UTF-8') ?>">
                                     <i class="fas fa-trash-can"></i>
                                 </button>
                             </div>
@@ -716,6 +722,18 @@ function confirmRestoreExisting(filename) {
     document.getElementById('restoreExistingFileInput').value = filename;
     new bootstrap.Modal(document.getElementById('restoreExistingModal')).show();
 }
+
+document.querySelectorAll('.js-delete-backup').forEach((button) => {
+    button.addEventListener('click', () => {
+        confirmDelete(button.dataset.backupFile || '');
+    });
+});
+
+document.querySelectorAll('.js-restore-existing').forEach((button) => {
+    button.addEventListener('click', () => {
+        confirmRestoreExisting(button.dataset.backupFile || '');
+    });
+});
 
 // ==========================================
 // File upload handling

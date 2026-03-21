@@ -13,8 +13,8 @@ class DashboardController extends Controller {
 
         // SECURITY: Platform super-admins have no tenant context.
         // Redirect them to the platform dashboard where they belong.
-        if (Session::isSuperAdmin() && Tenant::id() === null) {
-            $this->redirect('index.php?page=platform&action=dashboard');
+        if (Session::isSuperAdmin()) {
+            $this->redirect('platform/dashboard');
             return;
         }
 

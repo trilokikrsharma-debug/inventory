@@ -168,6 +168,7 @@ class SaaSBillingController extends Controller {
         if (!$this->isPost()) {
             $this->json(['success' => false, 'message' => 'Method not allowed.'], 405);
         }
+        $this->validateCSRF();
 
         $input = json_decode(file_get_contents('php://input'), true);
         if (!is_array($input)) {

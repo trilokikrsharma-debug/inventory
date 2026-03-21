@@ -81,6 +81,9 @@ class UserModel extends Model {
         if ($companyId !== null && $companyId > 0) {
             return false;
         }
+        if (defined('TENANT_HOST_ENFORCEMENT') ? TENANT_HOST_ENFORCEMENT : false) {
+            return false;
+        }
 
         $users = $this->db->query(
             "SELECT u.*, c.status AS company_status, c.name AS company_name
@@ -152,7 +155,7 @@ class UserModel extends Model {
             return ['success' => false, 'message' => $limitCheck['message']];
         }
 
-        $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+        $data['password'] = password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => 12]);
 
         try {
             $id = $this->create($data);
@@ -213,7 +216,7 @@ class UserModel extends Model {
      */
     public function resetPassword($userId, $newPassword) {
         return $this->update($userId, [
-            'password' => password_hash($newPassword, PASSWORD_DEFAULT)
+            'password' => password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12])
         ]);
     }
 
@@ -245,7 +248,7 @@ class UserModel extends Model {
             }
         }
         $this->update($userId, [
-            'password' => password_hash($newPassword, PASSWORD_DEFAULT)
+            'password' => password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12])
         ]);
         return ['success' => true, 'message' => 'Password changed successfully.'];
     }

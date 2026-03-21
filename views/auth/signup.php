@@ -7,8 +7,8 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up | <?= APP_NAME ?></title>
-    <meta name="description" content="Create your free <?= APP_NAME ?> account. Inventory & billing for small businesses in India.">
+    <title>Sign Up | <?= Helper::escape(APP_NAME) ?></title>
+    <meta name="description" content="Create your free <?= Helper::escape(APP_NAME) ?> account. Inventory & billing for small businesses in India.">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="<?= APP_URL ?>/assets/css/style.css" rel="stylesheet">
@@ -18,50 +18,93 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-            padding: 2rem 1rem;
+            background: #020617;
+            background-image: 
+                radial-gradient(circle at 85% 50%, rgba(99, 102, 241, 0.15), transparent 25%),
+                radial-gradient(circle at 15% 30%, rgba(6, 182, 212, 0.15), transparent 25%);
+            padding: 2.5rem 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .signup-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(6,182,212,0.5), transparent);
         }
         .signup-card {
-            background: rgba(30, 30, 60, 0.95);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 1.2rem;
-            padding: 2.5rem;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 20px;
+            padding: 3rem 2.5rem;
             width: 100%;
-            max-width: 520px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 580px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(20px);
+            position: relative;
+            z-index: 1;
         }
-        .signup-card h2 { color: #fff; margin-bottom: 0.25rem; font-weight: 700; }
-        .signup-subtitle { color: #858796; margin-bottom: 1.5rem; }
-        .signup-card .form-control {
-            background: rgba(255,255,255,0.06);
-            border-color: rgba(255,255,255,0.1);
+        .brand-icon {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #6366f1, #06b6d4);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem; color: #fff;
+            margin: 0 auto 1.5rem;
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+        }
+        .signup-card h2 { color: #fff; font-weight: 800; text-align: center; margin-bottom: 0.5rem; font-size: 1.75rem; }
+        .signup-subtitle { color: #94a3b8; text-align: center; margin-bottom: 2rem; font-size: 0.95rem; }
+        .form-label { color: #cbd5e1; font-weight: 500; font-size: 0.85rem; margin-bottom: 0.5rem; }
+        .form-text { color: #64748b !important; }
+        .form-control {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
             color: #fff;
-            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            transition: all 0.2s;
         }
-        .signup-card .form-control:focus {
-            background: rgba(255,255,255,0.1);
-            border-color: #4e73df;
+        .form-control:focus {
+            background: rgba(255,255,255,0.08);
+            border-color: #06b6d4;
             color: #fff;
-            box-shadow: 0 0 0 0.2rem rgba(78,115,223,0.25);
+            box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.1);
         }
-        .signup-card .form-label { color: #b7b9cc; font-weight: 500; font-size: 0.85rem; }
-        .signup-card .btn-primary {
-            width: 100%;
-            padding: 0.75rem;
-            font-weight: 600;
-            border-radius: 0.5rem;
-            background: linear-gradient(135deg, #4e73df, #224abe);
+        .input-group-text {
+            background: rgba(255,255,255,0.02) !important;
+            border-color: rgba(255,255,255,0.1) !important;
+            color: #64748b !important;
+            border-radius: 10px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
             border: none;
+            border-radius: 10px;
+            padding: 0.85rem;
+            font-weight: 600;
+            margin-top: 1rem;
             transition: all 0.3s;
+            display: flex; align-items: center; justify-content: center;
+            width: 100%;
         }
-        .signup-card .btn-primary:hover {
+        .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(78,115,223,0.4);
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
         }
-        .divider { display: flex; align-items: center; margin: 1.5rem 0; }
-        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .divider span { padding: 0 1rem; color: #858796; font-size: 0.8rem; }
+        .footer-links { text-align: center; margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem; }
+        .footer-links .row-flex { display: flex; justify-content: center; gap: 0.75rem; }
+        .footer-links a.btn { border-radius: 8px; font-weight: 500; font-size: 0.85rem; padding: 0.5rem 1rem; }
+        .btn-outline-secondary { color: #94a3b8; border-color: rgba(148,163,184,0.3); }
+        .btn-outline-secondary:hover { background: rgba(148,163,184,0.1); color: #cbd5e1; border-color: rgba(148,163,184,0.5); }
+        .btn-outline-info { color: #06b6d4; border-color: rgba(6,182,212,0.3); }
+        .btn-outline-info:hover { background: rgba(6,182,212,0.1); color: #06b6d4; border-color: rgba(6,182,212,0.5); }
+        .text-link { color: #64748b; text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+        .text-link:hover { color: #cbd5e1; }
+        .divider { display: flex; align-items: center; margin: 2rem 0; }
+        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .divider span { padding: 0 1rem; color: #475569; font-size: 0.75rem; text-transform: uppercase; font-weight: 600; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -69,7 +112,7 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
     <div class="signup-card animate-fade-in-up">
         <div class="text-center mb-3">
             <div class="brand-icon"><i class="fas fa-bolt"></i></div>
-            <h2><?= APP_NAME ?></h2>
+            <h2><?= Helper::escape(APP_NAME) ?></h2>
             <p class="signup-subtitle">Create your free account</p>
         </div>
 
@@ -86,7 +129,7 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
         </div>
         <?php endif; ?>
 
-        <form method="POST" action="<?= APP_URL ?>/index.php?page=signup" id="signupForm" autocomplete="off" novalidate>
+        <form method="POST" action="<?= APP_URL ?>/signup" id="signupForm" autocomplete="off" novalidate>
             <?= CSRF::field() ?>
 
             <div class="mb-3">
@@ -175,7 +218,7 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
                     type="text"
                     class="form-control <?= isset($errors['referral_code']) ? 'is-invalid' : '' ?>"
                     name="referral_code"
-                    value="<?= Helper::escape($formData['referralCode'] ?? ($_GET['ref'] ?? '')) ?>"
+                    value="<?= Helper::escape((string)($formData['referralCode'] ?? ($_GET['ref'] ?? ''))) ?>"
                     placeholder="e.g. ABC123XYZ"
                     maxlength="40"
                     pattern="[A-Za-z0-9_-]{4,40}"
@@ -247,19 +290,19 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
 
         <div class="divider"><span>OR</span></div>
 
-        <div class="text-center">
-            <a href="<?= APP_URL ?>/index.php?page=demo_login" class="btn btn-outline-info btn-sm me-2">
-                <i class="fas fa-play-circle me-1"></i>Try Demo
-            </a>
-            <a href="<?= APP_URL ?>/index.php?page=login" class="btn btn-outline-secondary btn-sm">
-                <i class="fas fa-sign-in-alt me-1"></i>Already have account? Login
-            </a>
-        </div>
-
-        <div class="text-center mt-3">
-            <a href="<?= APP_URL ?>/index.php?page=pricing" style="color:#858796;font-size:0.8rem;text-decoration:none;">
-                <i class="fas fa-tag me-1"></i>View Pricing Plans
-            </a>
+        <div class="footer-links">
+            <div class="row-flex">
+                <a href="<?= APP_URL ?>/index.php?page=demo_login" class="btn btn-outline-info">
+                    <i class="fas fa-play-circle me-1"></i>Try Live Demo
+                </a>
+                <a href="<?= APP_URL ?>/login" class="btn btn-outline-secondary">
+                    <i class="fas fa-sign-in-alt me-1"></i>Login
+                </a>
+            </div>
+            <div>
+                <a href="<?= APP_URL ?>/" class="text-link me-3"><i class="fas fa-home me-1"></i>Home</a>
+                <a href="<?= APP_URL ?>/pricing" class="text-link"><i class="fas fa-tag me-1"></i>Pricing Plans</a>
+            </div>
         </div>
     </div>
 </div>
@@ -316,6 +359,12 @@ document.addEventListener('DOMContentLoaded', function () {
             form.classList.add('was-validated');
         });
     }
+
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    });
 });
 </script>
 </body>

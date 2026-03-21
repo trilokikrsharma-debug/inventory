@@ -1,4 +1,4 @@
-<?php $flash = Session::getFlash(); ?>
+﻿<?php $flash = Session::getFlash(); ?>
 <div class="container d-flex justify-content-center align-items-center" style="min-height:80vh;">
     <div class="card shadow-sm" style="max-width:420px; width:100%;">
         <div class="card-header bg-warning text-dark text-center">
@@ -15,7 +15,7 @@
             </p>
 
             <form method="POST" action="<?= APP_URL ?>/index.php?page=twoFactor&action=recoveryPost" id="recoveryForm">
-                <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= Session::get(CSRF_TOKEN_NAME) ?>">
+                <?= CSRF::field() ?>
                 
                 <div class="mb-4">
                     <input type="text" name="recovery_code" class="form-control form-control-lg text-center"

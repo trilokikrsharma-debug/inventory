@@ -57,6 +57,7 @@ class BackupController extends Controller {
     // =========================================================
 
     public function index() {
+        $this->requireFeature('backup');
         $this->requirePermission('backup.manage');
 
         $companyId = Tenant::require();
@@ -83,6 +84,7 @@ class BackupController extends Controller {
     // =========================================================
 
     public function create() {
+        $this->requireFeature('backup');
         $this->requirePermission('backup.manage');
 
         if (!$this->isPost()) {
@@ -364,6 +366,18 @@ class BackupController extends Controller {
             if (empty($stmt)) continue;
 
             // Skip pure comment lines
+            // SECURITY: Only allow safe SQL statement types
+            $upperStmt = strtoupper(ltrim($stmt));
+            $allowedPrefixes = ['CREATE ', 'INSERT ', 'DROP TABLE', 'SET ', 'START ', 'COMMIT', 'ALTER TABLE', 'LOCK ', 'UNLOCK '];
+            $isAllowed = false;
+            foreach ($allowedPrefixes as $prefix) {
+                if (str_starts_with($upperStmt, $prefix)) { $isAllowed = true; break; }
+            }
+            if (!$isAllowed) {
+                error_log('[Backup] Skipped non-allowlisted SQL: ' . substr($stmt, 0, 80));
+                continue;
+            }
+
             if (str_starts_with($stmt, '--') || str_starts_with($stmt, '/*')) continue;
 
             $pdo->exec($stmt);

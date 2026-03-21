@@ -42,6 +42,9 @@ class Router {
         'saas_plans'     => 'SaaSPlanController',
         'promos'         => 'PromoCodeController',
         'referrals'      => 'ReferralController',
+        'privacy'        => 'LegalController',
+        'terms'          => 'LegalController',
+        'refund'         => 'LegalController',
     ];
 
     /**
@@ -51,9 +54,9 @@ class Router {
         $page = trim((string)$request->page());
         $action = trim((string)$request->action());
 
-        // Friendly URL mapping support for Nginx/Apache rewrite to index.php.
-        if (empty($_GET['page'])) {
-            $mapped = $this->resolveFriendlyRoute();
+        // Apply explicit pretty-route aliases without collapsing unknown URLs to home.
+        if (!$request->hasExplicitPageQuery()) {
+            $mapped = $this->resolveFriendlyRoute($request->path());
             if ($mapped) {
                 $page = $mapped['page'];
                 $action = $mapped['action'];
@@ -66,8 +69,13 @@ class Router {
         }
 
         if ($page === '') {
-            // Unauthenticated visitors see the landing page; logged-in users go to dashboard
-            $page = Session::isLoggedIn() ? 'dashboard' : 'home';
+            if (!$request->hasExplicitPageQuery() && $request->path() !== '/') {
+                $this->renderErrorPage(404);
+                return;
+            }
+
+            // Unauthenticated visitors see the landing page; logged-in users handled by HomeController
+            $page = 'home';
         }
         if ($action === '') {
             $action = 'index';
@@ -84,19 +92,19 @@ class Router {
             }
 
             if (!$this->isPendingTwoFactorRoute($page, $action)) {
-                $this->redirect('index.php?page=twoFactor&action=verify');
+                $this->redirect('/twoFactor/verify');
                 return;
             }
         }
 
-        // Super-admins without tenant context should always land on platform dashboard.
-        if ($page === 'dashboard' && Session::isLoggedIn() && Session::isSuperAdmin() && Tenant::id() === null) {
-            $this->redirect('index.php?page=platform&action=dashboard');
+        // Super-admins should always land on the platform dashboard.
+        if ($page === 'dashboard' && Session::isLoggedIn() && Session::isSuperAdmin()) {
+            $this->redirect('/platform/dashboard');
             return;
         }
 
         try {
-            if ($this->dispatchApiRoute()) {
+            if ($this->dispatchApiRoute($request->path())) {
                 return;
             }
 
@@ -119,10 +127,6 @@ class Router {
 
             if (!is_file($controllerFile) || !is_readable($controllerFile)) {
                 $this->logRouteError("Controller file not found or unreadable: {$controllerFile}");
-                if ($page === 'dashboard') {
-                    $this->redirect('index.php?page=platform&action=dashboard');
-                    return;
-                }
                 $this->renderErrorPage(500);
                 return;
             }
@@ -131,10 +135,6 @@ class Router {
 
             if (!class_exists($controllerName, false)) {
                 $this->logRouteError("Controller class not found after include: {$controllerName}");
-                if ($page === 'dashboard') {
-                    $this->redirect('index.php?page=platform&action=dashboard');
-                    return;
-                }
                 $this->renderErrorPage(500);
                 return;
             }
@@ -154,22 +154,10 @@ class Router {
                 return;
             }
 
-            // Module-routing fallback: never hard fail for dashboard.
-            if ($page === 'dashboard') {
-                $this->redirect('index.php?page=platform&action=dashboard');
-                return;
-            }
-
             $this->logRouteError("Action '{$action}' is not allowed for controller {$controllerName}");
             $this->renderErrorPage(404);
         } catch (\Throwable $e) {
             $this->logRouteThrowable("Dispatch failed for page='{$page}', action='{$action}'", $e);
-
-            if ($page === 'dashboard') {
-                $this->redirect('index.php?page=platform&action=dashboard');
-                return;
-            }
-
             $this->renderErrorPage(500);
         }
     }
@@ -177,8 +165,8 @@ class Router {
     /**
      * Dispatch explicit API endpoints that bypass ?page routing.
      */
-    private function dispatchApiRoute(): bool {
-        $uri = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
+    private function dispatchApiRoute(string $requestPath): bool {
+        $uri = $this->normalizeUriPath($requestPath);
 
         $apiRoutes = [
             '/api/v1/saas/register'               => ['TenantOnboardingController', 'register'],
@@ -189,7 +177,7 @@ class Router {
         ];
 
         foreach ($apiRoutes as $routePath => $handler) {
-            if ($uri !== $routePath && !str_ends_with($uri, $routePath)) {
+            if ($uri !== $routePath) {
                 continue;
             }
 
@@ -229,13 +217,23 @@ class Router {
     /**
      * Map pretty URLs to page/action for platform billing modules.
      */
-    private function resolveFriendlyRoute(): ?array {
-        $uri = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
-        if ($uri === '') {
+    private function resolveFriendlyRoute(string $uri): ?array {
+        $normalizedUri = $this->normalizeUriPath($uri);
+        if ($normalizedUri === '') {
             return null;
         }
 
         $routes = [
+            '/login' => ['page' => 'login', 'action' => 'index'],
+            '/signup' => ['page' => 'signup', 'action' => 'index'],
+            '/dashboard' => ['page' => 'dashboard', 'action' => 'index'],
+            '/logout' => ['page' => 'logout', 'action' => 'index'],
+            '/pricing' => ['page' => 'pricing', 'action' => 'index'],
+            '/health' => ['page' => 'health', 'action' => 'index'],
+            '/demo' => ['page' => 'demo_login', 'action' => 'index'],
+            '/demo-login' => ['page' => 'demo_login', 'action' => 'index'],
+            '/twoFactor/verify' => ['page' => 'twoFactor', 'action' => 'verify'],
+            '/twoFactor/recovery' => ['page' => 'twoFactor', 'action' => 'recovery'],
             '/platform/plans' => ['page' => 'saas_plans', 'action' => 'index'],
             '/platform/plans/create' => ['page' => 'saas_plans', 'action' => 'create'],
             '/platform/plans/edit' => ['page' => 'saas_plans', 'action' => 'edit'],
@@ -251,32 +249,27 @@ class Router {
             '/platform/dashboard' => ['page' => 'platform', 'action' => 'dashboard'],
         ];
 
-        foreach ($routes as $routePath => $target) {
-            if ($uri === $routePath || str_ends_with($uri, $routePath)) {
-                return $target;
+        return $routes[$normalizedUri] ?? null;
+    }
+
+    /**
+     * Normalize URI path so route matching is exact and deterministic.
+     */
+    private function normalizeUriPath(string $uri): string {
+        $path = (string)(parse_url($uri, PHP_URL_PATH) ?? '');
+        if ($path === '') {
+            return '/';
+        }
+
+        $normalized = '/' . ltrim($path, '/');
+        if ($normalized !== '/') {
+            $normalized = rtrim($normalized, '/');
+            if ($normalized === '') {
+                $normalized = '/';
             }
         }
 
-        // Dynamic routing fallback (matches keys in $_GET created by .htaccess RewriteRule ^(.*)$ index.php?/$1)
-        foreach ($_GET as $key => $value) {
-            if (str_starts_with($key, '/')) {
-                $path = trim($key, '/');
-                if ($path === '') continue;
-
-                $parts = explode('/', $path);
-                $page = $parts[0];
-                
-                // Allow routing ONLY if the module is registered.
-                if (isset($this->controllerMap[$page])) {
-                    return [
-                        'page' => $page,
-                        'action' => $parts[1] ?? 'index'
-                    ];
-                }
-            }
-        }
-
-        return null;
+        return $normalized;
     }
 
     /**
@@ -311,7 +304,10 @@ class Router {
      * Relative redirect helper (resilient to APP_URL subfolder drift).
      */
     private function redirect(string $location): void {
-        $target = ltrim($location, '/');
+        $target = trim($location);
+        if (!preg_match('/^https?:\\/\\//i', $target)) {
+            $target = rtrim(APP_URL, '/') . '/' . ltrim($target, '/');
+        }
 
         if (!headers_sent()) {
             header('Location: ' . $target);
@@ -377,6 +373,6 @@ class Router {
         }
 
         Session::destroy();
-        $this->redirect('index.php?page=login');
+        $this->redirect('/login');
     }
 }

@@ -1,0 +1,130 @@
+, 
+"machineType": "https://comput
+e.googleapis.com/compute/v1/pr
+ojects/extreme-tribute-484920-
+j4/zones/asia-south1-a/machine
+Types/e2-small", "metadata": 
+{}, "name": "invenbill-1", 
+"networkInterfaces": 
+[{"accessConfigs": [{"name": 
+"external-nat", "type": 
+"ONE_TO_ONE_NAT"}], 
+"network": "https://compute.go
+ogleapis.com/compute/v1/projec
+ts/extreme-tribute-484920-j4/g
+lobal/networks/default"}], 
+"scheduling": 
+{"automaticRestart": true}, 
+"serviceAccounts": [{"email": 
+"default", "scopes": ["https:/
+/www.googleapis.com/auth/devst
+orage.read_only", "https://www
+.googleapis.com/auth/logging.w
+rite", "https://www.googleapis
+.com/auth/monitoring.write", "
+https://www.googleapis.com/aut
+h/pubsub", "https://www.google
+apis.com/auth/service.manageme
+nt.readonly", "https://www.goo
+gleapis.com/auth/servicecontro
+l", "https://www.googleapis.co
+m/auth/trace.append"]}], 
+"tags": {"items": 
+["http-server https-server"]}}
+== body end ==
+==== request end ====
+---- response start ----
+status: 400
+-- headers start --
+Alt-Svc: h3=":443"; 
+ma=2592000,h3-29=":443"; 
+ma=2592000
+Content-Encoding: gzip
+Content-Type: 
+application/json; 
+charset=UTF-8
+Date: Fri, 20 Mar 2026 
+06:17:47 GMT
+Server: ESF
+Transfer-Encoding: chunked
+Vary: Origin, X-Origin, 
+Referer
+X-Content-Type-Options: 
+nosniff
+X-Frame-Options: SAMEORIGIN
+X-XSS-Protection: 0
+-- headers end --
+-- body start --
+{
+  "error": {
+    "code": 400,
+    "message": "Invalid value 
+for field 
+'resource.tags.items[0]': 
+'http-server https-server'. 
+Must be a match of regex '(?:[
+a-z](?:[-a-z0-9]{0,61}[a-z0-9]
+)?)'",
+    "errors": [
+      {
+        "message": "Invalid 
+value for field 
+'resource.tags.items[0]': 
+'http-server https-server'. 
+Must be a match of regex '(?:[
+a-z](?:[-a-z0-9]{0,61}[a-z0-9]
+)?)'",
+        "domain": "global",
+        "reason": "invalid"
+      }
+    ],
+    "details": [
+      {
+        "@type": "type.googlea
+pis.com/google.rpc.ErrorInfo",
+        "reason": 
+"INVALID_FIELD_VALUE",
+        "domain": 
+"compute.googleapis.com",
+        "metadata": {
+          "field": 
+"resource.tags.items[0]",
+          "value": 
+"http-server https-server",
+          "reason": "Must be 
+a match of regex '(?:[a-z](?:[
+-a-z0-9]{0,61}[a-z0-9])?)'"
+        }
+      },
+      {
+        "@type": "type.googlea
+pis.com/google.rpc.LocalizedMe
+ssage",
+        "locale": "en-US",
+        "message": "Invalid 
+value for field 
+'resource.tags.items[0]': 
+'http-server https-server'. 
+Must be a match of regex '(?:[
+a-z](?:[-a-z0-9]{0,61}[a-z0-9]
+)?)'"
+      }
+    ]
+  }
+}
+
+-- body end --
+total round trip time 
+(request+response): 0.251 secs
+---- response end ----
+----------------------
+ERROR: (gcloud.compute.instanc
+es.create) Could not fetch 
+resource:
+ - Invalid value for field 
+'resource.tags.items[0]': 
+'http-server https-server'. 
+Must be a match of regex '(?:[
+a-z](?:[-a-z0-9]{0,61}[a-z0-9]
+)?)'
+

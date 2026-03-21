@@ -141,6 +141,7 @@ CREATE TABLE `products` (
   `unit_id` INT UNSIGNED DEFAULT NULL,
   `purchase_price` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
   `selling_price` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  `mrp` DECIMAL(12,2) DEFAULT NULL COMMENT 'Maximum Retail Price',
   `tax_rate` DECIMAL(5,2) DEFAULT NULL COMMENT 'Product-specific tax, NULL=use default',
   `opening_stock` DECIMAL(12,3) DEFAULT 0.000,
   `current_stock` DECIMAL(12,3) DEFAULT 0.000,

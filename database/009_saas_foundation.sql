@@ -19,11 +19,23 @@ INSERT INTO saas_plans (name, price, max_users, features) VALUES
 
 -- 2. Enhance Companies Table (Replacing tenants)
 ALTER TABLE companies
-ADD COLUMN subdomain VARCHAR(100) UNIQUE AFTER name,
-ADD COLUMN saas_plan_id INT DEFAULT 1 AFTER subdomain,
-ADD COLUMN subscription_status VARCHAR(20) DEFAULT 'trial' AFTER saas_plan_id,
-ADD COLUMN trial_ends_at TIMESTAMP NULL AFTER subscription_status,
-ADD FOREIGN KEY (saas_plan_id) REFERENCES saas_plans(id);
+ADD COLUMN subdomain VARCHAR(100) AFTER name;
+
+ALTER TABLE companies
+ADD UNIQUE INDEX subdomain (subdomain);
+
+ALTER TABLE companies
+ADD COLUMN saas_plan_id INT DEFAULT 1 AFTER subdomain;
+
+ALTER TABLE companies
+ADD COLUMN subscription_status VARCHAR(20) DEFAULT 'trial' AFTER saas_plan_id;
+
+ALTER TABLE companies
+ADD COLUMN trial_ends_at TIMESTAMP NULL AFTER subscription_status;
+
+ALTER TABLE companies
+ADD CONSTRAINT fk_companies_saas_plan
+FOREIGN KEY (saas_plan_id) REFERENCES saas_plans(id);
 
 -- 3. Create Tenant Subscriptions Table (Razorpay Tracking)
 CREATE TABLE tenant_subscriptions (

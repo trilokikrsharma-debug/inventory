@@ -150,6 +150,7 @@ class ReportController extends Controller {
     }
 
     public function profit() {
+        $this->requireFeature('advanced_reports');
         $this->requirePermission('reports.view');
 
         $fromDate = $this->normalizeDate($this->get('from_date', ''), date('Y-m-01'));
@@ -171,6 +172,7 @@ class ReportController extends Controller {
     }
 
     public function customer_dues() {
+        $this->requireFeature('advanced_reports');
         $this->requirePermission('reports.view');
 
         $customers = Cache::remember(
@@ -186,6 +188,7 @@ class ReportController extends Controller {
     }
 
     public function supplier_dues() {
+        $this->requireFeature('advanced_reports');
         $this->requirePermission('reports.view');
 
         $suppliers = Cache::remember(

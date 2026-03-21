@@ -1,19 +1,21 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    Options -Indexes -MultiViews
 
     # Deny hidden files (.env, .git, etc.)
     RewriteRule ^\. - [F,L]
 
     # Deny direct access to internal application folders
-    RewriteRule ^(core|config|database|logs|cache|cli|backups|models|controllers|views)/ - [F,L]
+    RewriteRule ^(core|config|database|logs|cache|cli|backups|models|controllers|views|middleware|services|repositories|bootstrap|storage|vendor)/ - [F,L,NC]
 
-    # Prevent directory listing
-    Options -Indexes
+    # Deny common secrets, backups, and operational files at the web layer
+    RewriteRule ^.*\.(env|ini|log|sql|bak|md|lock|yml|yaml|neon)$ - [F,L,NC]
 
-    # Route all non-file / non-directory requests to index.php
+    # Route all non-file / non-directory requests to the front controller.
+    # The app router inspects REQUEST_URI and returns a proper 404 for unknown pages.
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ index.php?/$1 [L,QSA]
+    RewriteRule ^ index.php [L,QSA]
 </IfModule>
 
 <IfModule mod_deflate.c>
@@ -44,6 +46,7 @@
 </IfModule>
 
 <IfModule mod_headers.c>
+    Header always unset X-Powered-By
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"

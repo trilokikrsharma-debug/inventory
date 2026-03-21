@@ -26,7 +26,7 @@
                         <td class="ps-4 text-muted">#<?php echo $t['id']; ?></td>
                         <td>
                             <strong><?php echo htmlspecialchars($t['name'] ?? ''); ?></strong><br>
-                            <small class="text-muted"><code><?php echo htmlspecialchars($t['subdomain'] ?? ''); ?>.<?php echo $_SERVER['HTTP_HOST'] ?? 'localhost'; ?></code></small>
+                            <small class="text-muted"><code><?php echo htmlspecialchars($t['subdomain'] ?? ''); ?>.<?php echo htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'localhost', ENT_QUOTES, 'UTF-8'); ?></code></small>
                         </td>
                         <td><a href="mailto:<?php echo htmlspecialchars($t['owner_email'] ?? ''); ?>"><?php echo htmlspecialchars($t['owner_email'] ?? ''); ?></a></td>
                         <td><span class="badge bg-dark"><?php echo htmlspecialchars($t['plan_name'] ?? 'Free'); ?></span></td>

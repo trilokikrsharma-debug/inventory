@@ -6,6 +6,7 @@ class UserController extends Controller {
 
     protected $allowedActions = ['index', 'create', 'edit', 'resetPassword', 'toggleActive', 'delete'];
 
+
     public function index() {
         $this->requirePermission('users.view');
         $search = $this->get('search', '');
@@ -22,6 +23,22 @@ class UserController extends Controller {
         $this->requirePermission('users.create');
         if ($this->isPost()) {
             $this->validateCSRF();
+
+            if (Tenant::id() !== null) {
+                $currentUsers = (int)Tenant::usageCount('max_users');
+                if (!Tenant::canUse('max_users', $currentUsers, 1)) {
+                    $limit = (int)(Tenant::usageLimit('max_users') ?? 0);
+                    $this->setFlash(
+                        'error',
+                        $limit > 0
+                            ? 'User limit reached (' . $limit . '). Please upgrade your plan.'
+                            : 'User limit reached for your plan. Please upgrade to add more users.'
+                    );
+                    $this->redirect('index.php?page=users&action=create');
+                    return;
+                }
+            }
+
             $model  = new UserModel();
 
             // Resolve RBAC role

@@ -17,6 +17,24 @@
 header('Content-Type: text/html; charset=UTF-8');
 define('BASE_PATH', __DIR__);
 
+// ─── Maintenance Mode Check ─────────────────────────────────
+$maintenanceFile = __DIR__ . '/storage/maintenance.lock';
+if (file_exists($maintenanceFile)) {
+    http_response_code(503);
+    header('Retry-After: 3600');
+    $maintenancePage = __DIR__ . '/views/errors/maintenance.php';
+    if (file_exists($maintenancePage)) {
+        include $maintenancePage;
+    } else {
+        echo '<h1>503 — Service Temporarily Unavailable</h1><p>We are performing scheduled maintenance. Please check back shortly.</p>';
+    }
+    exit;
+}
+
+// ─── Request Tracing ─────────────────────────────────────────
+define('REQUEST_ID', bin2hex(random_bytes(8)));
+header('X-Request-ID: ' . REQUEST_ID);
+
 // Load configuration (defines paths, constants, APP_ENV, etc.)
 require_once BASE_PATH . '/config/config.php';
 

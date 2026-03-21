@@ -14,14 +14,30 @@ class Session {
             // Belt-and-suspenders: ini_set + session_set_cookie_params
             ini_set('session.use_strict_mode', 1);
             ini_set('session.use_only_cookies', 1);
+            ini_set('session.use_trans_sid', 0);
+            ini_set('session.sid_length', 48);
+            ini_set('session.sid_bits_per_character', 6);
             ini_set('session.cookie_httponly', 1);
             ini_set('session.cookie_samesite', 'Lax');
             ini_set('session.gc_maxlifetime', SESSION_LIFETIME);
             session_name(SESSION_NAME);
-            $isSecure = self::isSecureRequest();
+            $isSecure = (defined('APP_ENV') && APP_ENV === 'production') ? true : self::isSecureRequest();
+            ini_set('session.cookie_secure', $isSecure ? '1' : '0');
+
+            // Resolve session cookie domain for multi-subdomain SaaS
+            $cookieDomain = '';
+            if (defined('TENANT_BASE_DOMAIN') && TENANT_BASE_DOMAIN !== '') {
+                $baseDomain = TENANT_BASE_DOMAIN;
+                // Only apply domain scoping when on a real domain (not localhost/IP)
+                if ($baseDomain !== 'localhost' && !filter_var($baseDomain, FILTER_VALIDATE_IP)) {
+                    $cookieDomain = '.' . ltrim($baseDomain, '.');
+                }
+            }
+
             session_set_cookie_params([
                 'lifetime' => SESSION_LIFETIME,
                 'path'     => '/',
+                'domain'   => $cookieDomain,
                 'secure'   => $isSecure,
                 'httponly' => true,
                 'samesite' => 'Lax'
@@ -64,19 +80,19 @@ class Session {
     public static function destroy() {
         $cookieParams = session_get_cookie_params();
         session_unset();
+        $_SESSION = [];
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_destroy();
         }
         if (isset($_COOKIE[SESSION_NAME])) {
-            setcookie(
-                SESSION_NAME,
-                '',
-                time() - 3600,
-                $cookieParams['path'] ?? '/',
-                $cookieParams['domain'] ?? '',
-                (bool)($cookieParams['secure'] ?? false),
-                (bool)($cookieParams['httponly'] ?? true)
-            );
+            setcookie(SESSION_NAME, '', [
+                'expires'  => time() - 3600,
+                'path'     => $cookieParams['path'] ?? '/',
+                'domain'   => $cookieParams['domain'] ?? '',
+                'secure'   => (bool)($cookieParams['secure'] ?? false),
+                'httponly' => (bool)($cookieParams['httponly'] ?? true),
+                'samesite' => $cookieParams['samesite'] ?? 'Lax',
+            ]);
         }
     }
 
@@ -104,10 +120,10 @@ class Session {
                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
                 if ($isAjax) {
                     http_response_code(401);
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'message' => 'Session expired. Please login again.']);
+                    header('Content-Type: application/json; charset=UTF-8');
+                    echo json_encode(['success' => false, 'message' => 'Session expired. Please login again.'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 } else {
-                    header("Location: " . APP_URL . "/index.php?page=login&timeout=1");
+                    header("Location: " . APP_URL . "/login?timeout=1");
                 }
             }
             exit;
@@ -419,6 +435,16 @@ class Session {
 
         $forwardedProto = strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
         if ($forwardedProto === 'https') {
+            return true;
+        }
+
+        $forwarded = strtolower((string)($_SERVER['HTTP_FORWARDED'] ?? ''));
+        if (str_contains($forwarded, 'proto=https')) {
+            return true;
+        }
+
+        $serverPort = (string)($_SERVER['SERVER_PORT'] ?? '');
+        if ($serverPort === '443') {
             return true;
         }
 

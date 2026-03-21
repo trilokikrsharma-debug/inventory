@@ -1,7 +1,7 @@
 <?php
 /**
- * Signup Controller — Public Self-Registration Flow
- * 
+ * Signup Controller - Public Self-Registration Flow
+ *
  * Handles new company + owner user creation in a single atomic transaction.
  * No authentication required.
  */
@@ -10,13 +10,13 @@ class SignupController extends Controller {
     protected $allowedActions = ['index'];
 
     public function index() {
-        // If already logged in, redirect to dashboard
         if (Session::isLoggedIn()) {
             if (Session::isTwoFactorPending()) {
-                $this->redirect('index.php?page=twoFactor&action=verify');
+                $this->redirect('twoFactor/verify');
                 return;
             }
-            $this->redirect('index.php?page=dashboard');
+
+            $this->redirect('dashboard');
             return;
         }
 
@@ -39,6 +39,7 @@ class SignupController extends Controller {
                 ]);
                 return;
             }
+
             if (!RateLimiter::attempt('signup_global', 200, 3600)) {
                 $error = 'Signup service is temporarily busy. Please retry after some time.';
                 $this->renderPartial('auth.signup', [
@@ -51,11 +52,11 @@ class SignupController extends Controller {
             }
 
             $companyName = trim($this->sanitize($this->post('company_name', '')));
-            $ownerName   = trim($this->sanitize($this->post('full_name', '')));
-            $email       = trim(strtolower($this->post('email', '')));
-            $phone       = trim($this->sanitize($this->post('phone', '')));
-            $username    = trim(strtolower($this->sanitize($this->post('username', ''))));
-            $password    = $this->post('password', '');
+            $ownerName = trim($this->sanitize($this->post('full_name', '')));
+            $email = trim(strtolower($this->post('email', '')));
+            $phone = trim($this->sanitize($this->post('phone', '')));
+            $username = trim(strtolower($this->sanitize($this->post('username', ''))));
+            $password = $this->post('password', '');
             $confirmPass = $this->post('confirm_password', '');
             $referralCode = strtoupper(trim((string)$this->post('referral_code', '')));
 
@@ -64,34 +65,33 @@ class SignupController extends Controller {
                 ? max(6, (int)PASSWORD_MIN_LENGTH)
                 : 6;
 
-            // Validation
-            if (empty($companyName) || strlen($companyName) < 2) {
+            if ($companyName === '' || strlen($companyName) < 2) {
                 $errors['company_name'] = 'Company name is required (minimum 2 characters).';
             } elseif (strlen($companyName) > 120) {
                 $errors['company_name'] = 'Company name must be 120 characters or fewer.';
             }
 
-            if (empty($ownerName) || strlen($ownerName) < 2) {
+            if ($ownerName === '' || strlen($ownerName) < 2) {
                 $errors['full_name'] = 'Full name is required (minimum 2 characters).';
             } elseif (strlen($ownerName) > 120) {
                 $errors['full_name'] = 'Full name must be 120 characters or fewer.';
             }
 
-            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $errors['email'] = 'A valid email address is required.';
             } elseif (strlen($email) > 190) {
                 $errors['email'] = 'Email address is too long.';
             }
 
-            if (!empty($phone) && !preg_match('/^\+?[0-9\s\-()]{7,20}$/', $phone)) {
+            if ($phone !== '' && !preg_match('/^\+?[0-9\s\-()]{7,20}$/', $phone)) {
                 $errors['phone'] = 'Phone number format looks invalid.';
             }
 
-            if (empty($username) || strlen($username) < 3 || strlen($username) > 40 || !preg_match('/^[a-z0-9_]+$/', $username)) {
+            if ($username === '' || strlen($username) < 3 || strlen($username) > 40 || !preg_match('/^[a-z0-9_]+$/', $username)) {
                 $errors['username'] = 'Username must be 3-40 characters (lowercase letters, numbers, underscore only).';
             }
 
-            if (empty($password) || strlen($password) < $minPasswordLength) {
+            if ($password === '' || strlen($password) < $minPasswordLength) {
                 $errors['password'] = "Password must be at least {$minPasswordLength} characters.";
             } elseif (defined('PASSWORD_COMPLEXITY') && PASSWORD_COMPLEXITY) {
                 if (!preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
@@ -99,7 +99,7 @@ class SignupController extends Controller {
                 }
             }
 
-            if (empty($confirmPass)) {
+            if ($confirmPass === '') {
                 $errors['confirm_password'] = 'Please confirm your password.';
             } elseif ($password !== $confirmPass) {
                 $errors['confirm_password'] = 'Passwords do not match.';
@@ -110,7 +110,6 @@ class SignupController extends Controller {
             }
 
             if (empty($errors)) {
-                // Check email uniqueness (globally)
                 $userModel = new UserModel();
                 if ($userModel->emailExists($email)) {
                     $errors['email'] = 'This email is already registered. Please log in or use a different email.';
@@ -118,123 +117,108 @@ class SignupController extends Controller {
             }
 
             if (empty($errors)) {
-                $db = null;
                 $db = Database::getInstance();
                 $db->beginTransaction();
 
                 try {
-                // 1. Create company
-                $slug = $this->generateSlug($companyName);
-                $db->query(
-                    "INSERT INTO companies
-                     (name, slug, saas_plan_id, subscription_status, trial_ends_at, plan, status, max_users, max_products)
-                     VALUES (?, ?, 1, 'trial', DATE_ADD(NOW(), INTERVAL 14 DAY), 'starter', 'active', 3, 500)",
-                    [$companyName, $slug]
-                );
-                $companyId = $db->lastInsertId();
+                    $slug = $this->generateSlug($companyName);
+                    $companyId = $this->createCompanyRecord($db, $companyName, $slug);
 
-                // 2. Create owner user using a tenant-safe admin role.
-                // SECURITY: is_super_admin is ALWAYS 0 here. Platform super-admins are set via DB ONLY.
-                $tenantAdminRoleId = $this->resolveTenantAdminRoleId($db, (int)$companyId);
-                if ($tenantAdminRoleId <= 0) {
-                    throw new \RuntimeException('Unable to resolve a safe tenant admin role.');
-                }
-                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                $db->query(
-                    "INSERT INTO users (company_id, username, email, password, full_name, phone, role, role_id, is_active, is_super_admin) VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, 1, 0)",
-                    [$companyId, $username, $email, $hashedPassword, $ownerName, $phone, $tenantAdminRoleId]
-                );
-                $userId = $db->lastInsertId();
-
-                // 3. Update company with owner
-                $db->query("UPDATE companies SET owner_user_id = ? WHERE id = ?", [$userId, $companyId]);
-
-                // 4. Create default settings
-                $db->query(
-                    "INSERT INTO company_settings (company_id, company_name, company_email, company_phone, company_address, company_city, company_state, company_country, currency_symbol, currency_code, enable_gst, enable_tax, tax_rate, low_stock_threshold, invoice_prefix, purchase_prefix, payment_prefix, receipt_prefix) 
-                     VALUES (?, ?, ?, ?, '', '', '', 'India', '₹', 'INR', 1, 1, 18, 10, 'INV-', 'PUR-', 'PAY-', 'REC-')",
-                    [$companyId, $companyName, $email, $phone]
-                );
-
-                // 5. Seed default data (categories, units, brands)
-                $defaults = [
-                    'categories' => ['General', 'Electronics', 'Groceries', 'Clothing'],
-                    'brands'     => ['Generic', 'Unbranded'],
-                    'units'      => [
-                        ['name' => 'Pieces', 'short_name' => 'pcs'],
-                        ['name' => 'Kilograms', 'short_name' => 'kg'],
-                        ['name' => 'Liters', 'short_name' => 'ltr'],
-                        ['name' => 'Meters', 'short_name' => 'mtr'],
-                        ['name' => 'Boxes', 'short_name' => 'box'],
-                    ],
-                ];
-
-                foreach ($defaults['categories'] as $cat) {
-                    $db->query("INSERT INTO categories (company_id, name) VALUES (?, ?)", [$companyId, $cat]);
-                }
-                foreach ($defaults['brands'] as $brand) {
-                    $db->query("INSERT INTO brands (company_id, name) VALUES (?, ?)", [$companyId, $brand]);
-                }
-                foreach ($defaults['units'] as $unit) {
-                    $db->query("INSERT INTO units (company_id, name, short_name) VALUES (?, ?, ?)", [$companyId, $unit['name'], $unit['short_name']]);
-                }
-
-                // 6. Seed Walk-In Customer
-                $db->query(
-                    "INSERT INTO customers (company_id, name, phone, email, address) VALUES (?, 'Walk-In Customer', '', '', '')",
-                    [$companyId]
-                );
-
-                // 7. Create own referral code and optionally map referred-by relationship.
-                $referralModel = new Referral();
-                $referralModel->ensureCompanyReferralCode($companyId);
-                if ($referralCode !== '') {
-                    $refAssign = $referralModel->assignReferralToCompany($companyId, $referralCode);
-                    if (empty($refAssign['success'])) {
-                        throw new \RuntimeException($refAssign['message'] ?? 'Invalid referral code.');
+                    $tenantAdminRoleId = $this->resolveTenantAdminRoleId($db, $companyId);
+                    if ($tenantAdminRoleId <= 0) {
+                        throw new RuntimeException('Unable to resolve a safe tenant admin role.');
                     }
-                }
 
-                $db->commit();
+                    $hashedPassword = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+                    $db->query(
+                        "INSERT INTO users (company_id, username, email, password, full_name, phone, role, role_id, is_active, is_super_admin) VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, 1, 0)",
+                        [$companyId, $username, $email, $hashedPassword, $ownerName, $phone, $tenantAdminRoleId]
+                    );
+                    $userId = (int)$db->lastInsertId();
 
-                // Auto-login after signup
-                $user = $db->query("SELECT * FROM users WHERE id = ?", [$userId])->fetch();
-                
-                // Fetch full company data to properly set Tenant context
-                $company = $db->query("SELECT * FROM companies WHERE id = ?", [$companyId])->fetch();
+                    $db->query('UPDATE companies SET owner_user_id = ? WHERE id = ?', [$userId, $companyId]);
 
-                session_regenerate_id(true);
+                    $db->query(
+                        "INSERT INTO company_settings (company_id, company_name, company_email, company_phone, company_address, company_city, company_state, company_country, currency_symbol, currency_code, enable_gst, enable_tax, tax_rate, low_stock_threshold, invoice_prefix, purchase_prefix, payment_prefix, receipt_prefix)
+                         VALUES (?, ?, ?, ?, '', '', '', 'India', 'Rs', 'INR', 1, 1, 18, 10, 'INV-', 'PUR-', 'PAY-', 'REC-')",
+                        [$companyId, $companyName, $email, $phone]
+                    );
 
-                // SECURITY: Signup users are NEVER super-admins.
-                // is_super_admin can only be set manually in the database by the platform owner.
-                Session::clearPermissionCache();
-                $user['is_super_admin'] = false;
+                    $defaults = [
+                        'categories' => ['General', 'Electronics', 'Groceries', 'Clothing'],
+                        'brands' => ['Generic', 'Unbranded'],
+                        'units' => [
+                            ['name' => 'Pieces', 'short_name' => 'pcs'],
+                            ['name' => 'Kilograms', 'short_name' => 'kg'],
+                            ['name' => 'Liters', 'short_name' => 'ltr'],
+                            ['name' => 'Meters', 'short_name' => 'mtr'],
+                            ['name' => 'Boxes', 'short_name' => 'box'],
+                        ],
+                    ];
 
-                Session::set('user', $user);
-                Tenant::set($companyId, $company);
+                    foreach ($defaults['categories'] as $category) {
+                        $db->query('INSERT INTO categories (company_id, name) VALUES (?, ?)', [$companyId, $category]);
+                    }
 
-                Session::setFlash('success', 'Welcome to ' . APP_NAME . '! Your account has been created.');
-                header("Location: " . APP_URL . "/index.php?page=dashboard");
-                exit;
+                    foreach ($defaults['brands'] as $brand) {
+                        $db->query('INSERT INTO brands (company_id, name) VALUES (?, ?)', [$companyId, $brand]);
+                    }
 
-            } catch (\Exception $e) {
-                if ($db) {
+                    foreach ($defaults['units'] as $unit) {
+                        $db->query(
+                            'INSERT INTO units (company_id, name, short_name) VALUES (?, ?, ?)',
+                            [$companyId, $unit['name'], $unit['short_name']]
+                        );
+                    }
+
+                    $db->query(
+                        "INSERT INTO customers (company_id, name, phone, email, address) VALUES (?, 'Walk-In Customer', '', '', '')",
+                        [$companyId]
+                    );
+
+                    $referralModel = new Referral();
+                    $referralModel->ensureCompanyReferralCode($companyId);
+                    if ($referralCode !== '') {
+                        $refAssign = $referralModel->assignReferralToCompany($companyId, $referralCode);
+                        if (empty($refAssign['success'])) {
+                            throw new RuntimeException($refAssign['message'] ?? 'Invalid referral code.');
+                        }
+                    }
+
+                    $db->commit();
+
+                    $user = $db->query('SELECT * FROM users WHERE id = ?', [$userId])->fetch();
+                    $company = $db->query('SELECT * FROM companies WHERE id = ?', [$companyId])->fetch();
+
+                    session_regenerate_id(true);
+                    Session::clearPermissionCache();
+                    unset($user['password'], $user['twofa_secret'], $user['twofa_recovery_codes']);
+                    $user['is_super_admin'] = false;
+
+                    Session::set('user', $user);
+                    Tenant::set($companyId, $company);
+                    Session::setFlash('success', 'Welcome to ' . APP_NAME . '! Your account has been created.');
+
+                    header('Location: ' . APP_URL . '/dashboard');
+                    exit;
+                } catch (Exception $e) {
                     $db->rollback();
-                }
-                $message = trim((string)$e->getMessage());
+                    $message = trim((string)$e->getMessage());
 
-                if ($message !== '' && stripos($message, 'referral') !== false) {
-                    $errors['referral_code'] = $message;
-                } elseif ($message !== '' && stripos($message, 'duplicate') !== false && stripos($message, 'email') !== false) {
-                    $errors['email'] = 'This email is already registered. Please log in or use a different email.';
-                } elseif ($message !== '' && stripos($message, 'duplicate') !== false && stripos($message, 'username') !== false) {
-                    $errors['username'] = 'This username is not available. Please choose another one.';
-                } else {
-                    $errors['general'] = 'Registration failed. Please try again or contact support.';
-                }
+                    if ($message !== '' && stripos($message, 'referral') !== false) {
+                        $errors['referral_code'] = $message;
+                    } elseif ($message !== '' && stripos($message, 'pricing plans are not configured') !== false) {
+                        $errors['general'] = 'Signup is temporarily unavailable. Please contact support while billing setup is being finished.';
+                    } elseif ($message !== '' && stripos($message, 'duplicate') !== false && stripos($message, 'email') !== false) {
+                        $errors['email'] = 'This email is already registered. Please log in or use a different email.';
+                    } elseif ($message !== '' && stripos($message, 'duplicate') !== false && stripos($message, 'username') !== false) {
+                        $errors['username'] = 'This username is not available. Please choose another one.';
+                    } else {
+                        $errors['general'] = 'Registration failed. Please try again or contact support.';
+                    }
 
-                error_log('[SIGNUP] Error: ' . $message);
-            }
+                    error_log('[SIGNUP] Error: ' . $message);
+                }
             }
 
             if (!empty($errors)) {
@@ -251,7 +235,7 @@ class SignupController extends Controller {
     }
 
     /**
-     * Generate URL-safe slug from company name
+     * Generate URL-safe slug from company name.
      */
     private function generateSlug($name) {
         $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9]+/', '-', $name), '-'));
@@ -260,19 +244,136 @@ class SignupController extends Controller {
             $slug = 'company';
         }
 
-        // Ensure uniqueness
         $db = Database::getInstance();
         $original = $slug;
         $counter = 1;
-        while ($db->query("SELECT COUNT(*) FROM companies WHERE slug = ?", [$slug])->fetchColumn() > 0) {
+        while ($db->query('SELECT COUNT(*) FROM companies WHERE slug = ?', [$slug])->fetchColumn() > 0) {
             $slug = $original . '-' . $counter++;
         }
+
         return $slug;
     }
 
     /**
+     * Create the tenant company record while tolerating additive schema drift.
+     */
+    private function createCompanyRecord(Database $db, string $companyName, string $slug): int {
+        $columns = ['name', 'slug'];
+        $valueSql = ['?', '?'];
+        $params = [$companyName, $slug];
+
+        if ($this->tableHasColumn($db, 'companies', 'saas_plan_id')) {
+            $planId = $this->resolveSignupPlanId($db);
+            if ($planId === null) {
+                throw new RuntimeException('Signup is temporarily unavailable because pricing plans are not configured.');
+            }
+
+            $columns[] = 'saas_plan_id';
+            $valueSql[] = '?';
+            $params[] = $planId;
+        }
+
+        if ($this->tableHasColumn($db, 'companies', 'subscription_status')) {
+            $columns[] = 'subscription_status';
+            $valueSql[] = '?';
+            $params[] = 'trial';
+        }
+
+        if ($this->tableHasColumn($db, 'companies', 'trial_ends_at')) {
+            $columns[] = 'trial_ends_at';
+            $valueSql[] = 'DATE_ADD(NOW(), INTERVAL 14 DAY)';
+        }
+
+        if ($this->tableHasColumn($db, 'companies', 'plan')) {
+            $columns[] = 'plan';
+            $valueSql[] = '?';
+            $params[] = 'starter';
+        }
+
+        if ($this->tableHasColumn($db, 'companies', 'status')) {
+            $columns[] = 'status';
+            $valueSql[] = '?';
+            $params[] = 'active';
+        }
+
+        if ($this->tableHasColumn($db, 'companies', 'max_users')) {
+            $columns[] = 'max_users';
+            $valueSql[] = '?';
+            $params[] = 3;
+        }
+
+        if ($this->tableHasColumn($db, 'companies', 'max_products')) {
+            $columns[] = 'max_products';
+            $valueSql[] = '?';
+            $params[] = 500;
+        }
+
+        $db->query(
+            'INSERT INTO companies (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $valueSql) . ')',
+            $params
+        );
+
+        return (int)$db->lastInsertId();
+    }
+
+    private function resolveSignupPlanId(Database $db): ?int {
+        if (!$this->tableExists($db, 'saas_plans')) {
+            return null;
+        }
+
+        $queries = [
+            'SELECT id FROM saas_plans WHERE IFNULL(is_active, 1) = 1 ORDER BY IFNULL(is_default, 0) DESC, id ASC LIMIT 1',
+            'SELECT id FROM saas_plans ORDER BY id ASC LIMIT 1',
+        ];
+
+        foreach ($queries as $sql) {
+            try {
+                $planId = $db->query($sql)->fetchColumn();
+                if ($planId !== false && $planId !== null) {
+                    return (int)$planId;
+                }
+            } catch (Throwable $e) {
+                error_log('[Signup] Plan lookup failed: ' . $e->getMessage());
+            }
+        }
+
+        return null;
+    }
+
+    private function tableExists(Database $db, string $table): bool {
+        static $tableCache = [];
+        $cacheKey = strtolower($table);
+        if (array_key_exists($cacheKey, $tableCache)) {
+            return $tableCache[$cacheKey];
+        }
+
+        $exists = (bool)$db->query(
+            'SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? LIMIT 1',
+            [$table]
+        )->fetchColumn();
+
+        $tableCache[$cacheKey] = $exists;
+        return $exists;
+    }
+
+    private function tableHasColumn(Database $db, string $table, string $column): bool {
+        static $columnCache = [];
+        $cacheKey = strtolower($table . '.' . $column);
+        if (array_key_exists($cacheKey, $columnCache)) {
+            return $columnCache[$cacheKey];
+        }
+
+        $exists = (bool)$db->query(
+            'SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+            [$table, $column]
+        )->fetchColumn();
+
+        $columnCache[$cacheKey] = $exists;
+        return $exists;
+    }
+
+    /**
      * Resolve a tenant-local admin role, creating one when needed.
-     * This keeps signup away from hardcoded role_id assumptions.
      */
     private function resolveTenantAdminRoleId(Database $db, int $tenantId): int {
         try {
@@ -304,7 +405,7 @@ class SignupController extends Controller {
 
             $this->grantAllPermissionsToRole($db, $roleId);
             return $roleId;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             error_log('[Signup] Failed to resolve tenant admin role: ' . $e->getMessage());
 
             try {
@@ -324,7 +425,7 @@ class SignupController extends Controller {
                 if ($globalRole) {
                     return (int)$globalRole['id'];
                 }
-            } catch (\Throwable $fallbackError) {
+            } catch (Throwable $fallbackError) {
                 error_log('[Signup] Global role fallback failed: ' . $fallbackError->getMessage());
             }
 
@@ -350,14 +451,14 @@ class SignupController extends Controller {
      */
     private function grantAllPermissionsToRole(Database $db, int $roleId): void {
         try {
-            $permissions = $db->query("SELECT id FROM permissions ORDER BY id ASC")->fetchAll();
+            $permissions = $db->query('SELECT id FROM permissions ORDER BY id ASC')->fetchAll();
             foreach ($permissions as $permission) {
                 $db->query(
-                    "INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)",
+                    'INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)',
                     [$roleId, (int)$permission['id']]
                 );
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             error_log('[Signup] Failed to seed role permissions: ' . $e->getMessage());
         }
     }

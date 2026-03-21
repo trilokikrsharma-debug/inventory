@@ -7,15 +7,15 @@
 -- 1) saas_plans enhancement (dynamic pricing + offers + featured + sorting)
 -- ---------------------------------------------------------------------------
 ALTER TABLE saas_plans
-    ADD COLUMN IF NOT EXISTS slug VARCHAR(120) NULL AFTER name,
-    ADD COLUMN IF NOT EXISTS description TEXT NULL AFTER slug,
-    ADD COLUMN IF NOT EXISTS offer_price DECIMAL(10,2) NULL AFTER price,
-    ADD COLUMN IF NOT EXISTS billing_type ENUM('one_time','monthly','yearly') NULL AFTER offer_price,
-    ADD COLUMN IF NOT EXISTS duration_days INT UNSIGNED NULL AFTER billing_type,
-    ADD COLUMN IF NOT EXISTS is_featured TINYINT(1) NOT NULL DEFAULT 0 AFTER razorpay_plan_id,
-    ADD COLUMN IF NOT EXISTS sort_order INT UNSIGNED NOT NULL DEFAULT 0 AFTER is_featured,
-    ADD COLUMN IF NOT EXISTS status ENUM('active','inactive') NULL AFTER sort_order,
-    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at;
+    ADD COLUMN slug VARCHAR(120) NULL AFTER name,
+    ADD COLUMN description TEXT NULL AFTER slug,
+    ADD COLUMN offer_price DECIMAL(10,2) NULL AFTER price,
+    ADD COLUMN billing_type ENUM('one_time','monthly','yearly') NULL AFTER offer_price,
+    ADD COLUMN duration_days INT UNSIGNED NULL AFTER billing_type,
+    ADD COLUMN is_featured TINYINT(1) NOT NULL DEFAULT 0 AFTER razorpay_plan_id,
+    ADD COLUMN sort_order INT UNSIGNED NOT NULL DEFAULT 0 AFTER is_featured,
+    ADD COLUMN status ENUM('active','inactive') NULL AFTER sort_order,
+    ADD COLUMN updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at;
 
 -- Keep backward compatibility columns in sync
 UPDATE saas_plans
@@ -41,37 +41,37 @@ UPDATE saas_plans
 SET status = CASE WHEN IFNULL(is_active, 1) = 1 THEN 'active' ELSE 'inactive' END
 WHERE status IS NULL OR status = '';
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_saas_plans_slug ON saas_plans(slug);
-CREATE INDEX IF NOT EXISTS idx_saas_plans_status_sort ON saas_plans(status, sort_order, is_featured);
+CREATE UNIQUE INDEX uq_saas_plans_slug ON saas_plans(slug);
+CREATE INDEX idx_saas_plans_status_sort ON saas_plans(status, sort_order, is_featured);
 
 -- ---------------------------------------------------------------------------
 -- 2) tenant_subscriptions enhancement (idempotency + pricing + lifecycle)
 -- ---------------------------------------------------------------------------
 ALTER TABLE tenant_subscriptions
-    ADD COLUMN IF NOT EXISTS subscription_type ENUM('one_time','recurring') NOT NULL DEFAULT 'recurring' AFTER status,
-    ADD COLUMN IF NOT EXISTS order_code VARCHAR(80) NULL AFTER subscription_type,
-    ADD COLUMN IF NOT EXISTS change_type ENUM('new','upgrade','renewal','downgrade') NOT NULL DEFAULT 'new' AFTER order_code,
-    ADD COLUMN IF NOT EXISTS amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER change_type,
-    ADD COLUMN IF NOT EXISTS original_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER amount,
-    ADD COLUMN IF NOT EXISTS discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER original_amount,
-    ADD COLUMN IF NOT EXISTS promo_code_id INT UNSIGNED NULL AFTER discount_amount,
-    ADD COLUMN IF NOT EXISTS promo_code VARCHAR(40) NULL AFTER promo_code_id,
-    ADD COLUMN IF NOT EXISTS payment_status ENUM('pending','paid','failed','refunded') NOT NULL DEFAULT 'pending' AFTER promo_code,
-    ADD COLUMN IF NOT EXISTS duration_days INT UNSIGNED NOT NULL DEFAULT 30 AFTER payment_status,
-    ADD COLUMN IF NOT EXISTS razorpay_order_id VARCHAR(100) NULL AFTER razorpay_subscription_id,
-    ADD COLUMN IF NOT EXISTS razorpay_payment_id VARCHAR(100) NULL AFTER razorpay_order_id,
-    ADD COLUMN IF NOT EXISTS gateway_mode ENUM('order','subscription') NULL AFTER razorpay_payment_id,
-    ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(80) NULL AFTER gateway_mode,
-    ADD COLUMN IF NOT EXISTS started_at DATETIME NULL AFTER current_end,
-    ADD COLUMN IF NOT EXISTS expires_at DATETIME NULL AFTER started_at,
-    ADD COLUMN IF NOT EXISTS cancelled_at DATETIME NULL AFTER expires_at,
-    ADD COLUMN IF NOT EXISTS last_payment_at DATETIME NULL AFTER cancelled_at,
-    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at;
+    ADD COLUMN subscription_type ENUM('one_time','recurring') NOT NULL DEFAULT 'recurring' AFTER status,
+    ADD COLUMN order_code VARCHAR(80) NULL AFTER subscription_type,
+    ADD COLUMN change_type ENUM('new','upgrade','renewal','downgrade') NOT NULL DEFAULT 'new' AFTER order_code,
+    ADD COLUMN amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER change_type,
+    ADD COLUMN original_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER amount,
+    ADD COLUMN discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER original_amount,
+    ADD COLUMN promo_code_id INT UNSIGNED NULL AFTER discount_amount,
+    ADD COLUMN promo_code VARCHAR(40) NULL AFTER promo_code_id,
+    ADD COLUMN payment_status ENUM('pending','paid','failed','refunded') NOT NULL DEFAULT 'pending' AFTER promo_code,
+    ADD COLUMN duration_days INT UNSIGNED NOT NULL DEFAULT 30 AFTER payment_status,
+    ADD COLUMN razorpay_order_id VARCHAR(100) NULL AFTER razorpay_subscription_id,
+    ADD COLUMN razorpay_payment_id VARCHAR(100) NULL AFTER razorpay_order_id,
+    ADD COLUMN gateway_mode ENUM('order','subscription') NULL AFTER razorpay_payment_id,
+    ADD COLUMN idempotency_key VARCHAR(80) NULL AFTER gateway_mode,
+    ADD COLUMN started_at DATETIME NULL AFTER current_end,
+    ADD COLUMN expires_at DATETIME NULL AFTER started_at,
+    ADD COLUMN cancelled_at DATETIME NULL AFTER expires_at,
+    ADD COLUMN last_payment_at DATETIME NULL AFTER cancelled_at,
+    ADD COLUMN updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at;
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_tenant_subscriptions_order_code ON tenant_subscriptions(order_code);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_tenant_subscriptions_idempotency ON tenant_subscriptions(idempotency_key);
-CREATE INDEX IF NOT EXISTS idx_tenant_subscriptions_company_status ON tenant_subscriptions(company_id, status, payment_status);
-CREATE INDEX IF NOT EXISTS idx_tenant_subscriptions_gateway ON tenant_subscriptions(razorpay_order_id, razorpay_subscription_id, razorpay_payment_id);
+CREATE UNIQUE INDEX uq_tenant_subscriptions_order_code ON tenant_subscriptions(order_code);
+CREATE UNIQUE INDEX uq_tenant_subscriptions_idempotency ON tenant_subscriptions(idempotency_key);
+CREATE INDEX idx_tenant_subscriptions_company_status ON tenant_subscriptions(company_id, status, payment_status);
+CREATE INDEX idx_tenant_subscriptions_gateway ON tenant_subscriptions(razorpay_order_id, razorpay_subscription_id, razorpay_payment_id);
 
 -- ---------------------------------------------------------------------------
 -- 3) payment transaction table (for payment logs + failure analysis)
@@ -166,12 +166,12 @@ CREATE TABLE IF NOT EXISTS promo_code_usages (
 -- 6) referral columns on companies
 -- ---------------------------------------------------------------------------
 ALTER TABLE companies
-    ADD COLUMN IF NOT EXISTS referral_code VARCHAR(40) NULL AFTER slug,
-    ADD COLUMN IF NOT EXISTS referred_by_company_id INT UNSIGNED NULL AFTER referral_code,
-    ADD COLUMN IF NOT EXISTS wallet_credit DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER referred_by_company_id;
+    ADD COLUMN referral_code VARCHAR(40) NULL AFTER slug,
+    ADD COLUMN referred_by_company_id INT UNSIGNED NULL AFTER referral_code,
+    ADD COLUMN wallet_credit DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER referred_by_company_id;
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_companies_referral_code ON companies(referral_code);
-CREATE INDEX IF NOT EXISTS idx_companies_referred_by ON companies(referred_by_company_id);
+CREATE UNIQUE INDEX uq_companies_referral_code ON companies(referral_code);
+CREATE INDEX idx_companies_referred_by ON companies(referred_by_company_id);
 
 -- ---------------------------------------------------------------------------
 -- 7) referral reward rule config
@@ -232,10 +232,10 @@ CREATE TABLE IF NOT EXISTS referral_rewards (
 -- ---------------------------------------------------------------------------
 -- 9) hardening indexes for admin dashboard lists
 -- ---------------------------------------------------------------------------
-CREATE INDEX IF NOT EXISTS idx_tenant_subscriptions_updated ON tenant_subscriptions(updated_at);
-CREATE INDEX IF NOT EXISTS idx_tenant_subscriptions_plan_status ON tenant_subscriptions(plan_id, status);
-CREATE INDEX IF NOT EXISTS idx_promo_codes_usage ON promo_codes(used_count, status);
-CREATE INDEX IF NOT EXISTS idx_referrals_updated ON referrals(updated_at);
+CREATE INDEX idx_tenant_subscriptions_updated ON tenant_subscriptions(updated_at);
+CREATE INDEX idx_tenant_subscriptions_plan_status ON tenant_subscriptions(plan_id, status);
+CREATE INDEX idx_promo_codes_usage ON promo_codes(used_count, status);
+CREATE INDEX idx_referrals_updated ON referrals(updated_at);
 
 -- ---------------------------------------------------------------------------
 -- 10) optional FK for companies.referred_by_company_id

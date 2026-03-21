@@ -4,9 +4,9 @@
 -- ============================================================
 
 ALTER TABLE `sales`
-    ADD COLUMN IF NOT EXISTS `gst_type` ENUM('auto','cgst_sgst','igst','none') NOT NULL DEFAULT 'auto' AFTER `tax_amount`,
-    ADD COLUMN IF NOT EXISTS `freight_charge` DECIMAL(15,2) NOT NULL DEFAULT 0.00 AFTER `shipping_cost`,
-    ADD COLUMN IF NOT EXISTS `loading_charge` DECIMAL(15,2) NOT NULL DEFAULT 0.00 AFTER `freight_charge`;
+    ADD COLUMN `gst_type` ENUM('auto','cgst_sgst','igst','none') NOT NULL DEFAULT 'auto' AFTER `tax_amount`,
+    ADD COLUMN `freight_charge` DECIMAL(15,2) NOT NULL DEFAULT 0.00 AFTER `shipping_cost`,
+    ADD COLUMN `loading_charge` DECIMAL(15,2) NOT NULL DEFAULT 0.00 AFTER `freight_charge`;
 
 -- Backfill old records: keep existing shipping amount as freight by default.
 UPDATE `sales`

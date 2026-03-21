@@ -14,4 +14,4 @@ ALTER TABLE `users`
         COMMENT 'Hashed backup recovery codes' AFTER `twofa_enabled`;
 
 -- Index for quick lookup during login
-CREATE INDEX IF NOT EXISTS `idx_users_twofa` ON `users`(`twofa_enabled`);
+CREATE INDEX `idx_users_twofa` ON `users`(`twofa_enabled`);

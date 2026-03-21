@@ -13,6 +13,8 @@ class SecurityHeadersMiddleware implements MiddlewareInterface {
         header("X-XSS-Protection: 1; mode=block");
         header("Referrer-Policy: strict-origin-when-cross-origin");
         header("Permissions-Policy: camera=(), microphone=(), geolocation=()");
+        header("Cross-Origin-Opener-Policy: same-origin");
+        header("Cross-Origin-Resource-Policy: cross-origin");
         header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
         header("Pragma: no-cache");
 
@@ -30,8 +32,11 @@ class SecurityHeadersMiddleware implements MiddlewareInterface {
         $nonce = $GLOBALS['csp_nonce'];
 
         header("Content-Security-Policy: default-src 'self'; "
-            . "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://code.jquery.com https://checkout.razorpay.com; "
-            . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+            . "base-uri 'self'; "
+            . "object-src 'none'; "
+            . "form-action 'self'; "
+            . "script-src 'self' 'unsafe-inline' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://code.jquery.com https://checkout.razorpay.com; "
+            . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://fonts.googleapis.com; "
             . "img-src 'self' data: blob: https://*.razorpay.com; "
             . "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
             . "connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com; "

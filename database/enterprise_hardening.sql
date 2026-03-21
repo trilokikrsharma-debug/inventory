@@ -1,7 +1,7 @@
 -- =====================================================================
 -- InvenBill Pro — Enterprise Database Hardening Migration
 -- Run this AFTER the base schema and all prior migrations.
--- Safe: uses IF NOT EXISTS / conditional checks where possible.
+-- Safe: runner applies idempotent guards and conditional checks where possible.
 -- =====================================================================
 
 -- ─────────────────────────────────────────────────────────────────
@@ -11,59 +11,59 @@
 -- Expected improvement: 30–50% faster reads on pages with tenant-scoped listings.
 
 -- Sales: dashboard/report queries by company + date
-CREATE INDEX IF NOT EXISTS idx_sales_company_date 
+CREATE INDEX idx_sales_company_date 
   ON sales (company_id, sale_date, deleted_at);
 
 -- Sales: payment status filtering
-CREATE INDEX IF NOT EXISTS idx_sales_company_status 
+CREATE INDEX idx_sales_company_status 
   ON sales (company_id, payment_status, deleted_at);
 
 -- Sale Items: fetching items for a specific sale
-CREATE INDEX IF NOT EXISTS idx_si_company_sale 
+CREATE INDEX idx_si_company_sale 
   ON sale_items (company_id, sale_id);
 
 -- Purchases: report queries by company + date
-CREATE INDEX IF NOT EXISTS idx_purchases_company_date 
+CREATE INDEX idx_purchases_company_date 
   ON purchases (company_id, purchase_date, deleted_at);
 
 -- Purchase Items: fetching items for a specific purchase
-CREATE INDEX IF NOT EXISTS idx_pi_company_purchase 
+CREATE INDEX idx_pi_company_purchase 
   ON purchase_items (company_id, purchase_id);
 
 -- Products: active product listings (most common query)
-CREATE INDEX IF NOT EXISTS idx_prod_company_active 
+CREATE INDEX idx_prod_company_active 
   ON products (company_id, is_active, deleted_at);
 
 -- Products: search by SKU/barcode (autocomplete)
-CREATE INDEX IF NOT EXISTS idx_prod_company_sku 
+CREATE INDEX idx_prod_company_sku 
   ON products (company_id, sku);
 
 -- Stock History: product stock trail lookups
-CREATE INDEX IF NOT EXISTS idx_sh_company_product 
+CREATE INDEX idx_sh_company_product 
   ON stock_history (company_id, product_id, created_at);
 
 -- Payments: reconciliation queries
-CREATE INDEX IF NOT EXISTS idx_pay_company_customer 
+CREATE INDEX idx_pay_company_customer 
   ON payments (company_id, customer_id, type, deleted_at);
 
 -- Payments: supplier payment lookups
-CREATE INDEX IF NOT EXISTS idx_pay_company_supplier 
+CREATE INDEX idx_pay_company_supplier 
   ON payments (company_id, supplier_id, type, deleted_at);
 
 -- Customers: company-scoped listing
-CREATE INDEX IF NOT EXISTS idx_cust_company_active 
+CREATE INDEX idx_cust_company_active 
   ON customers (company_id, deleted_at);
 
 -- Suppliers: company-scoped listing
-CREATE INDEX IF NOT EXISTS idx_supp_company_active 
+CREATE INDEX idx_supp_company_active 
   ON suppliers (company_id, deleted_at);
 
 -- Activity Log: per-company audit trail
-CREATE INDEX IF NOT EXISTS idx_actlog_company_date 
+CREATE INDEX idx_actlog_company_date 
   ON activity_log (company_id, created_at);
 
 -- Users: login lookup by email (global unique)
-CREATE INDEX IF NOT EXISTS idx_users_email 
+CREATE INDEX idx_users_email 
   ON users (email, deleted_at);
 
 
@@ -76,19 +76,19 @@ CREATE INDEX IF NOT EXISTS idx_users_email
 -- Run the following check first: 
 --   SELECT company_id, username, COUNT(*) c FROM users GROUP BY company_id, username HAVING c > 1;
 ALTER TABLE users 
-  ADD UNIQUE INDEX IF NOT EXISTS idx_users_company_username (company_id, username);
+  ADD UNIQUE INDEX idx_users_company_username (company_id, username);
 
 -- Unique invoice number per company
 ALTER TABLE sales 
-  ADD UNIQUE INDEX IF NOT EXISTS idx_sales_company_invoice (company_id, invoice_number);
+  ADD UNIQUE INDEX idx_sales_company_invoice (company_id, invoice_number);
 
 -- Unique purchase invoice number per company
 ALTER TABLE purchases 
-  ADD UNIQUE INDEX IF NOT EXISTS idx_purchases_company_invoice (company_id, invoice_number);
+  ADD UNIQUE INDEX idx_purchases_company_invoice (company_id, invoice_number);
 
 -- One settings row per company
 ALTER TABLE company_settings 
-  ADD UNIQUE INDEX IF NOT EXISTS idx_settings_company (company_id);
+  ADD UNIQUE INDEX idx_settings_company (company_id);
 
 
 -- ─────────────────────────────────────────────────────────────────

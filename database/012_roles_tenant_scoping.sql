@@ -7,16 +7,16 @@
 --   - Tenant-created roles have company_id = their tenant's company ID
 --   - This prevents cross-tenant role visibility (RBAC-1 fix)
 --
--- SAFE TO RE-RUN: Uses IF NOT EXISTS / UPDATE with WHERE conditions.
+-- SAFE TO RE-RUN: migration runner applies idempotent guards; updates are conditional.
 -- ============================================================================
 
 -- Step 1: Add company_id column to roles table (NULL = system-level role)
 -- Check if column exists first to make this idempotent
 ALTER TABLE `roles`
-  ADD COLUMN IF NOT EXISTS `company_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id`;
+  ADD COLUMN `company_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id`;
 
 -- Step 2: Add index for tenant-scoped queries
-CREATE INDEX IF NOT EXISTS `idx_roles_company` ON `roles`(`company_id`);
+CREATE INDEX `idx_roles_company` ON `roles`(`company_id`);
 
 -- Step 3: Ensure system-level roles remain company_id = NULL
 -- (platform_admin and default system roles should be global)

@@ -10,17 +10,24 @@ class HomeController extends Controller {
         // Already logged-in users → redirect to appropriate dashboard
         if (Session::isLoggedIn()) {
             if (Session::isTwoFactorPending()) {
-                $this->redirect('index.php?page=twoFactor&action=verify');
+                $this->redirect('twoFactor/verify');
                 return;
             }
-            if (Session::isSuperAdmin() && Tenant::id() === null) {
-                $this->redirect('index.php?page=platform&action=dashboard');
+            if (Session::isSuperAdmin()) {
+                $this->redirect('platform/dashboard');
                 return;
             }
-            $this->redirect('index.php?page=dashboard');
+            $this->redirect('dashboard');
             return;
         }
 
-        $this->renderPartial('public.home', []);
+        $plans = [];
+        try {
+            $plans = (new SaaSPlan())->listForCheckout();
+        } catch (\Throwable $e) { }
+
+        $this->renderPartial('public.home', [
+            'plans' => $plans
+        ]);
     }
 }

@@ -7,6 +7,7 @@ class SaleReturnController extends Controller {
     protected $allowedActions = ['index', 'create', 'detail'];
 
     public function index() {
+        $this->requireFeature('quotations');
         $this->requirePermission('returns.view');
         $search   = $this->get('search', '');
         $fromDate = $this->get('from_date', '');
@@ -24,6 +25,7 @@ class SaleReturnController extends Controller {
     }
 
     public function create() {
+        $this->requireFeature('quotations');
         $this->requirePermission('returns.create');
 
         // If sale_id is passed, fetch that specific sale

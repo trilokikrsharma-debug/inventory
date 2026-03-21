@@ -64,7 +64,7 @@ class SubscriptionGuardMiddleware implements MiddlewareInterface {
     }
 
     private function isRecoveryRoute(string $page, string $action, string $uri = ''): bool {
-        if ($page === 'login' || $page === 'pricing' || $page === 'signup' || $page === 'demo_login' || $page === 'home') {
+        if ($page === '' || $page === 'login' || $page === 'pricing' || $page === 'signup' || $page === 'demo_login' || $page === 'home') {
             return true;
         }
 
@@ -111,7 +111,7 @@ class SubscriptionGuardMiddleware implements MiddlewareInterface {
         if ($request->isAjax() || $this->isApiRequest()) {
             header('Content-Type: application/json; charset=UTF-8');
             http_response_code(403);
-            echo json_encode(['success' => false, 'message' => $message]);
+            echo json_encode(['success' => false, 'message' => $message], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
 

@@ -1,4 +1,4 @@
-<?php $flash = Session::getFlash(); ?>
+﻿<?php $flash = Session::getFlash(); ?>
 <div class="container-fluid py-4">
     <div class="row justify-content-center">
         <div class="col-lg-8">
@@ -28,7 +28,7 @@
                             <hr>
                             <h6 class="text-danger mb-3">Disable Two-Factor Authentication</h6>
                             <form method="POST" action="<?= APP_URL ?>/index.php?page=twoFactor&action=disable" id="disable2faForm">
-                                <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= Session::get(CSRF_TOKEN_NAME) ?>">
+                                <?= CSRF::field() ?>
                                 <div class="mb-3" style="max-width:300px; margin:0 auto;">
                                     <input type="password" name="password" class="form-control" placeholder="Enter your password to confirm" required>
                                 </div>
@@ -57,7 +57,7 @@
                                 <h6 class="mb-3">Step 2: Enter Verification Code</h6>
                                 <p class="text-muted small">Enter the 6-digit code shown in your authenticator app:</p>
                                 <form method="POST" action="<?= APP_URL ?>/index.php?page=twoFactor&action=enable" id="enable2faForm">
-                                    <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= Session::get(CSRF_TOKEN_NAME) ?>">
+                                    <?= CSRF::field() ?>
                                     <div class="mb-3">
                                         <input type="text" name="otp_code" class="form-control form-control-lg text-center"
                                                maxlength="6" pattern="[0-9]{6}" placeholder="000000"

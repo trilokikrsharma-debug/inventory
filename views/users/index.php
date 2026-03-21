@@ -96,8 +96,12 @@
                                 </button>
                             </form>
                             <!-- Reset Password -->
-                            <button type="button" class="btn btn-sm btn-outline-info" title="Reset Password"
-                                onclick="openResetModal(<?= $u['id'] ?>, '<?= Helper::escape($u['full_name']) ?>')">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-info js-reset-user"
+                                title="Reset Password"
+                                data-user-id="<?= (int)$u['id'] ?>"
+                                data-user-name="<?= htmlspecialchars((string)$u['full_name'], ENT_QUOTES, 'UTF-8') ?>">
                                 <i class="fas fa-key"></i>
                             </button>
                             <!-- Delete -->
@@ -162,4 +166,12 @@ function openResetModal(id, name) {
     document.getElementById('resetUserName').textContent = name;
     new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
 }
+
+document.querySelectorAll('.js-reset-user').forEach((button) => {
+    button.addEventListener('click', () => {
+        const id = Number(button.dataset.userId || 0);
+        const name = button.dataset.userName || '';
+        openResetModal(id, name);
+    });
+});
 </script>

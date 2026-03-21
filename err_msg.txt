@@ -1,0 +1,240 @@
+﻿python.exe : 
+=======================
+At C:\Users\KARSO\AppData\Loca
+l\Google\Cloud SDK\google-clou
+d-sdk\bin\gcloud.ps1:114 
+char:3
++   & "$cloudsdk_python" 
+$run_args_array
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
+    + CategoryInfo          : 
+    NotSpecified: (=========  
+  ==============:String) []   
+ , RemoteException
+    + FullyQualifiedErrorId : 
+    NativeCommandError
+ 
+==== request start ====
+uri: https://compute.googleapi
+s.com/compute/v1/projects/extr
+eme-tribute-484920-j4/zones/as
+ia-south1-a?alt=json
+method: GET
+== headers start ==
+b'accept': b'application/json'
+b'accept-encoding': b'gzip, 
+deflate'
+b'authorization': --- Token 
+Redacted ---
+b'content-length': b'0'
+b'user-agent': 
+b'google-cloud-sdk 
+gcloud/561.0.0 command/gcloud.
+compute.instances.create invoc
+ation-id/f8a1fd9689534d30848fc
+78bdd74fb2d environment/None 
+environment-version/None 
+client-os/WINDOWS 
+client-os-ver/10.0.26200 
+client-pltf-arch/x86_64 
+interactive/False 
+from-script/False 
+python/3.13.8 term/  (Windows 
+NT 10.0.26200)'
+b'x-goog-api-client': 
+b'cred-type/u'
+== headers end ==
+== body start ==
+
+== body end ==
+==== request end ====
+---- response start ----
+status: 200
+-- headers start --
+Alt-Svc: h3=":443"; 
+ma=2592000,h3-29=":443"; 
+ma=2592000
+Content-Encoding: gzip
+Content-Type: 
+application/json; 
+charset=UTF-8
+Date: Fri, 20 Mar 2026 
+06:17:46 GMT
+ETag: xatEfvuVl8TrOCuMp9M7g4oO
+Jps=/24xLPuecd7-QoCy-tIp2Nt0gJ
+4s=
+Server: ESF
+Transfer-Encoding: chunked
+Vary: Origin, X-Origin, 
+Referer
+X-Content-Type-Options: 
+nosniff
+X-Frame-Options: SAMEORIGIN
+X-XSS-Protection: 0
+-- headers end --
+-- body start --
+{
+  "kind": "compute#zone",
+  "id": "2321",
+  "creationTimestamp": "1969-1
+2-31T16:00:00.000-08:00",
+  "name": "asia-south1-a",
+  "description": 
+"asia-south1-a",
+  "status": "UP",
+  "region": "https://www.googl
+eapis.com/compute/v1/projects/
+extreme-tribute-484920-j4/regi
+ons/asia-south1",
+  "selfLink": "https://www.goo
+gleapis.com/compute/v1/project
+s/extreme-tribute-484920-j4/zo
+nes/asia-south1-a",
+  "availableCpuPlatforms": [
+    "Intel Broadwell",
+    "Intel Cascade Lake",
+    "Intel Emerald Rapids",
+    "AMD Genoa",
+    "Intel Granite Rapids",
+    "Intel Haswell",
+    "Intel Ice Lake",
+    "Intel Ivy Bridge",
+    "Google Axion",
+    "AMD Milan",
+    "AMD Rome",
+    "Intel Sandy Bridge",
+    "Intel Sapphire Rapids",
+    "Intel Skylake"
+  ],
+  "supportsPzs": true
+}
+
+-- body end --
+total round trip time 
+(request+response): 0.434 secs
+---- response end ----
+----------------------
+=======================
+==== request start ====
+uri: https://compute.googleapi
+s.com/compute/v1/projects/extr
+eme-tribute-484920-j4?alt=json
+method: GET
+== headers start ==
+b'accept': b'application/json'
+b'accept-encoding': b'gzip, 
+deflate'
+b'authorization': --- Token 
+Redacted ---
+b'content-length': b'0'
+b'user-agent': 
+b'google-cloud-sdk 
+gcloud/561.0.0 command/gcloud.
+compute.instances.create invoc
+ation-id/f8a1fd9689534d30848fc
+78bdd74fb2d environment/None 
+environment-version/None 
+client-os/WINDOWS 
+client-os-ver/10.0.26200 
+client-pltf-arch/x86_64 
+interactive/False 
+from-script/False 
+python/3.13.8 term/  (Windows 
+NT 10.0.26200)'
+b'x-goog-api-client': 
+b'cred-type/u'
+== headers end ==
+== body start ==
+
+== body end ==
+==== request end ====
+---- response start ----
+status: 200
+-- headers start --
+Alt-Svc: h3=":443"; 
+ma=2592000,h3-29=":443"; 
+ma=2592000
+Content-Encoding: gzip
+Content-Type: 
+application/json; 
+charset=UTF-8
+Date: Fri, 20 Mar 2026 
+06:17:47 GMT
+Server: ESF
+Transfer-Encoding: chunked
+Vary: Origin, X-Origin, 
+Referer
+X-Content-Type-Options: 
+nosniff
+X-Frame-Options: SAMEORIGIN
+X-XSS-Protection: 0
+-- headers end --
+-- body start --
+{
+  "kind": "compute#project",
+  "id": "1010549058430635953",
+  "creationTimestamp": "2026-0
+1-21T02:58:38.988-08:00",
+  "name": 
+"extreme-tribute-484920-j4",
+  "commonInstanceMetadata": {
+    "kind": 
+"compute#metadata",
+    "fingerprint": 
+"XztLhohP_Uw=",
+    "items": [
+      {
+        "key": 
+"enable-osconfig",
+        "value": "TRUE"
+      },
+      {
+        "key": 
+"enable-guest-attributes",
+        "value": "TRUE"
+      }
+    ]
+  },
+  "quotas": [
+    {
+      "metric": "SNAPSHOTS",
+      "limit": 1000,
+      "usage": 18
+    },
+    {
+      "metric": "NETWORKS",
+      "limit": 5,
+      "usage": 1
+    },
+    {
+      "metric": "FIREWALLS",
+      "limit": 100,
+      "usage": 7
+    },
+    {
+      "metric": "IMAGES",
+      "limit": 100,
+      "usage": 0
+    },
+    {
+      "metric": 
+"STATIC_ADDRESSES",
+      "limit": 8,
+      "usage": 0
+    },
+    {
+      "metric": "ROUTES",
+      "limit": 200,
+      "usage": 0
+    },
+    {
+      "metric": 
+"FORWARDING_RULES",
+      "limit": 15,
+      "usage": 0
+    },
+    {
+      "metric": 
+"TARGET_POOLS",
+      "limit": 50,

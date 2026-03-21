@@ -7,6 +7,7 @@ class QuotationController extends Controller {
     protected $allowedActions = ['index', 'create', 'detail', 'updateStatus', 'convert', 'delete'];
 
     public function index() {
+        $this->requireFeature('quotations');
         $this->requirePermission('quotations.view');
         $search   = $this->get('search', '');
         $fromDate = $this->get('from_date', '');
@@ -27,6 +28,7 @@ class QuotationController extends Controller {
     }
 
     public function create() {
+        $this->requireFeature('quotations');
         $this->requirePermission('quotations.create');
 
         if ($this->isPost()) {

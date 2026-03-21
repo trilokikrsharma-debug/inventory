@@ -104,7 +104,7 @@ class TenantOnboardingController extends Controller {
             $roleId = $this->createOrResolveAdminRole($db, $tenantId);
 
             $username = $this->generateUniqueUsername($db, $tenantId, $email, $subdomain);
-            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            $passwordHash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 
             $db->query(
                 "INSERT INTO users

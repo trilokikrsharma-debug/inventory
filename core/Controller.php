@@ -102,7 +102,8 @@ class Controller {
      * Redirect to URL
      */
     protected function redirect($url) {
-        header("Location: " . APP_URL . '/' . ltrim($url, '/'));
+        $target = $this->normalizeInternalRedirectTarget($url, 'index.php?page=dashboard');
+        header("Location: " . APP_URL . '/' . ltrim($target, '/'));
         exit;
     }
 
@@ -111,8 +112,8 @@ class Controller {
      */
     protected function json($data, $statusCode = 200) {
         http_response_code($statusCode);
-        header('Content-Type: application/json');
-        echo json_encode($data);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
@@ -167,8 +168,7 @@ class Controller {
                 $this->json(['success' => false, 'message' => 'Please login to continue.'], 401);
             }
             Session::setFlash('error', 'Please login to continue.');
-            header("Location: " . APP_URL . "/index.php?page=login");
-            exit;
+            $this->redirect('index.php?page=login');
         }
     }
 
@@ -179,8 +179,7 @@ class Controller {
         $this->requireAuth();
         if (Session::get('user')['role'] !== 'admin') {
             Session::setFlash('error', 'Access denied. Admin privileges required.');
-            header("Location: " . APP_URL . "/index.php?page=dashboard");
-            exit;
+            $this->redirect('index.php?page=dashboard');
         }
     }
 
@@ -255,10 +254,15 @@ class Controller {
      * Validate CSRF token
      */
     protected function validateCSRF() {
-        if (!CSRF::validateToken($this->post(CSRF_TOKEN_NAME))) {
+        $token = $this->post(CSRF_TOKEN_NAME);
+        if ($token === null || $token === '') {
+            $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        }
+
+        if (!CSRF::validateToken($token)) {
             $this->setFlash('error', 'Invalid security token. Please try again.');
-            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? APP_URL));
-            exit;
+            $referer = (string)($_SERVER['HTTP_REFERER'] ?? '');
+            $this->redirect($this->normalizeInternalRedirectTarget($referer, 'index.php?page=dashboard'));
         }
     }
 
@@ -367,8 +371,28 @@ class Controller {
         }
 
         Session::setFlash('error', 'You do not have permission to perform this action.');
-        header("Location: " . APP_URL . "/index.php?page=dashboard");
-        exit;
+        $this->redirect('index.php?page=dashboard');
+    }
+
+    /**
+     * Require a specific SaaS plan feature to proceed.
+     *
+     * @param string $feature  Feature name (e.g. 'advanced_reports')
+     */
+    protected function requireFeature($feature) {
+        $this->requireAuth();
+        if (Session::isSuperAdmin()) {
+            return;
+        }
+        if (Tenant::id() !== null) {
+            if (!Tenant::canUse($feature)) {
+                if ($this->isAjax()) {
+                    $this->json(['success' => false, 'message' => 'This feature is not available on your current plan.'], 403);
+                }
+                Session::setFlash('error', 'This feature is not available on your current plan. Please upgrade to access.');
+                $this->redirect('index.php?page=pricing');
+            }
+        }
     }
 
     /**
@@ -393,8 +417,7 @@ class Controller {
         }
 
         Session::setFlash('error', 'Access denied. Super admin privileges required.');
-        header("Location: " . APP_URL . "/index.php?page=dashboard");
-        exit;
+        $this->redirect('index.php?page=dashboard');
     }
 
     /**
@@ -405,5 +428,28 @@ class Controller {
      */
     protected function canDo($permission) {
         return Session::hasPermission($permission);
+    }
+
+    /**
+     * Normalize redirect targets to internal locations only.
+     */
+    private function normalizeInternalRedirectTarget(string $url, string $fallback = 'index.php?page=dashboard'): string {
+        $target = trim($url);
+        if ($target === '') {
+            return $fallback;
+        }
+
+        $target = str_replace(["\r", "\n", "\0"], '', $target);
+        $base = defined('APP_URL') ? rtrim((string)APP_URL, '/') : '';
+        if ($base !== '' && str_starts_with($target, $base)) {
+            $target = ltrim(substr($target, strlen($base)), '/');
+        }
+
+        if (preg_match('/^[a-z][a-z0-9+.-]*:\/\//i', $target) || str_starts_with($target, '//')) {
+            return $fallback;
+        }
+
+        $target = ltrim($target, '/');
+        return $target !== '' ? $target : $fallback;
     }
 }

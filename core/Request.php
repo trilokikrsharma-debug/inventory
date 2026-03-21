@@ -21,8 +21,10 @@ class Request {
     private array $files;      // $_FILES
     private array $cookies;    // $_COOKIE
     private string $method;
+    private string $path;
     private string $page;
     private string $action;
+    private bool $hasExplicitPageQuery;
 
     private function __construct(array $query, array $post, array $server, array $files, array $cookies) {
         $this->query   = $query;
@@ -31,8 +33,12 @@ class Request {
         $this->files   = $files;
         $this->cookies = $cookies;
         $this->method  = strtoupper($server['REQUEST_METHOD'] ?? 'GET');
-        $this->page    = $query['page'] ?? 'dashboard';
-        $this->action  = $query['action'] ?? 'index';
+        $this->path    = self::normalizeRequestPath($server);
+        $this->hasExplicitPageQuery = isset($query['page']) && trim((string)$query['page']) !== '';
+
+        [$page, $action] = self::resolveRoute($query, $this->path);
+        $this->page = $page;
+        $this->action = $action;
     }
 
     /**
@@ -79,6 +85,18 @@ class Request {
 
     public function action(): string {
         return $this->action;
+    }
+
+    public function path(): string {
+        return $this->path;
+    }
+
+    public function isApiPath(): bool {
+        return str_starts_with($this->path, '/api/');
+    }
+
+    public function hasExplicitPageQuery(): bool {
+        return $this->hasExplicitPageQuery;
     }
 
     public function method(): string {
@@ -206,5 +224,133 @@ class Request {
             $result[$key] = $this->post[$key] ?? null;
         }
         return $result;
+    }
+
+    private static function resolveRoute(array $query, string $path): array {
+        if (isset($query['page']) && trim((string)$query['page']) !== '') {
+            $page = trim((string)$query['page']);
+            $action = trim((string)($query['action'] ?? 'index'));
+            return [$page, $action !== '' ? $action : 'index'];
+        }
+
+        $rewrittenPath = self::extractRewrittenPathFromQuery($query);
+        if ($rewrittenPath !== null) {
+            return self::parsePathSegments($rewrittenPath);
+        }
+
+        return self::parsePathSegments($path);
+    }
+
+    private static function normalizeRequestPath(array $server): string {
+        $rawPath = (string)(parse_url($server['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/');
+        $rawPath = str_replace('\\', '/', $rawPath);
+
+        $scriptName = str_replace('\\', '/', (string)($server['SCRIPT_NAME'] ?? '/index.php'));
+        $scriptDir = str_replace('\\', '/', dirname($scriptName));
+        if ($scriptDir === '/' || $scriptDir === '.') {
+            $scriptDir = '';
+        }
+
+        if ($scriptDir !== '') {
+            if ($rawPath === $scriptDir) {
+                $rawPath = '/';
+            } elseif (str_starts_with($rawPath, $scriptDir . '/')) {
+                $rawPath = substr($rawPath, strlen($scriptDir));
+            }
+        }
+
+        if (str_starts_with($rawPath, '/index.php')) {
+            $rawPath = substr($rawPath, strlen('/index.php'));
+        }
+
+        $normalized = '/' . ltrim($rawPath, '/');
+        return $normalized === '//' || $normalized === '' ? '/' : $normalized;
+    }
+
+    private static function extractRewrittenPathFromQuery(array $query): ?string {
+        foreach (array_keys($query) as $key) {
+            if (is_string($key) && str_starts_with($key, '/')) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
+    private static function parsePathSegments(string $path): array {
+        $trimmed = trim($path, '/');
+        if ($trimmed === '') {
+            return ['', 'index'];
+        }
+
+        $segments = array_values(array_filter(explode('/', $trimmed), static fn($segment) => $segment !== ''));
+        if (empty($segments)) {
+            return ['', 'index'];
+        }
+
+        if (strtolower($segments[0]) === 'index.php') {
+            array_shift($segments);
+        }
+
+        if (empty($segments)) {
+            return ['', 'index'];
+        }
+
+        if (!self::isRecognizedPrettyRoute($segments[0])) {
+            return ['', 'index'];
+        }
+
+        return [
+            (string)$segments[0],
+            isset($segments[1]) && trim((string)$segments[1]) !== ''
+                ? (string)$segments[1]
+                : 'index',
+        ];
+    }
+
+    private static function isRecognizedPrettyRoute(string $segment): bool {
+        static $knownRoutes = [
+            'api',
+            'backup',
+            'brands',
+            'categories',
+            'company',
+            'customers',
+            'dashboard',
+            'demo',
+            'demo-login',
+            'demo_login',
+            'health',
+            'home',
+            'insights',
+            'invoice',
+            'login',
+            'logout',
+            'payments',
+            'platform',
+            'pricing',
+            'promos',
+            'products',
+            'profile',
+            'purchases',
+            'quotations',
+            'referrals',
+            'reports',
+            'roles',
+            'sale_returns',
+            'sales',
+            'saas_billing',
+            'saas_dashboard',
+            'saas_plans',
+            'settings',
+            'signup',
+            'suppliers',
+            'twoFactor',
+            'twofactor',
+            'units',
+            'users',
+        ];
+
+        return in_array($segment, $knownRoutes, true);
     }
 }

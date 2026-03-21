@@ -10,18 +10,23 @@
 class CsrfMiddleware implements MiddlewareInterface {
     /** @var string[] Pages excluded from CSRF verification */
     private array $excludePages = ['api', 'webhook'];
+    /** @var string[] HTTP methods that mutate state and must be verified */
+    private array $mutatingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
     public function handle(Request $request, callable $next): void {
-        $uri = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
-        $isApiRoute = $uri !== '' && str_contains($uri, '/api/');
+        $method = $request->method();
+        $isApiRoute = $request->isApiPath();
 
-        if (!$isApiRoute && !in_array($request->page(), $this->excludePages, true)) {
+        if (
+            in_array($method, $this->mutatingMethods, true)
+            && !$isApiRoute
+            && !in_array($request->page(), $this->excludePages, true)
+        ) {
             CSRF::verifyGlobal();
         }
 
         $next($request);
     }
 }
-
 
 

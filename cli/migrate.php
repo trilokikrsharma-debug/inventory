@@ -66,6 +66,9 @@ function migrationManifest(string $migrationDir): array
         ['filename' => 'enterprise_hardening.sql'],
         ['filename' => 'enterprise_platform.sql'],
         ['filename' => 'performance_indexes.sql'],
+        ['filename' => '018_deduplicate_indexes.sql'],
+        ['filename' => '019_tenant_integrity_hardening.sql'],
+        ['filename' => '020_tenant_subscription_nullable_ids.sql'],
     ];
 
     $manifest = [];
@@ -152,8 +155,173 @@ function normalizeMigrationStatement(string $statement): string
     $statement = preg_replace('/\bADD\s+UNIQUE\s+INDEX\s+IF\s+NOT\s+EXISTS\b/i', 'ADD UNIQUE INDEX', $statement) ?? $statement;
     $statement = preg_replace('/\bADD\s+INDEX\s+IF\s+NOT\s+EXISTS\b/i', 'ADD INDEX', $statement) ?? $statement;
     $statement = preg_replace('/\bDROP\s+INDEX\s+IF\s+EXISTS\b/i', 'DROP INDEX', $statement) ?? $statement;
+    $statement = preg_replace('/\bADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\b/i', 'ADD COLUMN', $statement) ?? $statement;
+    $statement = preg_replace('/\bDROP\s+COLUMN\s+IF\s+EXISTS\b/i', 'DROP COLUMN', $statement) ?? $statement;
 
     return trim($statement);
+}
+
+function splitTopLevelCsv(string $input): array
+{
+    $parts = [];
+    $buffer = '';
+    $depth = 0;
+    $inSingle = false;
+    $inDouble = false;
+    $inBacktick = false;
+    $escaped = false;
+    $length = strlen($input);
+
+    for ($i = 0; $i < $length; $i++) {
+        $char = $input[$i];
+
+        if ($inSingle) {
+            $buffer .= $char;
+            if ($escaped) {
+                $escaped = false;
+            } elseif ($char === '\\') {
+                $escaped = true;
+            } elseif ($char === "'") {
+                $inSingle = false;
+            }
+            continue;
+        }
+
+        if ($inDouble) {
+            $buffer .= $char;
+            if ($escaped) {
+                $escaped = false;
+            } elseif ($char === '\\') {
+                $escaped = true;
+            } elseif ($char === '"') {
+                $inDouble = false;
+            }
+            continue;
+        }
+
+        if ($inBacktick) {
+            $buffer .= $char;
+            if ($char === '`') {
+                $inBacktick = false;
+            }
+            continue;
+        }
+
+        if ($char === "'") {
+            $inSingle = true;
+            $buffer .= $char;
+            continue;
+        }
+        if ($char === '"') {
+            $inDouble = true;
+            $buffer .= $char;
+            continue;
+        }
+        if ($char === '`') {
+            $inBacktick = true;
+            $buffer .= $char;
+            continue;
+        }
+
+        if ($char === '(') {
+            $depth++;
+            $buffer .= $char;
+            continue;
+        }
+
+        if ($char === ')') {
+            $depth = max(0, $depth - 1);
+            $buffer .= $char;
+            continue;
+        }
+
+        if ($char === ',' && $depth === 0) {
+            $part = trim($buffer);
+            if ($part !== '') {
+                $parts[] = $part;
+            }
+            $buffer = '';
+            continue;
+        }
+
+        $buffer .= $char;
+    }
+
+    $tail = trim($buffer);
+    if ($tail !== '') {
+        $parts[] = $tail;
+    }
+
+    return $parts;
+}
+
+function isSplitSafeAlterOperation(string $operation): bool
+{
+    $normalized = strtoupper(trim((string)(preg_replace('/\s+/', ' ', $operation) ?? $operation)));
+    if ($normalized === '') {
+        return false;
+    }
+
+    $allowedPrefixes = [
+        'ADD COLUMN',
+        'DROP COLUMN',
+        'MODIFY COLUMN',
+        'CHANGE COLUMN',
+        'ADD INDEX',
+        'ADD UNIQUE INDEX',
+        'ADD KEY',
+        'ADD UNIQUE KEY',
+        'DROP INDEX',
+        'DROP KEY',
+        'ADD CONSTRAINT',
+        'DROP FOREIGN KEY',
+        'ADD PRIMARY KEY',
+        'DROP PRIMARY KEY',
+    ];
+
+    foreach ($allowedPrefixes as $prefix) {
+        if (str_starts_with($normalized, $prefix)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function expandAlterTableStatements(string $statement): array
+{
+    $statement = trim($statement);
+    if ($statement === '') {
+        return [];
+    }
+
+    if (!preg_match('/^ALTER\s+TABLE\s+(`?[a-zA-Z0-9_]+`?)\s+(.+)$/is', $statement, $matches)) {
+        return [$statement];
+    }
+
+    $tableIdentifier = trim((string)$matches[1]);
+    $operationsRaw = trim((string)$matches[2]);
+    if ($operationsRaw === '' || strpos($operationsRaw, ',') === false) {
+        return [$statement];
+    }
+
+    $operations = splitTopLevelCsv($operationsRaw);
+    if (count($operations) <= 1) {
+        return [$statement];
+    }
+
+    foreach ($operations as $operation) {
+        if (!isSplitSafeAlterOperation($operation)) {
+            return [$statement];
+        }
+    }
+
+    $expanded = [];
+    foreach ($operations as $operation) {
+        $expanded[] = 'ALTER TABLE ' . $tableIdentifier . ' ' . trim($operation);
+    }
+
+    return $expanded;
 }
 
 function extractIndexOperationMetadata(string $statement): ?array
@@ -224,6 +392,57 @@ function shouldSkipIndexStatement(PDO $pdo, string $statement): bool
     return $meta['type'] === 'create' ? $exists : !$exists;
 }
 
+function extractColumnOperationMetadata(string $statement): ?array
+{
+    $statement = trim($statement);
+    if ($statement === '') {
+        return null;
+    }
+
+    if (preg_match('/^ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+ADD\s+COLUMN\s+`?([a-zA-Z0-9_]+)`?/i', $statement, $matches)) {
+        return [
+            'type' => 'create',
+            'table' => strtolower((string)$matches[1]),
+            'column' => strtolower((string)$matches[2]),
+        ];
+    }
+
+    if (preg_match('/^ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+DROP\s+COLUMN\s+`?([a-zA-Z0-9_]+)`?/i', $statement, $matches)) {
+        return [
+            'type' => 'drop',
+            'table' => strtolower((string)$matches[1]),
+            'column' => strtolower((string)$matches[2]),
+        ];
+    }
+
+    return null;
+}
+
+function columnExists(PDO $pdo, string $tableName, string $columnName): bool
+{
+    $stmt = $pdo->prepare("
+        SELECT 1
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND COLUMN_NAME = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$tableName, $columnName]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function shouldSkipColumnStatement(PDO $pdo, string $statement): bool
+{
+    $meta = extractColumnOperationMetadata($statement);
+    if ($meta === null) {
+        return false;
+    }
+
+    $exists = columnExists($pdo, $meta['table'], $meta['column']);
+    return $meta['type'] === 'create' ? $exists : !$exists;
+}
+
 function extractConstraintOperationMetadata(string $statement): ?array
 {
     $statement = trim($statement);
@@ -236,6 +455,7 @@ function extractConstraintOperationMetadata(string $statement): ?array
             'type' => 'create',
             'table' => strtolower((string)$matches[1]),
             'constraint' => strtolower((string)$matches[2]),
+            'constraint_type' => 'FOREIGN KEY',
         ];
     }
 
@@ -244,24 +464,50 @@ function extractConstraintOperationMetadata(string $statement): ?array
             'type' => 'drop',
             'table' => strtolower((string)$matches[1]),
             'constraint' => strtolower((string)$matches[2]),
+            'constraint_type' => 'FOREIGN KEY',
+        ];
+    }
+
+    if (preg_match('/^ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+ADD\s+CONSTRAINT\s+`?([a-zA-Z0-9_]+)`?\s+CHECK\b/i', $statement, $matches)) {
+        return [
+            'type' => 'create',
+            'table' => strtolower((string)$matches[1]),
+            'constraint' => strtolower((string)$matches[2]),
+            'constraint_type' => 'CHECK',
+        ];
+    }
+
+    if (preg_match('/^ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+DROP\s+CHECK\s+`?([a-zA-Z0-9_]+)`?/i', $statement, $matches)) {
+        return [
+            'type' => 'drop',
+            'table' => strtolower((string)$matches[1]),
+            'constraint' => strtolower((string)$matches[2]),
+            'constraint_type' => 'CHECK',
         ];
     }
 
     return null;
 }
 
-function foreignKeyConstraintExists(PDO $pdo, string $tableName, string $constraintName): bool
+function tableConstraintExists(PDO $pdo, string $tableName, string $constraintName, ?string $constraintType = null): bool
 {
-    $stmt = $pdo->prepare("
+    $sql = "
         SELECT 1
         FROM information_schema.TABLE_CONSTRAINTS
         WHERE CONSTRAINT_SCHEMA = DATABASE()
           AND TABLE_NAME = ?
           AND CONSTRAINT_NAME = ?
-          AND CONSTRAINT_TYPE = 'FOREIGN KEY'
         LIMIT 1
-    ");
-    $stmt->execute([$tableName, $constraintName]);
+    ";
+
+    $params = [$tableName, $constraintName];
+    if ($constraintType !== null) {
+        $sql = str_replace('LIMIT 1', 'AND CONSTRAINT_TYPE = ? LIMIT 1', $sql);
+        $params[] = $constraintType;
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     return (bool)$stmt->fetchColumn();
 }
 
@@ -272,8 +518,50 @@ function shouldSkipConstraintStatement(PDO $pdo, string $statement): bool
         return false;
     }
 
-    $exists = foreignKeyConstraintExists($pdo, $meta['table'], $meta['constraint']);
+    $exists = tableConstraintExists(
+        $pdo,
+        $meta['table'],
+        $meta['constraint'],
+        $meta['constraint_type'] ?? null
+    );
     return $meta['type'] === 'create' ? $exists : !$exists;
+}
+
+function extractCreateTableMetadata(string $statement): ?array
+{
+    $statement = trim($statement);
+    if ($statement === '') {
+        return null;
+    }
+
+    if (!preg_match('/^CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+`?([a-zA-Z0-9_]+)`?/i', $statement, $matches)) {
+        return null;
+    }
+
+    return ['table' => strtolower((string)$matches[1])];
+}
+
+function tableExists(PDO $pdo, string $tableName): bool
+{
+    $stmt = $pdo->prepare("
+        SELECT 1
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$tableName]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function shouldSkipCreateTableStatement(PDO $pdo, string $statement): bool
+{
+    $meta = extractCreateTableMetadata($statement);
+    if ($meta === null) {
+        return false;
+    }
+
+    return tableExists($pdo, $meta['table']);
 }
 
 function extractCreatedTablesFromSql(string $sqlContent): array
@@ -318,14 +606,29 @@ function runSqlFile(PDO $pdo, string $path, string $databaseName): array
         throw new RuntimeException('SQL file is empty or contains no executable statements: ' . basename($path));
     }
 
-    foreach ($statements as $index => $statement) {
+    $expandedStatements = [];
+    foreach ($statements as $statement) {
+        foreach (expandAlterTableStatements($statement) as $expanded) {
+            $expanded = trim($expanded);
+            if ($expanded !== '') {
+                $expandedStatements[] = $expanded;
+            }
+        }
+    }
+
+    foreach ($expandedStatements as $index => $statement) {
         try {
             $statement = normalizeMigrationStatement($statement);
             if ($statement === '') {
                 continue;
             }
 
-            if (shouldSkipIndexStatement($pdo, $statement) || shouldSkipConstraintStatement($pdo, $statement)) {
+            if (
+                shouldSkipCreateTableStatement($pdo, $statement) ||
+                shouldSkipColumnStatement($pdo, $statement) ||
+                shouldSkipIndexStatement($pdo, $statement) ||
+                shouldSkipConstraintStatement($pdo, $statement)
+            ) {
                 continue;
             }
 
@@ -461,6 +764,84 @@ function requiredCoreTableGroups(): array
     ];
 }
 
+function dataIntegrityChecks(PDO $pdo): array
+{
+    $checks = [];
+
+    $checks['tenant_users_without_company'] = (int)$pdo->query("
+        SELECT COUNT(*)
+        FROM users
+        WHERE deleted_at IS NULL
+          AND IFNULL(is_super_admin, 0) = 0
+          AND company_id IS NULL
+    ")->fetchColumn();
+
+    $checks['super_admins_without_company'] = (int)$pdo->query("
+        SELECT COUNT(*)
+        FROM users
+        WHERE deleted_at IS NULL
+          AND IFNULL(is_super_admin, 0) = 1
+          AND company_id IS NULL
+    ")->fetchColumn();
+
+    $checks['companies_without_settings'] = (int)$pdo->query("
+        SELECT COUNT(*)
+        FROM companies c
+        LEFT JOIN company_settings cs ON cs.company_id = c.id
+        WHERE cs.id IS NULL
+    ")->fetchColumn();
+
+    $checks['companies_without_owner'] = (int)$pdo->query("
+        SELECT COUNT(*)
+        FROM companies
+        WHERE owner_user_id IS NULL
+          AND IFNULL(is_demo, 0) = 0
+    ")->fetchColumn();
+
+    $checks['companies_with_invalid_plan'] = (int)$pdo->query("
+        SELECT COUNT(*)
+        FROM companies c
+        LEFT JOIN saas_plans sp ON sp.id = c.saas_plan_id
+        WHERE c.saas_plan_id IS NULL OR sp.id IS NULL
+    ")->fetchColumn();
+
+    $checks['activity_log_null_company_allowed'] = columnExists($pdo, 'activity_log', 'company_id')
+        ? (int)$pdo->query("
+            SELECT COUNT(*)
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'activity_log'
+              AND COLUMN_NAME = 'company_id'
+              AND IS_NULLABLE = 'YES'
+        ")->fetchColumn()
+        : 0;
+
+    return $checks;
+}
+
+function failingIntegrityChecks(array $checks): array
+{
+    $failures = [];
+
+    foreach ($checks as $label => $value) {
+        switch ($label) {
+            case 'tenant_users_without_company':
+            case 'companies_without_settings':
+            case 'companies_without_owner':
+            case 'companies_with_invalid_plan':
+                if ($value > 0) {
+                    $failures[$label] = $value;
+                }
+                break;
+            case 'activity_log_null_company_allowed':
+            default:
+                break;
+        }
+    }
+
+    return $failures;
+}
+
 function missingCoreGroups(array $existingTableMap): array
 {
     $missing = [];
@@ -536,6 +917,37 @@ try {
 }
 
 $hasExistingApplicationTables = applicationTableCount($pdo) > 0;
+$schemaEntry = null;
+foreach ($manifest as $entry) {
+    if ((string)$entry['filename'] === 'schema.sql') {
+        $schemaEntry = $entry;
+        break;
+    }
+}
+
+if ($schemaEntry !== null && $hasExistingApplicationTables && empty($executedMap['schema.sql'])) {
+    try {
+        $schemaPath = (string)$schemaEntry['path'];
+        $schemaRaw = @file_get_contents($schemaPath);
+        if ($schemaRaw === false) {
+            throw new RuntimeException('Unable to read schema.sql while validating bootstrap state.');
+        }
+
+        $existingTablesForSchemaCheck = fetchExistingTables($pdo);
+        $expectedSchemaTables = extractCreatedTablesFromSql($schemaRaw);
+        $missingSchemaTables = getMissingTables($expectedSchemaTables, $existingTablesForSchemaCheck);
+
+        if (!empty($missingSchemaTables)) {
+            echo red('Migration bootstrap is inconsistent: schema.sql is not recorded and base schema tables are missing.') . PHP_EOL;
+            echo red('Missing base tables: ' . implode(', ', $missingSchemaTables)) . PHP_EOL;
+            echo red('Run migration repair on a clean snapshot before continuing deployment.') . PHP_EOL;
+            exit(1);
+        }
+    } catch (Throwable $e) {
+        echo red('Migration bootstrap validation failed: ' . $e->getMessage()) . PHP_EOL;
+        exit(1);
+    }
+}
 
 $pending = [];
 foreach ($manifest as $entry) {
@@ -567,6 +979,8 @@ if ($mode === '--status') {
     $existingTables = fetchExistingTables($pdo);
     $missingExpectedTables = getMissingTables($expectedTables, $existingTables);
     $missingCore = missingCoreGroups($existingTables);
+    $integrityChecks = dataIntegrityChecks($pdo);
+    $integrityFailures = failingIntegrityChecks($integrityChecks);
 
     echo PHP_EOL . bold('Schema Health:') . PHP_EOL;
     echo '  Current DB: ' . $databaseName . PHP_EOL;
@@ -585,13 +999,22 @@ if ($mode === '--status') {
         echo '  ' . red('Missing core groups: ' . implode(', ', $missingCore)) . PHP_EOL;
     }
 
+    echo PHP_EOL . bold('Data Integrity:') . PHP_EOL;
+    foreach ($integrityChecks as $label => $value) {
+        $prettyLabel = str_replace('_', ' ', $label);
+        $isFailure = array_key_exists($label, $integrityFailures);
+        $status = $isFailure ? red('FAIL') : green('OK');
+        echo '  ' . $status . ' ' . $prettyLabel . ': ' . $value . PHP_EOL;
+    }
+
     echo PHP_EOL . 'Total: ' . count($manifest)
         . ' | Executed: ' . count($executedMap)
         . ' | Pending: ' . count($pending) . PHP_EOL;
 
-    $isInconsistent = empty($pending) && (!empty($missingExpectedTables) || !empty($missingCore));
+    $isInconsistent = empty($pending)
+        && (!empty($missingExpectedTables) || !empty($missingCore) || !empty($integrityFailures));
     if ($isInconsistent) {
-        echo red('Status FAILED: migrations appear complete but schema is incomplete.') . PHP_EOL;
+        echo red('Status FAILED: migrations appear complete but schema/data integrity is incomplete.') . PHP_EOL;
         exit(1);
     }
 
@@ -602,14 +1025,21 @@ if (empty($pending)) {
     $existingTables = fetchExistingTables($pdo);
     $missingExpectedTables = getMissingTables($expectedTables, $existingTables);
     $missingCore = missingCoreGroups($existingTables);
+    $integrityChecks = dataIntegrityChecks($pdo);
+    $integrityFailures = failingIntegrityChecks($integrityChecks);
 
-    if (!empty($missingExpectedTables) || !empty($missingCore)) {
-        echo red('Migration state is inconsistent. No pending migrations, but schema is incomplete.') . PHP_EOL;
+    if (!empty($missingExpectedTables) || !empty($missingCore) || !empty($integrityFailures)) {
+        echo red('Migration state is inconsistent. No pending migrations, but schema/data integrity is incomplete.') . PHP_EOL;
         if (!empty($missingExpectedTables)) {
             echo red('Missing expected tables: ' . implode(', ', $missingExpectedTables)) . PHP_EOL;
         }
         if (!empty($missingCore)) {
             echo red('Missing core groups: ' . implode(', ', $missingCore)) . PHP_EOL;
+        }
+        if (!empty($integrityFailures)) {
+            foreach ($integrityFailures as $label => $value) {
+                echo red('Integrity failure - ' . str_replace('_', ' ', $label) . ': ' . $value) . PHP_EOL;
+            }
         }
         echo red('Aborting with failure so this cannot be treated as production-ready.') . PHP_EOL;
         exit(1);
@@ -683,13 +1113,20 @@ if ($failed === 0) {
     $existingTables = fetchExistingTables($pdo);
     $missingExpectedTables = getMissingTables($expectedTables, $existingTables);
     $missingCore = missingCoreGroups($existingTables);
-    if (!empty($missingExpectedTables) || !empty($missingCore)) {
+    $integrityChecks = dataIntegrityChecks($pdo);
+    $integrityFailures = failingIntegrityChecks($integrityChecks);
+    if (!empty($missingExpectedTables) || !empty($missingCore) || !empty($integrityFailures)) {
         echo PHP_EOL . red('Post-migration integrity check failed.') . PHP_EOL;
         if (!empty($missingExpectedTables)) {
             echo red('Missing expected tables: ' . implode(', ', $missingExpectedTables)) . PHP_EOL;
         }
         if (!empty($missingCore)) {
             echo red('Missing core groups: ' . implode(', ', $missingCore)) . PHP_EOL;
+        }
+        if (!empty($integrityFailures)) {
+            foreach ($integrityFailures as $label => $value) {
+                echo red('Integrity failure - ' . str_replace('_', ' ', $label) . ': ' . $value) . PHP_EOL;
+            }
         }
         $failed++;
     }

@@ -22,7 +22,13 @@ class SessionMiddleware implements MiddlewareInterface {
 
         // 2. Validate session fingerprint (prevents session hijacking)
         if (!Session::validateFingerprint()) {
-            header("Location: " . APP_URL . "/index.php?page=login&hijack=1");
+            if ($request->isAjax()) {
+                http_response_code(401);
+                header('Content-Type: application/json; charset=UTF-8');
+                echo json_encode(['success' => false, 'message' => 'Session validation failed. Please login again.'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            } else {
+                header("Location: " . APP_URL . "/login?hijack=1");
+            }
             exit;
         }
 

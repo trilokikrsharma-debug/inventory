@@ -18,6 +18,9 @@ class RbacMiddleware implements MiddlewareInterface {
         'health',
         'twoFactor',
         'logout',
+        'privacy',
+        'terms',
+        'refund',
     ];
 
     /**
@@ -229,9 +232,7 @@ class RbacMiddleware implements MiddlewareInterface {
     }
 
     private function shouldSkip(Request $request): bool {
-        $uri = (string)(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
-
-        if ($uri !== '' && str_starts_with($uri, '/api/')) {
+        if ($request->isApiPath()) {
             return true;
         }
 
@@ -306,6 +307,11 @@ class RbacMiddleware implements MiddlewareInterface {
     }
 
     private function mapPrettyRoute(string $uri): ?array {
+        $uri = '/' . ltrim((string)(parse_url($uri, PHP_URL_PATH) ?? ''), '/');
+        if ($uri !== '/') {
+            $uri = rtrim($uri, '/');
+        }
+
         $routes = [
             '/platform/subscribe' => ['page' => 'saas_billing', 'action' => 'subscribe'],
             '/platform/subscriptions' => ['page' => 'platform', 'action' => 'subscriptions'],
@@ -318,7 +324,7 @@ class RbacMiddleware implements MiddlewareInterface {
         ];
 
         foreach ($routes as $path => $target) {
-            if ($uri === $path || str_ends_with($uri, $path)) {
+            if ($uri === $path) {
                 return $target;
             }
         }

@@ -81,6 +81,7 @@ Production Nginx behavior:
 - Forces HTTPS
 - Returns `403` for the health route by default
 - Uses long-lived cache headers for static assets
+- Sends all non-file requests to `index.php`, where the app router returns `404` for unknown URLs
 
 ## 6) Domain + Wildcard Tenant DNS
 
@@ -193,7 +194,33 @@ Recommended monitors:
 - Redis memory + evictions
 - Disk usage alerts at 80% and 90%
 
-## 12) Go-Live Deployment Command
+## 12) Post-Deploy Validation
+
+Run these checks immediately after deploy or after any routing/security change:
+
+```bash
+php cli/migrate.php --status
+APP_HOST=app.example.com
+curl --fail --silent --show-error --resolve "${APP_HOST}:443:127.0.0.1" -I "https://${APP_HOST}/"
+curl --fail --silent --show-error --resolve "${APP_HOST}:443:127.0.0.1" -I "https://${APP_HOST}/codex-does-not-exist-404"
+curl --fail --silent --show-error --resolve "${APP_HOST}:443:127.0.0.1" -I "https://${APP_HOST}/index.php?page=login"
+```
+
+Expected results:
+- Home page returns `200`
+- A missing route returns `404`
+- Login page returns `200`
+- Public HTTP should redirect to HTTPS at the real domain
+
+Optional server-side checks:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+sudo systemctl status php8.2-fpm --no-pager
+```
+
+## 13) Go-Live Deployment Command
 
 ```bash
 sudo bash /var/www/inventory/deploy/scripts/deploy.sh
@@ -202,13 +229,41 @@ sudo bash /var/www/inventory/deploy/scripts/deploy.sh
 Deployment script behavior:
 - Fails fast if `.env` or `database/schema.sql` is missing
 - Validates composer config before migration
+- Lints critical PHP and shell entry points before deployment continues
 - Runs `php cli/migrate.php --status` before migrating
 - Normalizes ownership on `cache/`, `logs/`, and `uploads/`
+- Verifies the live HTTP smoke tests after reload
 
 Script file:
 - [deploy/scripts/deploy.sh](/var/www/inventory/deploy/scripts/deploy.sh)
 
-## 13) Final Revenue-Ready Checklist
+## 14) Rollback Plan
+
+Keep one known-good release and one recent database backup at all times.
+
+Fast rollback steps:
+
+```bash
+git checkout <known-good-commit-or-tag>
+composer install --no-dev --optimize-autoloader --classmap-authoritative --prefer-dist
+php cli/migrate.php --status
+sudo systemctl reload php8.2-fpm
+sudo systemctl reload nginx
+```
+
+If the database changed in a breaking way, restore the most recent dump first:
+
+```bash
+gunzip < /var/backups/invenbill/db_YYYY-MM-DD.sql.gz | mysql -u invenbill_user -p inventory_billing
+```
+
+Rollback checklist:
+- Verify the landing page loads
+- Verify `index.php?page=login` loads
+- Verify a random URL returns `404`
+- Verify tenant login still works before reopening the site
+
+## 15) Final Revenue-Ready Checklist
 
 - [ ] Domain and wildcard DNS are correct (`app.example.com`, `*.example.com`)
 - [ ] SSL certificate active and auto-renew tested

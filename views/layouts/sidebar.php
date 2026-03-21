@@ -192,6 +192,12 @@ $currentAction = $_GET['action'] ?? 'index';
                     <span class="nav-text">Suppliers</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $currentPage === 'hr' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=hr">
+                    <i class="fas fa-id-badge nav-icon"></i>
+                    <span class="nav-text">HR Tools</span>
+                </a>
+            </li>
         </ul>
 
         <!-- Transactions -->
@@ -278,6 +284,12 @@ $currentAction = $_GET['action'] ?? 'index';
                 <a class="nav-link <?= $currentPage === 'settings' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=settings">
                     <i class="fas fa-gear nav-icon"></i>
                     <span class="nav-text">Settings</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $currentPage === 'api' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=api">
+                    <i class="fas fa-code nav-icon"></i>
+                    <span class="nav-text">API Access</span>
                 </a>
             </li>
             <?php endif; ?>

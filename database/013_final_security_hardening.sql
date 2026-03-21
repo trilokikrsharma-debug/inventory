@@ -9,31 +9,31 @@
 -- (1000+ tenants, 100k+ invoices/day)
 
 -- Sales: company + date is the most common dashboard/report query
-CREATE INDEX IF NOT EXISTS idx_sales_company_date 
+CREATE INDEX idx_sales_company_date 
     ON sales(company_id, sale_date);
 
 -- Products: filtered by active status in almost every listing
-CREATE INDEX IF NOT EXISTS idx_products_company_active 
+CREATE INDEX idx_products_company_active 
     ON products(company_id, is_active, deleted_at);
 
 -- Payments: filtered by type (payment/receipt) in listings
-CREATE INDEX IF NOT EXISTS idx_payments_company_type 
+CREATE INDEX idx_payments_company_type 
     ON payments(company_id, type);
 
 -- Audit trail: queried by company + table + record
-CREATE INDEX IF NOT EXISTS idx_audit_trail_lookup 
+CREATE INDEX idx_audit_trail_lookup 
     ON audit_trail(company_id, table_name, record_id);
 
 -- Jobs: worker polls by status + scheduled_at + priority
-CREATE INDEX IF NOT EXISTS idx_jobs_worker_poll 
+CREATE INDEX idx_jobs_worker_poll 
     ON jobs(status, scheduled_at, priority);
 
 -- Quotations: company + status for list views
-CREATE INDEX IF NOT EXISTS idx_quotations_company_status 
+CREATE INDEX idx_quotations_company_status 
     ON quotations(company_id, status);
 
 -- Sale returns: company + date for reports
-CREATE INDEX IF NOT EXISTS idx_sale_returns_company 
+CREATE INDEX idx_sale_returns_company 
     ON sale_returns(company_id, return_date);
 
 
@@ -44,7 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_sale_returns_company
 
 -- users.company_id → companies.id (SET NULL for super-admins)
 ALTER TABLE users
-    ADD CONSTRAINT fk_users_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL;
+    ADD CONSTRAINT fk_users_company FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- sale_items.sale_id → sales.id (CASCADE delete)
 ALTER TABLE sale_items

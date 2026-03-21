@@ -2,7 +2,7 @@
 -- RBAC Migration — Phase 1
 -- Run this migration ONCE on an existing database.
 -- Safe: All operations are additive (CREATE TABLE, ALTER TABLE ADD COLUMN).
--- Idempotent: Uses IF NOT EXISTS where possible.
+-- Idempotent: guarded by migration runner + safe conditional updates.
 -- ============================================================
 
 -- 1. ROLES TABLE
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS `role_permissions` (
 -- 4. ADD role_id TO USERS (nullable, keeps existing role ENUM untouched)
 -- Check if column exists first to make this idempotent
 ALTER TABLE `users`
-  ADD COLUMN IF NOT EXISTS `role_id` INT UNSIGNED DEFAULT NULL AFTER `role`;
+  ADD COLUMN `role_id` INT UNSIGNED DEFAULT NULL AFTER `role`;
 ALTER TABLE `users`
   ADD INDEX `idx_users_role_id` (`role_id`);
 

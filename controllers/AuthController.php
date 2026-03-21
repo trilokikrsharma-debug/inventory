@@ -19,10 +19,10 @@ class AuthController extends Controller {
         // If already logged in, redirect to dashboard
         if (Session::isLoggedIn()) {
             if (Session::isTwoFactorPending()) {
-                $this->redirect('index.php?page=twoFactor&action=verify');
+                $this->redirect('twoFactor/verify');
                 return;
             }
-            $this->redirect('index.php?page=dashboard');
+            $this->redirect('dashboard');
         }
 
         // Handle login POST
@@ -250,7 +250,7 @@ class AuthController extends Controller {
         }
 
         $this->logActivity('Login pending 2FA', 'auth', $pendingUser['id'], 'Two-factor verification required');
-        $this->redirect('index.php?page=twoFactor&action=verify');
+        $this->redirect('twoFactor/verify');
     }
 
     /**
@@ -285,10 +285,10 @@ class AuthController extends Controller {
             $isSuperAdmin ? 'Platform super-admin logged in' : 'Tenant user logged in');
 
         if ($isSuperAdmin) {
-            $this->redirect('index.php?page=platform&action=dashboard');
+            $this->redirect('platform/dashboard');
         }
 
-        $this->redirect('index.php?page=dashboard');
+        $this->redirect('dashboard');
     }
 
     /**

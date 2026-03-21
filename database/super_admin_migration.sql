@@ -8,13 +8,13 @@
 --  2. An independent flag that cannot be changed by role reassignment alone
 --  3. An audit trail for who has platform-level access
 --
--- RUN THIS ONLY ONCE. Safe to run multiple times (uses IF NOT EXISTS logic).
+-- RUN THIS ONLY ONCE. Safe to re-run with migration runner idempotency guards.
 -- ============================================================================
 
 -- Step 1: Add is_super_admin to users table (if not exists)
 -- This is a defense-in-depth column; the primary check remains via roles
 ALTER TABLE `users`
-  ADD COLUMN IF NOT EXISTS `is_super_admin` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Platform super admin flag - cannot be changed via UI' AFTER `role_id`;
+  ADD COLUMN `is_super_admin` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Platform super admin flag - cannot be changed via UI' AFTER `role_id`;
 
 -- Step 2: Index for fast super-admin lookups (optional, for admin panels)
 -- Only useful if you need to list all super-admins quickly

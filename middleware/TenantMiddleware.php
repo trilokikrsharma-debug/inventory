@@ -11,6 +11,13 @@ class TenantMiddleware implements MiddlewareInterface {
     public function handle(Request $request, callable $next): void {
         // Only resolve tenant for authenticated users
         if (Session::isLoggedIn()) {
+            // Pending 2FA sessions are intentionally partial and may not have
+            // complete tenant context yet (especially super-admin logins).
+            if (Session::isTwoFactorPending()) {
+                $next($request);
+                return;
+            }
+
             Tenant::resolve();
 
             if (!Session::isSuperAdmin()) {
@@ -25,7 +32,9 @@ class TenantMiddleware implements MiddlewareInterface {
                 }
 
                 if (defined('TENANT_HOST_ENFORCEMENT') ? TENANT_HOST_ENFORCEMENT : false) {
-                    if (!Tenant::hostMatchesCurrentTenant()) {
+                    // Allow apex-host logins for single-domain deployments.
+                    // Strict host matching still applies on tenant subdomains.
+                    if (!$this->isApexHostRequest() && !Tenant::hostMatchesCurrentTenant()) {
                         $this->forceTenantLogout('Please sign in on the correct tenant domain.');
                         return;
                     }
@@ -42,11 +51,27 @@ class TenantMiddleware implements MiddlewareInterface {
         Session::destroy();
 
         if (!headers_sent()) {
-            header('Location: ' . APP_URL . '/index.php?page=login&tenant_mismatch=1');
+            header('Location: ' . APP_URL . '/login?tenant_mismatch=1');
         } else {
-            echo '<script>window.location.href=' . json_encode(APP_URL . '/index.php?page=login&tenant_mismatch=1') . ';</script>';
+            echo '<script>window.location.href=' . json_encode(APP_URL . '/login?tenant_mismatch=1') . ';</script>';
         }
 
         exit;
+    }
+
+    private function isApexHostRequest(): bool {
+        $appHost = strtolower((string)(parse_url((string)APP_URL, PHP_URL_HOST) ?? ''));
+        $currentHost = strtolower((string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
+
+        if ($currentHost !== '') {
+            $parts = explode(':', $currentHost, 2);
+            $currentHost = $parts[0];
+        }
+
+        if ($appHost === '' || $currentHost === '') {
+            return false;
+        }
+
+        return hash_equals($appHost, $currentHost);
     }
 }

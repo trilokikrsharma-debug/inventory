@@ -15,7 +15,7 @@ if (!defined('BASE_PATH')) {
 }
 
 // Application Info
-define('APP_NAME', 'KARSO');
+define('APP_NAME', 'TSA Legacy');
 define('APP_VERSION', '2.0.0');
 
 // Load .env variables into environment
@@ -87,8 +87,8 @@ define('APP_URL', getenv('APP_URL') ?: "{$_autoProtocol}://{$_autoHost}{$_autoBa
 unset($_autoProtocol, $_autoHost, $_scriptName, $_autoBasePath);
 
 // Environment hint (development / production)
-// Set APP_ENV=production on your production server to enable stricter defaults.
-define('APP_ENV', getenv('APP_ENV') ?: 'development');
+// Fail-safe default is production. Explicitly set APP_ENV=development locally.
+define('APP_ENV', getenv('APP_ENV') ?: 'production');
 
 // Timezone (used by PHP date functions globally)
 date_default_timezone_set('Asia/Kolkata');
