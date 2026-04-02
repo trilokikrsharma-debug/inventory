@@ -1,0 +1,19 @@
+Options -ExecCGI -Indexes
+php_flag engine off
+AddHandler cgi-script .php .phtml .php3 .php4 .php5 .pl .py .jsp .asp .sh .cgi
+
+<FilesMatch "\.(sql|sql\.gz|dump|bak)$">
+    Require all denied
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|php8|phar|pl|py|jsp|asp|aspx|sh|cgi)$">
+    Require all denied
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Additional protection: remove script handlers (works with PHP-FPM)
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phar
+RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8 .phar

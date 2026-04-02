@@ -1,22 +1,103 @@
-# Environment files
+# InvenBill Pro - source-only, deployment-safe .gitignore
+
+# Environment and secrets
 .env
 .env.*
 !.env.example
+!deploy/env/.env.production.example
+*.pem
+*.key
+*.p12
+*.keystore
+*.crt
+*.cer
+gcp.json
+gcp_utf8.json
 
-# Runtime directories
-logs/*
-!logs/.gitkeep
-uploads/*
-!uploads/.gitkeep
-cache/*
-!cache/.gitkeep
+# Dependencies and tool caches
+/vendor/
+/node_modules/
+composer.phar
+.phpunit.cache/
+.phpunit.result.cache
+coverage/
 
-# Dependencies
-vendor/
-node_modules/
+# Runtime and generated data
+/logs/*
+!/logs/.gitkeep
+/cache/*
+!/cache/.gitkeep
+/storage/*
+!/storage/.gitkeep
+/sessions/*
+/tmp/*
+/uploads/*
+!/uploads/.gitkeep
+!/uploads/.htaccess
+/uploads/backups/
+/uploads/logo/
+/uploads/products/
+/uploads/tenant_*/
 
-# Generic artifacts
-*.log
+# Build outputs
+assets/css/style.min.css
+assets/js/app.min.js
+
+# SQL and database dumps (keep migration/source SQL only)
 *.sql
-!database/*.sql
 *.dump
+*.sql.gz
+!database/*.sql
+
+# Local diagnostics and one-off scripts
+*.log
+/commit_msg.txt
+/__tracked_files.txt
+/__clean_list.txt
+/err_msg*.txt
+/schema_raw.txt
+/cli/output_diag3.txt
+/check_schema.php
+/check_schema.sh
+/check_schema2.sh
+/mk_admin.sh
+/make_admin.php
+/update_plans.php
+/upgrade_db.php
+/fix_demo*.php
+/bootstrap_db.ps1
+/run_numbered.ps1
+/deploy_infra.ps1
+/deploy_gcp_modules.sh
+/upgrade.sql
+
+# Separate local projects not part of this repo
+/InvenBillApp/
+/tsa-legacy-business-os/
+
+# IDE/editor metadata
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.buildpath
+nbproject/
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store
+._*
+*.lnk
+
+# Optional package manager artifacts
+package-lock.json
+
+# Backup leftovers
+*.bak
+*.orig
+*.old
+*.backup

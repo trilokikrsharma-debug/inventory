@@ -257,9 +257,8 @@ class Session {
             return false;
         }
 
-        // Super admin bypass — zero DB overhead
-        // Check both legacy ENUM and new RBAC flag
-        if (self::isAdmin() || self::isSuperAdmin()) {
+        // Super admin (platform owner) bypass — zero DB overhead
+        if (self::isSuperAdmin()) {
             return true;
         }
 

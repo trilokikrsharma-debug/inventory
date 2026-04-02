@@ -36,7 +36,11 @@ class DemoLoginController extends Controller {
             if (!$user) {
                 $roleId = $this->resolveDemoRoleId($db, $companyId);
                 $username = $this->generateDemoUsername($db, $companyId);
-                $demoPassword = getenv('DEMO_PASSWORD') ?: 'Demo@2026Secure';
+                $demoPassword = trim((string)(getenv('DEMO_PASSWORD') ?: ''));
+                if ($demoPassword === '') {
+                    // Avoid a predictable default credential when no env override exists.
+                    $demoPassword = bin2hex(random_bytes(16));
+                }
                 $hashedPassword = password_hash($demoPassword, PASSWORD_BCRYPT, ['cost' => 12]);
 
                 try {
