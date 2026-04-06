@@ -3,16 +3,24 @@
     <div>
         <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item active">Products</li></ol></nav>
     </div>
-    <a href="<?= APP_URL ?>/index.php?page=products&action=create" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add Product</a>
+    <div class="d-flex gap-2 app-page-actions">
+        <?php if (!Session::isSuperAdmin() && Tenant::id() !== null && Tenant::canUse('multi_warehouse')): ?>
+        <a href="<?= APP_URL ?>/index.php?page=warehouses" class="btn btn-outline-secondary"><i class="fas fa-warehouse me-1"></i>Warehouses</a>
+        <?php endif; ?>
+        <?php if (Session::isSuperAdmin() || Tenant::canUse('bulk_import')): ?>
+        <a href="<?= APP_URL ?>/index.php?page=products&action=import" class="btn btn-outline-secondary"><i class="fas fa-file-import me-1"></i>Bulk Import</a>
+        <?php endif; ?>
+        <a href="<?= APP_URL ?>/index.php?page=products&action=create" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add Product</a>
+    </div>
 </div>
 
 <div class="card">
     <div class="card-header">
         <h6><i class="fas fa-boxes-stacked me-2"></i>Product List</h6>
-        <form class="d-flex gap-2" method="GET">
+        <form class="d-flex gap-2 app-filter-form app-filter-form-compact" method="GET">
             <input type="hidden" name="page" value="products">
-            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search..." value="<?= Helper::escape($search) ?>" style="width:180px;">
-            <select name="category_id" class="form-select form-select-sm" style="width:150px;">
+            <input type="text" name="search" class="form-control form-control-sm app-filter-field app-filter-field-search" placeholder="Search..." value="<?= Helper::escape($search) ?>">
+            <select name="category_id" class="form-select form-select-sm app-filter-field app-filter-field-select">
                 <option value="">All Categories</option>
                 <?php foreach ($categories as $cat): ?>
                 <option value="<?= $cat['id'] ?>" <?= $categoryId == $cat['id'] ? 'selected' : '' ?>><?= Helper::escape($cat['name']) ?></option>

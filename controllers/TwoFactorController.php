@@ -231,7 +231,8 @@ class TwoFactorController extends Controller {
             return;
         }
 
-        $this->finalizeLogin($context['user'], $context['company_id'], $context['company'], $context['is_super_admin']);
+        $rememberMe = (bool)Session::get('twofa_pending_remember_me', false);
+        $this->finalizeLogin($context['user'], $context['company_id'], $context['company'], $context['is_super_admin'], $rememberMe);
     }
 
     private function requirePost(): void {
@@ -309,7 +310,7 @@ class TwoFactorController extends Controller {
     /**
      * Final login session rebuild used after 2FA succeeds.
      */
-    private function finalizeLogin(array $user, int $companyId, ?array $company, bool $isSuperAdmin): void {
+    private function finalizeLogin(array $user, int $companyId, ?array $company, bool $isSuperAdmin, bool $rememberMe = false): void {
         $sessionUser = $this->sanitizeSessionUser($user, $isSuperAdmin);
         $sessionUser['twofa_pending'] = false;
         $sessionUser['twofa_verified'] = true;
@@ -323,8 +324,14 @@ class TwoFactorController extends Controller {
         Session::remove('twofa_pending_is_super_admin');
         Session::remove('twofa_pending_company_id');
         Session::remove('twofa_pending_company');
+        Session::remove('twofa_pending_remember_me');
 
         Session::set('user', $sessionUser);
+        if ($rememberMe) {
+            RememberMeService::issueForUser($sessionUser);
+        } else {
+            RememberMeService::revokeCurrentToken();
+        }
 
         if ($isSuperAdmin) {
             Tenant::reset();

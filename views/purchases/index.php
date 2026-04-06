@@ -1,21 +1,24 @@
 <?php $pageTitle = 'Purchases'; ?>
+<div class="list-page-shell">
 <div class="page-header">
     <div><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item active">Purchases</li></ol></nav></div>
-    <a href="<?= APP_URL ?>/index.php?page=purchases&action=create" class="btn btn-primary"><i class="fas fa-plus me-1"></i>New Purchase</a>
+    <div class="list-page-actions">
+        <a href="<?= APP_URL ?>/index.php?page=purchases&action=create" class="btn btn-primary"><i class="fas fa-plus me-1"></i>New Purchase</a>
+    </div>
 </div>
-<div class="card">
+<div class="card list-card">
     <div class="card-header">
         <h6><i class="fas fa-cart-shopping me-2"></i>Purchase List</h6>
-        <form class="d-flex gap-2 flex-wrap" method="GET"><input type="hidden" name="page" value="purchases">
-            <input type="text" name="search" class="form-control form-control-sm" placeholder="Invoice..." value="<?= Helper::escape($filters['search'] ?? '') ?>" style="width:120px;">
-            <select name="supplier_id" class="form-select form-select-sm" style="width:140px;"><option value="">All Suppliers</option><?php foreach ($suppliers as $s): ?><option value="<?= $s['id'] ?>" <?= ($filters['supplier_id'] ?? '') == $s['id'] ? 'selected' : '' ?>><?= Helper::escape($s['name']) ?></option><?php endforeach; ?></select>
-            <input type="date" name="from_date" class="form-control form-control-sm" value="<?= $filters['from_date'] ?? '' ?>" style="width:130px;">
-            <input type="date" name="to_date" class="form-control form-control-sm" value="<?= $filters['to_date'] ?? '' ?>" style="width:130px;">
-            <button class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
-            <a href="<?= APP_URL ?>/index.php?page=purchases" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times"></i></a>
+        <form class="report-filter-form" method="GET"><input type="hidden" name="page" value="purchases">
+            <input type="text" name="search" class="form-control form-control-sm report-filter-field" placeholder="Invoice..." value="<?= Helper::escape($filters['search'] ?? '') ?>">
+            <select name="supplier_id" class="form-select form-select-sm report-filter-field-wide"><option value="">All Suppliers</option><?php foreach ($suppliers as $s): ?><option value="<?= $s['id'] ?>" <?= ($filters['supplier_id'] ?? '') == $s['id'] ? 'selected' : '' ?>><?= Helper::escape($s['name']) ?></option><?php endforeach; ?></select>
+            <input type="date" name="from_date" class="form-control form-control-sm report-filter-field" value="<?= $filters['from_date'] ?? '' ?>">
+            <input type="date" name="to_date" class="form-control form-control-sm report-filter-field" value="<?= $filters['to_date'] ?? '' ?>">
+            <button class="btn btn-sm btn-primary report-filter-submit"><i class="fas fa-search me-1"></i>Search</button>
+            <a href="<?= APP_URL ?>/index.php?page=purchases" class="btn btn-sm btn-outline-secondary report-filter-submit"><i class="fas fa-times me-1"></i>Clear</a>
         </form>
     </div>
-    <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0">
+    <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0 list-table">
         <thead><tr><th>Invoice</th><th>Supplier</th><th>Date</th><th class="text-end">Total</th><th class="text-end">Paid</th><th class="text-end">Due</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody>
         <?php if (!empty($purchases['data'])): foreach ($purchases['data'] as $p): ?>
@@ -49,4 +52,5 @@
     <?php if (($purchases['totalPages'] ?? 0) > 1): ?>
     <div class="card-footer"><?= Helper::pagination($purchases['page'], $purchases['totalPages'], APP_URL . '/index.php?page=purchases') ?></div>
     <?php endif; ?>
+</div>
 </div>

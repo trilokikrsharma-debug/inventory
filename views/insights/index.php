@@ -1,14 +1,14 @@
-<?php $pageTitle = 'Business Insights'; ?>
+<?php $pageTitle = 'Smart Insights'; ?>
 
 <div class="row g-3 mb-4">
     <div class="col-12">
         <div class="d-flex align-items-center justify-content-between">
-            <h4 class="mb-0"><i class="fas fa-brain me-2" style="color:#f6c23e;"></i>AI Business Insights</h4>
+            <h4 class="mb-0"><i class="fas fa-brain me-2" style="color:#f6c23e;"></i>Smart Business Insights</h4>
             <a href="<?= APP_URL ?>/index.php?page=dashboard" class="btn btn-sm btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
             </a>
         </div>
-        <p class="text-muted mt-1 mb-0">Data-driven recommendations to help grow your business.</p>
+        <p class="text-muted mt-1 mb-0">Automated data-driven recommendations based on your business activity.</p>
     </div>
 </div>
 
@@ -19,7 +19,7 @@
             <div class="card-body text-center py-5">
                 <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
                 <h5 class="text-muted">No Insights Yet</h5>
-                <p class="text-muted">Start recording sales and purchases to unlock AI-driven insights.</p>
+                <p class="text-muted">Start recording sales and purchases to unlock automated insights.</p>
             </div>
         </div>
     </div>

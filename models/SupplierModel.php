@@ -135,4 +135,42 @@ class SupplierModel extends Model {
         $this->flushAnalyticCaches();
         return $correctBalance;
     }
+
+    public function emailExists($email, $excludeId = null) {
+        if ($email === null || $email === '') return false;
+
+        $where = ["email = ?", "deleted_at IS NULL"];
+        $params = [$email];
+        if (Tenant::id() !== null) {
+            $where[] = "company_id = ?";
+            $params[] = Tenant::id();
+        }
+        if ($excludeId) {
+            $where[] = "id != ?";
+            $params[] = (int)$excludeId;
+        }
+        return (int)$this->db->query(
+            "SELECT COUNT(*) FROM {$this->table} WHERE " . implode(' AND ', $where),
+            $params
+        )->fetchColumn() > 0;
+    }
+
+    public function phoneExists($phone, $excludeId = null) {
+        if ($phone === null || $phone === '') return false;
+
+        $where = ["phone = ?", "deleted_at IS NULL"];
+        $params = [$phone];
+        if (Tenant::id() !== null) {
+            $where[] = "company_id = ?";
+            $params[] = Tenant::id();
+        }
+        if ($excludeId) {
+            $where[] = "id != ?";
+            $params[] = (int)$excludeId;
+        }
+        return (int)$this->db->query(
+            "SELECT COUNT(*) FROM {$this->table} WHERE " . implode(' AND ', $where),
+            $params
+        )->fetchColumn() > 0;
+    }
 }

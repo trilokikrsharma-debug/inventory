@@ -11,6 +11,13 @@ class PurchaseModel extends Model {
      */
     private static $productColumnMap = null;
 
+    public function activeWarehouses(): array {
+        if (Tenant::id() === null || !Tenant::canUse('multi_warehouse')) {
+            return [];
+        }
+        return (new WarehouseModel())->allActiveOrdered();
+    }
+
     /**
      * Keep dashboard and report caches coherent after purchase mutations.
      */
@@ -20,7 +27,7 @@ class PurchaseModel extends Model {
         Cache::flushPrefix($tenantPrefix . 'report_');
     }
 
-    public function getAllWithSupplier($search = '', $fromDate = '', $toDate = '', $supplierId = '', $status = '', $page = 1, $perPage = RECORDS_PER_PAGE) {
+    public function getAllWithSupplier($search = '', $fromDate = '', $toDate = '', $supplierId = '', $status = '', $page = 1, $perPage = RECORDS_PER_PAGE, $warehouseId = '') {
         $offset = ($page - 1) * $perPage;
         $params = [];
         $where = ["p.deleted_at IS NULL"];
@@ -31,6 +38,7 @@ class PurchaseModel extends Model {
         if ($toDate) { $where[] = "p.purchase_date <= ?"; $params[] = $toDate; }
         if ($supplierId) { $where[] = "p.supplier_id = ?"; $params[] = $supplierId; }
         if ($status) { $where[] = "p.payment_status = ?"; $params[] = $status; }
+        if ($warehouseId) { $where[] = "p.warehouse_id = ?"; $params[] = $warehouseId; }
         $whereClause = implode(' AND ', $where);
 
         $countSql = "SELECT COUNT(*) FROM {$this->table} p";
@@ -44,6 +52,7 @@ class PurchaseModel extends Model {
                 p.id,
                 p.invoice_number,
                 p.supplier_id,
+                p.warehouse_id,
                 p.purchase_date,
                 p.subtotal,
                 p.discount_amount,
@@ -54,9 +63,11 @@ class PurchaseModel extends Model {
                 p.payment_status,
                 p.status,
                 p.created_at,
-                s.name as supplier_name
+                s.name as supplier_name,
+                w.name as warehouse_name
              FROM {$this->table} p
              {$supplierJoin}
+             LEFT JOIN warehouses w ON p.warehouse_id = w.id
              WHERE {$whereClause}
              ORDER BY p.id DESC
              LIMIT {$perPage} OFFSET {$offset}",
@@ -74,6 +85,7 @@ class PurchaseModel extends Model {
                 p.id,
                 p.invoice_number,
                 p.supplier_id,
+                p.warehouse_id,
                 p.purchase_date,
                 p.reference_number,
                 p.subtotal,
@@ -96,8 +108,12 @@ class PurchaseModel extends Model {
                 s.phone as supplier_phone,
                 s.email as supplier_email,
                 s.address as supplier_address,
+                w.name as warehouse_name,
                 u.full_name as created_by_name
-             FROM {$this->table} p LEFT JOIN suppliers s ON p.supplier_id = s.id LEFT JOIN users u ON p.created_by = u.id
+             FROM {$this->table} p
+             LEFT JOIN suppliers s ON p.supplier_id = s.id
+             LEFT JOIN users u ON p.created_by = u.id
+             LEFT JOIN warehouses w ON p.warehouse_id = w.id
              WHERE " . implode(' AND ', $where), $params
         )->fetch();
         if ($purchase) {
@@ -109,6 +125,7 @@ class PurchaseModel extends Model {
                     pi.id,
                     pi.purchase_id,
                     pi.product_id,
+                    pi.warehouse_id,
                     pi.quantity,
                     pi.unit_price,
                     pi.discount,
@@ -135,12 +152,13 @@ class PurchaseModel extends Model {
             $purchaseId = $this->create($purchaseData);
             $companyId = Tenant::id() ?? 1;
             $productModel = new ProductModel();
+            $warehouseId = isset($purchaseData['warehouse_id']) ? (int)$purchaseData['warehouse_id'] : null;
             foreach ($items as $item) {
                 $db->query(
-                    "INSERT INTO purchase_items (company_id, purchase_id, product_id, quantity, unit_price, discount, tax_rate, tax_amount, subtotal, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    [$companyId, $purchaseId, $item['product_id'], $item['quantity'], $item['unit_price'], $item['discount'] ?? 0, $item['tax_rate'] ?? 0, $item['tax_amount'] ?? 0, $item['subtotal'], $item['total']]
+                    "INSERT INTO purchase_items (company_id, purchase_id, product_id, warehouse_id, quantity, unit_price, discount, tax_rate, tax_amount, subtotal, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [$companyId, $purchaseId, $item['product_id'], $warehouseId, $item['quantity'], $item['unit_price'], $item['discount'] ?? 0, $item['tax_rate'] ?? 0, $item['tax_amount'] ?? 0, $item['subtotal'], $item['total']]
                 );
-                $productModel->updateStock($item['product_id'], +$item['quantity'], 'purchase', $purchaseId, $userId, 'Purchase #' . $purchaseData['invoice_number']);
+                $productModel->updateStock($item['product_id'], +$item['quantity'], 'purchase', $purchaseId, $userId, 'Purchase #' . $purchaseData['invoice_number'], $warehouseId);
             }
             $paymentModel = new PaymentModel();
             $paymentModel->recalculateSupplierPurchasesPublic((int)$purchaseData['supplier_id']);
@@ -167,18 +185,19 @@ class PurchaseModel extends Model {
             $supplierModel = new SupplierModel();
             $invoiceNum = $old['invoice_number'];
             $companyId = Tenant::id() ?? 1;
+            $warehouseId = isset($purchaseData['warehouse_id']) ? (int)$purchaseData['warehouse_id'] : null;
 
             foreach ($old['items'] as $item) {
-                $productModel->updateStock($item['product_id'], -$item['quantity'], 'purchase_edit_reverse', $id, $userId, 'Edit Reversal: Purchase #' . $invoiceNum);
+                $productModel->updateStock($item['product_id'], -$item['quantity'], 'purchase_edit_reverse', $id, $userId, 'Edit Reversal: Purchase #' . $invoiceNum, !empty($item['warehouse_id']) ? (int)$item['warehouse_id'] : null);
             }
             $db->query("DELETE FROM purchase_items WHERE purchase_id = ?" . (Tenant::id() !== null ? " AND company_id = ?" : ""),
                 Tenant::id() !== null ? [$id, Tenant::id()] : [$id]);
             foreach ($items as $item) {
                 $db->query(
-                    "INSERT INTO purchase_items (company_id, purchase_id, product_id, quantity, unit_price, discount, tax_rate, tax_amount, subtotal, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    [$companyId, $id, $item['product_id'], $item['quantity'], $item['unit_price'], $item['discount'] ?? 0, $item['tax_rate'] ?? 0, $item['tax_amount'] ?? 0, $item['subtotal'], $item['total']]
+                    "INSERT INTO purchase_items (company_id, purchase_id, product_id, warehouse_id, quantity, unit_price, discount, tax_rate, tax_amount, subtotal, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [$companyId, $id, $item['product_id'], $warehouseId, $item['quantity'], $item['unit_price'], $item['discount'] ?? 0, $item['tax_rate'] ?? 0, $item['tax_amount'] ?? 0, $item['subtotal'], $item['total']]
                 );
-                $productModel->updateStock($item['product_id'], +$item['quantity'], 'purchase_edit', $id, $userId, 'Edited Purchase #' . $invoiceNum);
+                $productModel->updateStock($item['product_id'], +$item['quantity'], 'purchase_edit', $id, $userId, 'Edited Purchase #' . $invoiceNum, $warehouseId);
             }
             $this->update($id, $purchaseData);
             
@@ -206,7 +225,7 @@ class PurchaseModel extends Model {
             if (!$purchase) throw new Exception('Purchase not found.');
             $productModel = new ProductModel();
             foreach ($purchase['items'] as $item) {
-                $productModel->updateStock($item['product_id'], -$item['quantity'], 'purchase_cancel', $id, $userId, 'Purchase Cancelled #' . $purchase['invoice_number']);
+                $productModel->updateStock($item['product_id'], -$item['quantity'], 'purchase_cancel', $id, $userId, 'Purchase Cancelled #' . $purchase['invoice_number'], !empty($item['warehouse_id']) ? (int)$item['warehouse_id'] : null);
             }
             $this->delete($id);
             $paymentModel = new PaymentModel();

@@ -1,4 +1,5 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="platform-page-shell">
+<div class="d-flex justify-content-between align-items-center mb-4 page-header">
     <div>
         <h2 class="h4 mb-1"><i class="fas fa-user-plus me-2 text-info"></i>Referral Management</h2>
         <p class="text-muted mb-0">Track referral lifecycle and approve/reject rewards.</p>
@@ -98,7 +99,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table align-middle mb-0">
+                    <table class="table align-middle mb-0 platform-table">
                         <thead class="table-light">
                             <tr>
                                 <th class="ps-3">Referrer</th>
@@ -160,4 +161,5 @@
             </div>
         </div>
     </div>
+</div>
 </div>

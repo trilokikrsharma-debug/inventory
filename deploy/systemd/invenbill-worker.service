@@ -7,12 +7,12 @@ Wants=redis-server.service
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/inventory
-ExecStart=/usr/bin/php /var/www/inventory/cli/worker.php --daemon
+WorkingDirectory=/var/www/tsalegacy
+ExecStart=/usr/bin/php /var/www/tsalegacy/cli/worker.php --daemon
 Restart=always
 RestartSec=5
-StandardOutput=append:/var/www/inventory/logs/queue-worker.log
-StandardError=append:/var/www/inventory/logs/queue-worker-error.log
+StandardOutput=append:/var/www/tsalegacy/logs/queue-worker.log
+StandardError=append:/var/www/tsalegacy/logs/queue-worker-error.log
 
 [Install]
 WantedBy=multi-user.target

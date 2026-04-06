@@ -13,10 +13,15 @@
         $invoiceTitle = $company['purchase_invoice_title'] ?? 'Purchase Bill';
     }
     $signatureLabel = $company['invoice_signature_label'] ?? 'Authorised Signatory';
+    $signatureImage = trim((string)($company['invoice_signature_image'] ?? ''));
+    $sealImage = trim((string)($company['invoice_seal_image'] ?? ''));
+    $showSignatureImage = !isset($company['invoice_show_signature']) || !empty($company['invoice_show_signature']);
+    $showSealImage = !isset($company['invoice_show_seal']) || !empty($company['invoice_show_seal']);
     $footerText = $company['invoice_footer_text'] ?? '';
     $invoiceTerms = $company['invoice_terms'] ?? '';
     $bankDetails = $company['invoice_bank_details'] ?? '';
     $currencySymbol = $company['currency_symbol'] ?? '₹';
+    $showPaymentStatusBadge = !isset($company['invoice_show_payment_status']) || !empty($company['invoice_show_payment_status']);
     $showPaidDue = ($company['show_paid_due_on_invoice'] ?? 1) ? true : false;
     $showUnit = ($company['show_unit_on_invoice'] ?? 0) ? true : false;
     $showDiscount = (!isset($company['show_discount_on_invoice']) || !empty($company['show_discount_on_invoice'])) ? true : false;
@@ -74,10 +79,8 @@
     $sgstAmount = ($gstType === 'cgst_sgst') ? ((float)($data['tax_amount'] ?? 0) / 2) : 0;
     $igstAmount = ($gstType === 'igst') ? (float)($data['tax_amount'] ?? 0) : 0;
     $forPdf = !empty($forPdf);
-    $formatMoney = static function ($amount) use ($forPdf, $currencySymbol): string {
-        return $forPdf
-            ? Helper::formatCurrencyPdf($amount, $currencySymbol)
-            : Helper::formatCurrency($amount, $currencySymbol);
+    $formatMoney = static function ($amount) use ($currencySymbol): string {
+        return Helper::formatCurrency($amount, $currencySymbol);
     };
     $docId = (int)($data['id'] ?? 0);
     $closeUrl = APP_URL . '/index.php?page=dashboard';
@@ -101,10 +104,25 @@
         body { font-family: 'DejaVu Sans', 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #333; background: #fff; }
         .invoice { max-width: 800px; margin: 0 auto; padding: 30px; }
         <?php if ($forPdf): ?>
-        /* PDF-specific tuning: keep original layout width, only reduce top gap slightly */
+        /* PDF-specific tuning: avoid flex and table-cell on divs because Dompdf can crash on them. */
         @page { margin: 12mm 10mm 12mm 10mm; }
         body { margin: 0; padding: 0; }
         .invoice { max-width: 800px; margin: 0 auto; padding: 14px 24px 20px; }
+        .party-info { display: block; width: 100%; overflow: hidden; }
+        .party-info-left,
+        .summary-left { float: left; }
+        .party-info-right,
+        .summary { float: right; }
+        .party-info-left { width: 74%; padding-right: 16px; }
+        .party-info-right { width: 26%; text-align: right; }
+        .summary-pdf-layout { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+        .summary-pdf-layout td { vertical-align: top; border: 0; padding: 0; background: transparent !important; }
+        .summary-pdf-left { width: 58%; padding-right: 20px !important; }
+        .summary-pdf-right { width: 42%; padding-left: 12px !important; }
+        .party-info:after { content: ""; display: block; clear: both; }
+        .summary-table td { padding: 5px 0; border: 0; background: transparent !important; }
+        .summary-table td:last-child { text-align: right; white-space: nowrap; padding-left: 14px; }
+        table, .party-info, .summary-pdf-layout, .terms-section, .signature-section { page-break-inside: avoid; }
         <?php endif; ?>
 
         /* Header */
@@ -137,6 +155,10 @@
         .summary-section { display: flex; justify-content: space-between; gap: 30px; margin-bottom: 25px; }
         .summary-left { flex: 1; }
         .summary { width: 280px; flex-shrink: 0; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+        .summary-table td { padding: 5px 0; border: 0; font-size: 12.5px; background: transparent !important; }
+        .summary-table td:last-child { text-align: right; white-space: nowrap; padding-left: 14px; }
+        .summary-table tr.total-row td { font-size: 15px; font-weight: bold; border-top: 2px solid #333; padding-top: 10px; }
         .summary-row { display: table; width: 100%; table-layout: fixed; padding: 5px 0; font-size: 12.5px; }
         .summary-row > span { display: table-cell; vertical-align: middle; }
         .summary-row > span:last-child { text-align: right; white-space: nowrap; padding-left: 14px; }
@@ -154,6 +176,10 @@
 
         /* Signature */
         .signature-section { text-align: right; margin-top: 40px; }
+        .signature-media { min-height: 96px; margin-bottom: 6px; }
+        .signature-media img { display: inline-block; vertical-align: bottom; }
+        .signature-media .seal-image { max-height: 84px; max-width: 84px; margin-right: 10px; opacity: 0.9; }
+        .signature-media .signature-image { max-height: 56px; max-width: 180px; }
         .signature-section .sig-line { width: 200px; border-top: 1px solid #333; margin-left: auto; margin-bottom: 5px; }
         .signature-section .sig-label { font-size: 11px; color: #555; font-weight: 600; }
         .signature-section .sig-company { font-size: 10px; color: #888; }
@@ -195,7 +221,7 @@
     <!-- ===== HEADER ===== -->
     <div class="header">
         <div class="company-block">
-            <?php if (!empty($company['company_logo'])): ?>
+            <?php if ((!isset($company['invoice_show_logo']) || !empty($company['invoice_show_logo'])) && !empty($company['company_logo'])): ?>
                 <img src="<?= APP_URL ?>/<?= Helper::escape($company['company_logo']) ?>" alt="Company Logo" class="company-logo">
             <?php endif; ?>
             <h1><?= Helper::escape($company['company_name'] ?? APP_NAME) ?></h1>
@@ -224,11 +250,14 @@
         </div>
         <div class="invoice-block">
             <div class="invoice-title"><?= Helper::escape($invoiceTitle) ?></div>
+            <?php if (!empty($company['invoice_subtitle'])): ?>
+            <div class="invoice-date" style="margin-top:0;"><?= Helper::escape($company['invoice_subtitle']) ?></div>
+            <?php endif; ?>
             <div class="invoice-number"><?= Helper::escape($data['invoice_number'] ?? $data['reference_number'] ?? '') ?></div>
             <div class="invoice-date">
                 Date: <?= Helper::formatDate($data[$type === 'sale' ? 'sale_date' : 'purchase_date'] ?? date('Y-m-d')) ?>
             </div>
-            <?php if ($showPaidDue): ?>
+            <?php if ($showPaymentStatusBadge): ?>
             <div style="margin-top:5px;">
                 <span class="badge badge-<?= Helper::escape($displayStatus) ?>"><?= strtoupper(Helper::escape($displayStatus)) ?></span>
             </div>
@@ -238,7 +267,7 @@
 
     <!-- ===== PARTY INFO ===== -->
     <div class="party-info">
-        <div>
+        <div class="party-info-left">
             <div class="label"><?= $type === 'sale' ? 'Bill To' : 'Supplier' ?></div>
             <div class="party-name"><?= Helper::escape($data[$type === 'sale' ? 'customer_name' : 'supplier_name'] ?? 'N/A') ?></div>
             <div class="party-detail">
@@ -252,7 +281,7 @@
                 <?php if ($isGst && $partyGst): ?>GSTIN: <?= Helper::escape($partyGst) ?><?php endif; ?>
             </div>
         </div>
-        <div style="text-align:right;">
+        <div class="party-info-right">
             <?php if (!empty($data['reference_number'])): ?>
                 <div class="label">Reference</div>
                 <div><?= Helper::escape($data['reference_number']) ?></div>
@@ -308,6 +337,67 @@
     </table>
 
     <!-- ===== SUMMARY SECTION ===== -->
+    <?php if ($forPdf): ?>
+    <table class="summary-pdf-layout">
+        <tr>
+            <td class="summary-pdf-left">
+                <?php if (!empty($bankDetails)): ?>
+                <div class="bank-section">
+                    <div class="bank-title">Bank Details</div>
+                    <div class="bank-info"><?= nl2br(Helper::escape($bankDetails)) ?></div>
+                </div>
+                <?php endif; ?>
+            </td>
+            <td class="summary-pdf-right">
+                <table class="summary-table">
+                    <tbody>
+                        <tr><td>Subtotal</td><td><?= $formatMoney($data['subtotal'] ?? 0) ?></td></tr>
+                        <?php if ($isTaxEnabled && ($data['tax_amount'] ?? 0) > 0): ?>
+                            <?php if ($isGst && $gstType === 'igst'): ?>
+                            <tr><td>IGST</td><td><?= $formatMoney($igstAmount) ?></td></tr>
+                            <?php elseif ($isGst && $gstType === 'cgst_sgst'): ?>
+                            <tr><td>CGST</td><td><?= $formatMoney($cgstAmount) ?></td></tr>
+                            <tr><td>SGST</td><td><?= $formatMoney($sgstAmount) ?></td></tr>
+                            <?php else: ?>
+                            <tr><td>Tax</td><td><?= $formatMoney($data['tax_amount']) ?></td></tr>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        <?php if (($data['discount_amount'] ?? 0) > 0): ?>
+                        <tr><td>Discount</td><td>-<?= $formatMoney($data['discount_amount']) ?></td></tr>
+                        <?php endif; ?>
+                        <?php if ($showChargeBreakup): ?>
+                            <?php if ($freightCharge > 0): ?>
+                            <tr><td>Freight</td><td><?= $formatMoney($freightCharge) ?></td></tr>
+                            <?php endif; ?>
+                            <?php if ($loadingCharge > 0): ?>
+                            <tr><td>Loading</td><td><?= $formatMoney($loadingCharge) ?></td></tr>
+                            <?php endif; ?>
+                            <?php if ($freightCharge > 0 && $loadingCharge > 0): ?>
+                            <tr><td>Total Charges</td><td><?= $formatMoney($shippingCharge) ?></td></tr>
+                            <?php endif; ?>
+                        <?php elseif (($data['shipping_cost'] ?? 0) > 0): ?>
+                        <tr><td>Shipping</td><td><?= $formatMoney($data['shipping_cost']) ?></td></tr>
+                        <?php endif; ?>
+                        <?php if (isset($data['round_off']) && $data['round_off'] != 0): ?>
+                        <tr><td>Round Off</td><td><?= $formatMoney($data['round_off']) ?></td></tr>
+                        <?php endif; ?>
+                        <tr class="total-row"><td>Grand Total</td><td><?= $formatMoney($grandTotal) ?></td></tr>
+                        <?php if ($type === 'sale' && $returnedAmount > 0): ?>
+                        <tr><td>Returned</td><td style="color:#fd7e14;">-<?= $formatMoney($returnedAmount) ?></td></tr>
+                        <tr><td>Net Total</td><td><?= $formatMoney($effectiveTotal) ?></td></tr>
+                        <?php endif; ?>
+                        <?php if ($showPaidDue): ?>
+                        <tr><td>Paid</td><td style="color:#28a745;"><?= $formatMoney($displayPaid) ?></td></tr>
+                        <?php if ($displayDue > 0): ?>
+                        <tr><td>Balance Due</td><td style="color:#dc3545; font-weight:600;"><?= $formatMoney($displayDue) ?></td></tr>
+                        <?php endif; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </table>
+    <?php else: ?>
     <div class="summary-section">
         <div class="summary-left">
             <?php if (!empty($bankDetails)): ?>
@@ -318,49 +408,54 @@
             <?php endif; ?>
         </div>
         <div class="summary">
-            <div class="summary-row"><span>Subtotal</span><span><?= $formatMoney($data['subtotal'] ?? 0) ?></span></div>
-            <?php if ($isTaxEnabled && ($data['tax_amount'] ?? 0) > 0): ?>
-                <?php if ($isGst && $gstType === 'igst'): ?>
-                <div class="summary-row"><span>IGST</span><span><?= $formatMoney($igstAmount) ?></span></div>
-                <?php elseif ($isGst && $gstType === 'cgst_sgst'): ?>
-                <div class="summary-row"><span>CGST</span><span><?= $formatMoney($cgstAmount) ?></span></div>
-                <div class="summary-row"><span>SGST</span><span><?= $formatMoney($sgstAmount) ?></span></div>
-                <?php else: ?>
-                <div class="summary-row"><span>Tax</span><span><?= $formatMoney($data['tax_amount']) ?></span></div>
-                <?php endif; ?>
-            <?php endif; ?>
-            <?php if (($data['discount_amount'] ?? 0) > 0): ?>
-            <div class="summary-row"><span>Discount</span><span>-<?= $formatMoney($data['discount_amount']) ?></span></div>
-            <?php endif; ?>
-            <?php if ($showChargeBreakup): ?>
-                <?php if ($freightCharge > 0): ?>
-                <div class="summary-row"><span>Freight</span><span><?= $formatMoney($freightCharge) ?></span></div>
-                <?php endif; ?>
-                <?php if ($loadingCharge > 0): ?>
-                <div class="summary-row"><span>Loading</span><span><?= $formatMoney($loadingCharge) ?></span></div>
-                <?php endif; ?>
-                <?php if ($freightCharge > 0 && $loadingCharge > 0): ?>
-                <div class="summary-row"><span>Total Charges</span><span><?= $formatMoney($shippingCharge) ?></span></div>
-                <?php endif; ?>
-            <?php elseif (($data['shipping_cost'] ?? 0) > 0): ?>
-            <div class="summary-row"><span>Shipping</span><span><?= $formatMoney($data['shipping_cost']) ?></span></div>
-            <?php endif; ?>
-            <?php if (isset($data['round_off']) && $data['round_off'] != 0): ?>
-            <div class="summary-row"><span>Round Off</span><span><?= $formatMoney($data['round_off']) ?></span></div>
-            <?php endif; ?>
-            <div class="summary-row total"><span>Grand Total</span><span><?= $formatMoney($grandTotal) ?></span></div>
-            <?php if ($type === 'sale' && $returnedAmount > 0): ?>
-            <div class="summary-row"><span>Returned</span><span style="color:#fd7e14;">-<?= $formatMoney($returnedAmount) ?></span></div>
-            <div class="summary-row"><span>Net Total</span><span><?= $formatMoney($effectiveTotal) ?></span></div>
-            <?php endif; ?>
-            <?php if ($showPaidDue): ?>
-            <div class="summary-row"><span>Paid</span><span style="color:#28a745;"><?= $formatMoney($displayPaid) ?></span></div>
-            <?php if ($displayDue > 0): ?>
-            <div class="summary-row"><span>Balance Due</span><span style="color:#dc3545; font-weight:600;"><?= $formatMoney($displayDue) ?></span></div>
-            <?php endif; ?>
-            <?php endif; ?>
+            <table class="summary-table">
+                <tbody>
+                    <tr><td>Subtotal</td><td><?= $formatMoney($data['subtotal'] ?? 0) ?></td></tr>
+                    <?php if ($isTaxEnabled && ($data['tax_amount'] ?? 0) > 0): ?>
+                        <?php if ($isGst && $gstType === 'igst'): ?>
+                        <tr><td>IGST</td><td><?= $formatMoney($igstAmount) ?></td></tr>
+                        <?php elseif ($isGst && $gstType === 'cgst_sgst'): ?>
+                        <tr><td>CGST</td><td><?= $formatMoney($cgstAmount) ?></td></tr>
+                        <tr><td>SGST</td><td><?= $formatMoney($sgstAmount) ?></td></tr>
+                        <?php else: ?>
+                        <tr><td>Tax</td><td><?= $formatMoney($data['tax_amount']) ?></td></tr>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                    <?php if (($data['discount_amount'] ?? 0) > 0): ?>
+                    <tr><td>Discount</td><td>-<?= $formatMoney($data['discount_amount']) ?></td></tr>
+                    <?php endif; ?>
+                    <?php if ($showChargeBreakup): ?>
+                        <?php if ($freightCharge > 0): ?>
+                        <tr><td>Freight</td><td><?= $formatMoney($freightCharge) ?></td></tr>
+                        <?php endif; ?>
+                        <?php if ($loadingCharge > 0): ?>
+                        <tr><td>Loading</td><td><?= $formatMoney($loadingCharge) ?></td></tr>
+                        <?php endif; ?>
+                        <?php if ($freightCharge > 0 && $loadingCharge > 0): ?>
+                        <tr><td>Total Charges</td><td><?= $formatMoney($shippingCharge) ?></td></tr>
+                        <?php endif; ?>
+                    <?php elseif (($data['shipping_cost'] ?? 0) > 0): ?>
+                    <tr><td>Shipping</td><td><?= $formatMoney($data['shipping_cost']) ?></td></tr>
+                    <?php endif; ?>
+                    <?php if (isset($data['round_off']) && $data['round_off'] != 0): ?>
+                    <tr><td>Round Off</td><td><?= $formatMoney($data['round_off']) ?></td></tr>
+                    <?php endif; ?>
+                    <tr class="total-row"><td>Grand Total</td><td><?= $formatMoney($grandTotal) ?></td></tr>
+                    <?php if ($type === 'sale' && $returnedAmount > 0): ?>
+                    <tr><td>Returned</td><td style="color:#fd7e14;">-<?= $formatMoney($returnedAmount) ?></td></tr>
+                    <tr><td>Net Total</td><td><?= $formatMoney($effectiveTotal) ?></td></tr>
+                    <?php endif; ?>
+                    <?php if ($showPaidDue): ?>
+                    <tr><td>Paid</td><td style="color:#28a745;"><?= $formatMoney($displayPaid) ?></td></tr>
+                    <?php if ($displayDue > 0): ?>
+                    <tr><td>Balance Due</td><td style="color:#dc3545; font-weight:600;"><?= $formatMoney($displayDue) ?></td></tr>
+                    <?php endif; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
+    <?php endif; ?>
 
     <!-- ===== TERMS ===== -->
     <?php if (!empty($invoiceTerms)): ?>
@@ -372,6 +467,16 @@
 
     <!-- ===== SIGNATURE ===== -->
     <div class="signature-section">
+        <?php if (($showSealImage && $sealImage !== '') || ($showSignatureImage && $signatureImage !== '')): ?>
+        <div class="signature-media">
+            <?php if ($showSealImage && $sealImage !== ''): ?>
+            <img src="<?= APP_URL ?>/<?= Helper::escape($sealImage) ?>" alt="Seal" class="seal-image">
+            <?php endif; ?>
+            <?php if ($showSignatureImage && $signatureImage !== ''): ?>
+            <img src="<?= APP_URL ?>/<?= Helper::escape($signatureImage) ?>" alt="Signature" class="signature-image">
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
         <div class="sig-line"></div>
         <div class="sig-label"><?= Helper::escape($signatureLabel) ?></div>
         <div class="sig-company">For <?= Helper::escape($company['company_name'] ?? APP_NAME) ?></div>
@@ -380,7 +485,7 @@
     <!-- ===== FOOTER ===== -->
     <div class="footer">
         <?php if (!empty($data['note'])): ?>
-        <p style="margin-bottom:8px; color:#666;">Note: <?= Helper::escape($data['note']) ?></p>
+        <p style="margin-bottom:8px; color:#666;"><?= Helper::escape($company['invoice_notes_label'] ?? 'Notes') ?>: <?= Helper::escape($data['note']) ?></p>
         <?php endif; ?>
         <?php if (!empty($footerText)): ?>
         <p><?= Helper::escape($footerText) ?></p>
@@ -420,4 +525,3 @@
 <?php endif; ?>
 </body>
 </html>
-

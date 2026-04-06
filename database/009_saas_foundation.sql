@@ -11,11 +11,18 @@ CREATE TABLE saas_plans (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert Default Plans
-INSERT INTO saas_plans (name, price, max_users, features) VALUES
-('Starter', 999.00, 2, '{"inventory": true, "invoicing": true, "api": false}'),
-('Professional', 2499.00, 5, '{"inventory": true, "invoicing": true, "api": true, "crm": true}'),
-('Enterprise', 4999.00, 999, '{"inventory": true, "invoicing": true, "api": true, "crm": true, "hr": true}');
+-- Insert default plans once. This keeps manual reruns from duplicating seeds.
+INSERT INTO saas_plans (name, price, max_users, features)
+SELECT 'Starter', 999.00, 2, '{"inventory": true, "invoicing": true, "api": false}'
+WHERE NOT EXISTS (SELECT 1 FROM saas_plans WHERE name = 'Starter');
+
+INSERT INTO saas_plans (name, price, max_users, features)
+SELECT 'Professional', 2499.00, 5, '{"inventory": true, "invoicing": true, "api": true, "crm": true}'
+WHERE NOT EXISTS (SELECT 1 FROM saas_plans WHERE name = 'Professional');
+
+INSERT INTO saas_plans (name, price, max_users, features)
+SELECT 'Enterprise', 4999.00, 999, '{"inventory": true, "invoicing": true, "api": true, "crm": true, "hr": true}'
+WHERE NOT EXISTS (SELECT 1 FROM saas_plans WHERE name = 'Enterprise');
 
 -- 2. Enhance Companies Table (Replacing tenants)
 ALTER TABLE companies

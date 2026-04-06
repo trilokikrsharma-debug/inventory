@@ -26,11 +26,26 @@ class Session {
 
             // Resolve session cookie domain for multi-subdomain SaaS
             $cookieDomain = '';
+            $requestHost = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
             if (defined('TENANT_BASE_DOMAIN') && TENANT_BASE_DOMAIN !== '') {
                 $baseDomain = TENANT_BASE_DOMAIN;
                 // Only apply domain scoping when on a real domain (not localhost/IP)
                 if ($baseDomain !== 'localhost' && !filter_var($baseDomain, FILTER_VALIDATE_IP)) {
-                    $cookieDomain = '.' . ltrim($baseDomain, '.');
+                    $normalizedBase = ltrim(strtolower((string)$baseDomain), '.');
+                    if (
+                        $requestHost !== '' &&
+                        $requestHost !== $normalizedBase &&
+                        !str_ends_with($requestHost, '.' . $normalizedBase) &&
+                        $requestHost !== 'localhost' &&
+                        !filter_var($requestHost, FILTER_VALIDATE_IP)
+                    ) {
+                        // When the request is served from a different valid host than the
+                        // configured base domain, keep the cookie on the current host to
+                        // avoid cross-host session drops during navigation.
+                        $cookieDomain = $requestHost;
+                    } else {
+                        $cookieDomain = '.' . $normalizedBase;
+                    }
                 }
             }
 
@@ -139,7 +154,7 @@ class Session {
      * Prevents session hijacking via stolen session cookies.
      */
     public static function initFingerprint() {
-        $fp = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? 'unknown'));
+        $fp = self::fingerprintHash();
         self::set('_session_fp', $fp);
     }
 
@@ -152,8 +167,11 @@ class Session {
         if (!self::isLoggedIn()) return true; // No session to validate
         $stored = self::get('_session_fp');
         if ($stored === null) return true; // Legacy session without fingerprint
-        $current = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? 'unknown'));
-        if (!hash_equals($stored, $current)) {
+
+        $current = self::fingerprintHash();
+        $legacyCurrent = self::legacyFingerprintHash();
+
+        if (!hash_equals($stored, $current) && !hash_equals($stored, $legacyCurrent)) {
             error_log('[SESSION] Fingerprint mismatch — possible session hijacking. IP: ' . ($_SERVER['REMOTE_ADDR'] ?? '?'));
             self::destroy();
             return false;
@@ -231,6 +249,38 @@ class Session {
             return isset($_SESSION['flash'][$type]);
         }
         return !empty($_SESSION['flash']);
+    }
+
+    /**
+     * Build a stable session fingerprint from a normalized user-agent string.
+     * This avoids false logouts from minor browser version churn while still
+     * binding the session to the same browser family/device shape.
+     */
+    private static function fingerprintHash(): string {
+        return hash('sha256', self::normalizedUserAgent());
+    }
+
+    /**
+     * Legacy fingerprint format retained for backward compatibility with
+     * already-authenticated sessions created before normalization was added.
+     */
+    private static function legacyFingerprintHash(): string {
+        return hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? 'unknown'));
+    }
+
+    private static function normalizedUserAgent(): string {
+        $ua = strtolower(trim((string)($_SERVER['HTTP_USER_AGENT'] ?? 'unknown')));
+        if ($ua === '') {
+            return 'unknown';
+        }
+
+        // Normalize version-like segments to reduce false mismatches.
+        $ua = preg_replace('/\/[0-9][0-9a-z\.\-_]*/', '/x', $ua) ?? $ua;
+        $ua = preg_replace('/\bversion\/[0-9][0-9a-z\.\-_]*/', 'version/x', $ua) ?? $ua;
+        $ua = preg_replace('/\b[a-z]+\/x\b/', '$0', $ua) ?? $ua;
+        $ua = preg_replace('/\s+/', ' ', $ua) ?? $ua;
+
+        return $ua;
     }
 
     // =========================================================

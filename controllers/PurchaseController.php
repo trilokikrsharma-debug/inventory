@@ -8,6 +8,27 @@ class PurchaseController extends Controller {
 
     protected $allowedActions = ['index', 'create', 'edit', 'view_purchase', 'delete'];
 
+    private function warehouseFeatureEnabled(): bool {
+        return !Session::isSuperAdmin()
+            && Tenant::id() !== null
+            && Tenant::canUse('multi_warehouse');
+    }
+
+    private function validatedWarehouseId(array $warehouses, string $field = 'warehouse_id'): ?int {
+        if (!$this->warehouseFeatureEnabled()) {
+            return null;
+        }
+
+        $selected = (int)$this->post($field, 0);
+        foreach ($warehouses as $warehouse) {
+            if ((int)$warehouse['id'] === $selected) {
+                return $selected;
+            }
+        }
+
+        throw new \RuntimeException('Please select a valid warehouse.');
+    }
+
     public function index() {
         $this->requirePermission('purchases.view');
         $purchases = (new PurchaseModel())->getAllWithSupplier(
@@ -36,6 +57,7 @@ class PurchaseController extends Controller {
             $settingsModel = new SettingsModel();
             $invoiceNumber = $settingsModel->getNextNumber('purchase');
             $settings = $settingsModel->getSettings();
+            $warehouseOptions = $this->warehouseFeatureEnabled() ? (new PurchaseModel())->activeWarehouses() : [];
             $isTaxEnabled = !isset($settings['enable_tax']) || !empty($settings['enable_tax']);
             $isGstEnabled = !isset($settings['enable_gst']) || !empty($settings['enable_gst']);
             $allowTax = $isTaxEnabled && $isGstEnabled;
@@ -122,22 +144,29 @@ class PurchaseController extends Controller {
             if ($paidAmount >= $grandTotal) $paymentStatus = 'paid';
             elseif ($paidAmount > 0) $paymentStatus = 'partial';
 
-            $purchaseData = [
-                'invoice_number'  => $invoiceNumber,
-                'supplier_id'     => (int)$this->post('supplier_id'),
-                'purchase_date'   => $purchaseDate,
-                'reference_number'=> $this->sanitize($this->post('reference_number')),
-                'subtotal'        => $subtotal,
-                'discount_amount' => $discountAmount,
-                'tax_amount'      => $totalTax,
-                'shipping_cost'   => $shippingCost,
-                'grand_total'     => $grandTotal,
-                'paid_amount'     => $paidAmount,
-                'due_amount'      => $dueAmount,
-                'payment_status'  => $paymentStatus,
-                'status'          => $this->post('status', 'received'),
-                'note'            => $this->sanitize($this->post('note')),
-            ];
+            try {
+                $purchaseData = [
+                    'invoice_number'  => $invoiceNumber,
+                    'supplier_id'     => (int)$this->post('supplier_id'),
+                    'warehouse_id'    => $this->warehouseFeatureEnabled() ? $this->validatedWarehouseId($warehouseOptions) : null,
+                    'purchase_date'   => $purchaseDate,
+                    'reference_number'=> $this->sanitize($this->post('reference_number')),
+                    'subtotal'        => $subtotal,
+                    'discount_amount' => $discountAmount,
+                    'tax_amount'      => $totalTax,
+                    'shipping_cost'   => $shippingCost,
+                    'grand_total'     => $grandTotal,
+                    'paid_amount'     => $paidAmount,
+                    'due_amount'      => $dueAmount,
+                    'payment_status'  => $paymentStatus,
+                    'status'          => $this->post('status', 'received'),
+                    'note'            => $this->sanitize($this->post('note')),
+                ];
+            } catch (\RuntimeException $e) {
+                $this->setFlash('error', $e->getMessage());
+                $this->redirect('index.php?page=purchases&action=create');
+                return;
+            }
 
             try {
                 $purchaseModel = new PurchaseModel();
@@ -177,6 +206,8 @@ class PurchaseController extends Controller {
             'pageTitle' => 'New Purchase',
             'suppliers' => $suppliers,
             'settings'  => $settings,
+            'warehouses' => $this->warehouseFeatureEnabled() ? (new PurchaseModel())->activeWarehouses() : [],
+            'hasWarehouseFeature' => $this->warehouseFeatureEnabled(),
         ]);
     }
 
@@ -194,6 +225,7 @@ class PurchaseController extends Controller {
 
         if ($this->isPost()) {
             $this->validateCSRF();
+            $warehouseOptions = $this->warehouseFeatureEnabled() ? (new PurchaseModel())->activeWarehouses() : [];
             $items = [];
             $subtotal = 0;
             $totalTax = 0;
@@ -252,20 +284,27 @@ class PurchaseController extends Controller {
             $dueAmount      = $grandTotal - $paidAmount;
             $paymentStatus  = $paidAmount >= $grandTotal ? 'paid' : ($paidAmount > 0 ? 'partial' : 'unpaid');
 
-            $purchaseData = [
-                'supplier_id'     => (int)$this->post('supplier_id'),
-                'purchase_date'   => $this->post('purchase_date'),
-                'reference_number'=> $this->sanitize($this->post('reference_number')),
-                'subtotal'        => $subtotal,
-                'discount_amount' => $discountAmount,
-                'tax_amount'      => $totalTax,
-                'shipping_cost'   => $shippingCost,
-                'grand_total'     => $grandTotal,
-                'paid_amount'     => $paidAmount,
-                'due_amount'      => $dueAmount,
-                'payment_status'  => $paymentStatus,
-                'note'            => $this->sanitize($this->post('note')),
-            ];
+            try {
+                $purchaseData = [
+                    'supplier_id'     => (int)$this->post('supplier_id'),
+                    'warehouse_id'    => $this->warehouseFeatureEnabled() ? $this->validatedWarehouseId($warehouseOptions) : null,
+                    'purchase_date'   => $this->post('purchase_date'),
+                    'reference_number'=> $this->sanitize($this->post('reference_number')),
+                    'subtotal'        => $subtotal,
+                    'discount_amount' => $discountAmount,
+                    'tax_amount'      => $totalTax,
+                    'shipping_cost'   => $shippingCost,
+                    'grand_total'     => $grandTotal,
+                    'paid_amount'     => $paidAmount,
+                    'due_amount'      => $dueAmount,
+                    'payment_status'  => $paymentStatus,
+                    'note'            => $this->sanitize($this->post('note')),
+                ];
+            } catch (\RuntimeException $e) {
+                $this->setFlash('error', $e->getMessage());
+                $this->redirect('index.php?page=purchases&action=edit&id=' . $id);
+                return;
+            }
 
             try {
                 $purchaseModel->updatePurchase($id, $purchaseData, $items, Session::get('user')['id']);
@@ -286,6 +325,8 @@ class PurchaseController extends Controller {
             'purchase'  => $purchase,
             'suppliers' => $suppliers,
             'settings'  => $settings,
+            'warehouses' => $this->warehouseFeatureEnabled() ? (new PurchaseModel())->activeWarehouses() : [],
+            'hasWarehouseFeature' => $this->warehouseFeatureEnabled(),
         ]);
     }
 
@@ -298,6 +339,7 @@ class PurchaseController extends Controller {
         $this->view('purchases.view', [
             'pageTitle' => 'Purchase Details',
             'purchase'  => $purchase,
+            'warehouseName' => $purchase['warehouse_name'] ?? null,
         ]);
     }
 

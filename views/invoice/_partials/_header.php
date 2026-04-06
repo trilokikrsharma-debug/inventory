@@ -14,10 +14,12 @@
 $isGst = $isGst ?? (($company['enable_gst'] ?? 1) ? true : false);
 $badgeHtml = $badgeHtml ?? '';
 $extraInfo = $extraInfo ?? '';
+$showLogo = !isset($company['invoice_show_logo']) || !empty($company['invoice_show_logo']);
+$subtitle = trim((string)($company['invoice_subtitle'] ?? ''));
 ?>
 <div class="header">
     <div class="company-block">
-        <?php if (!empty($company['company_logo'])): ?>
+        <?php if ($showLogo && !empty($company['company_logo'])): ?>
             <img src="<?= APP_URL ?>/<?= Helper::escape($company['company_logo']) ?>" alt="Company Logo" class="company-logo">
         <?php endif; ?>
         <h1><?= Helper::escape($company['company_name'] ?? APP_NAME) ?></h1>
@@ -46,6 +48,9 @@ $extraInfo = $extraInfo ?? '';
     </div>
     <div class="invoice-block">
         <div class="invoice-title"><?= Helper::escape($documentTitle) ?></div>
+        <?php if ($subtitle !== ''): ?>
+        <div class="invoice-date" style="margin-top:0;"><?= Helper::escape($subtitle) ?></div>
+        <?php endif; ?>
         <div class="invoice-number"><?= Helper::escape($documentNumber) ?></div>
         <div class="invoice-date">Date: <?= Helper::formatDate($documentDate) ?></div>
         <?php if ($badgeHtml): ?>

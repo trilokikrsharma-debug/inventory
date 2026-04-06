@@ -85,6 +85,8 @@ class GenerateReportExport {
             'sales' => self::salesRows($filters, $maxRows),
             'purchases' => self::purchaseRows($filters, $maxRows),
             'stock' => self::stockRows($filters, $maxRows),
+            'warehouse_transfers' => self::warehouseTransferRows($filters, $maxRows),
+            'payroll_finance' => self::payrollFinanceRows($filters),
             'profit' => self::profitRows($filters),
             'customer_dues' => self::customerDuesRows(),
             'supplier_dues' => self::supplierDuesRows(),
@@ -207,6 +209,46 @@ class GenerateReportExport {
         ], $rows];
     }
 
+    private static function warehouseTransferRows(array $filters, int $maxRows): array {
+        $fromDate = self::normalizeDate((string)($filters['from_date'] ?? ''), date('Y-m-01'));
+        $toDate = self::normalizeDate((string)($filters['to_date'] ?? ''), date('Y-m-d'));
+        [$fromDate, $toDate] = self::normalizeRange($fromDate, $toDate);
+        $status = strtolower(trim((string)($filters['status'] ?? '')));
+        $warehouseId = (int)($filters['warehouse_id'] ?? 0);
+
+        $transfers = (new WarehouseModel())->transferReport($fromDate, $toDate, $status, $warehouseId, $maxRows);
+        $rows = [];
+        foreach ($transfers as $transfer) {
+            $rows[] = [
+                $transfer['transfer_number'] ?? '',
+                $transfer['transfer_date'] ?? '',
+                $transfer['status'] ?? '',
+                $transfer['source_warehouse_name'] ?? '',
+                $transfer['destination_warehouse_name'] ?? '',
+                (int)($transfer['item_count'] ?? 0),
+                (float)($transfer['total_quantity'] ?? 0),
+                $transfer['created_by_name'] ?? '',
+                $transfer['approved_by_name'] ?? '',
+                $transfer['reference_number'] ?? '',
+                $transfer['note'] ?? '',
+            ];
+        }
+
+        return [[
+            'Transfer Number',
+            'Transfer Date',
+            'Status',
+            'Source Warehouse',
+            'Destination Warehouse',
+            'Item Count',
+            'Total Quantity',
+            'Created By',
+            'Approved By',
+            'Reference Number',
+            'Note',
+        ], $rows];
+    }
+
     private static function profitRows(array $filters): array {
         $fromDate = self::normalizeDate((string)($filters['from_date'] ?? ''), date('Y-m-01'));
         $toDate = self::normalizeDate((string)($filters['to_date'] ?? ''), date('Y-m-d'));
@@ -231,6 +273,44 @@ class GenerateReportExport {
             'Gross Profit',
             'Total Discount',
             'Net Profit',
+        ], $rows];
+    }
+
+    private static function payrollFinanceRows(array $filters): array {
+        $fromMonth = self::normalizeMonth((string)($filters['from_month'] ?? date('Y-01')), date('Y-01'));
+        $toMonth = self::normalizeMonth((string)($filters['to_month'] ?? date('Y-m')), date('Y-m'));
+        if (strcmp($fromMonth, $toMonth) > 0) {
+            [$fromMonth, $toMonth] = [$toMonth, $fromMonth];
+        }
+
+        $report = (new HrPayroll())->financeReport($fromMonth, $toMonth);
+        $rows = [];
+        foreach (($report['entries'] ?? []) as $entry) {
+            $rows[] = [
+                $entry['payroll_month'] ?? '',
+                $entry['payment_date'] ?? '',
+                $entry['payment_number'] ?? '',
+                $entry['employee_name'] ?? '',
+                $entry['employee_code'] ?? '',
+                $entry['account_code'] ?? '',
+                $entry['account_name'] ?? '',
+                $entry['entry_side'] ?? '',
+                $entry['payment_method'] ?? '',
+                (float)($entry['amount'] ?? 0),
+            ];
+        }
+
+        return [[
+            'Payroll Month',
+            'Payment Date',
+            'Payment Number',
+            'Employee',
+            'Employee Code',
+            'Account Code',
+            'Account Name',
+            'Entry Side',
+            'Payment Method',
+            'Amount',
         ], $rows];
     }
 
@@ -294,6 +374,11 @@ class GenerateReportExport {
             return [$toDate, $fromDate];
         }
         return [$fromDate, $toDate];
+    }
+
+    private static function normalizeMonth(string $month, string $default): string {
+        $month = trim($month);
+        return preg_match('/^\d{4}-\d{2}$/', $month) ? $month : $default;
     }
 
     private static function logExportActivity(

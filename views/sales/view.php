@@ -27,9 +27,10 @@ $cgstAmount = ($gstType === 'cgst_sgst') ? ($taxAmount / 2) : 0;
 $sgstAmount = ($gstType === 'cgst_sgst') ? ($taxAmount / 2) : 0;
 $igstAmount = ($gstType === 'igst') ? $taxAmount : 0;
 ?>
+<div class="detail-page-shell">
 <div class="page-header">
     <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=sales">Sales</a></li><li class="breadcrumb-item active"><?= Helper::escape($sale['invoice_number']) ?></li></ol></nav>
-    <div class="d-flex gap-2">
+    <div class="detail-page-actions">
         <a href="<?= APP_URL ?>/index.php?page=sales&action=edit&id=<?= $sale['id'] ?>" class="btn btn-outline-warning btn-sm"><i class="fas fa-edit me-1"></i>Edit</a>
         <a href="<?= APP_URL ?>/index.php?page=invoice&id=<?= $sale['id'] ?>&type=sale" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-pdf me-1"></i>Invoice</a>
         <a href="<?= APP_URL ?>/index.php?page=invoice&action=download&type=sale&id=<?= $sale['id'] ?>" class="btn btn-outline-success btn-sm"><i class="fas fa-download me-1"></i>Download PDF</a>
@@ -49,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <div class="row g-3">
     <div class="col-lg-8">
-        <div class="card" id="invoiceCard">
+        <div class="card detail-card" id="invoiceCard">
             <div class="card-body p-4">
                 <!-- Invoice Header -->
                 <div class="row mb-4">
@@ -66,6 +67,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="row mb-4 py-3" style="border-top:2px solid var(--border-color);border-bottom:2px solid var(--border-color);">
                     <div class="col-6"><strong>Bill To:</strong><br><?= Helper::escape($sale['customer_name']) ?><br><small class="text-muted"><?= Helper::escape($sale['customer_phone'] ?? '') ?><br><?= Helper::escape($sale['customer_address'] ?? '') ?></small></div>
                     <div class="col-6 text-end">
+                        <?php if (!empty($sale['warehouse_name'])): ?>
+                            <div class="small text-muted mb-2">Warehouse: <?= Helper::escape($sale['warehouse_name']) ?></div>
+                        <?php endif; ?>
                         <?php if ($isFullyReturned): ?>
                             <span class="badge bg-warning text-dark"><i class="fas fa-undo me-1"></i>Returned</span>
                         <?php else: ?>
@@ -74,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
                 <!-- Items -->
-                <div class="table-responsive"><table class="table">
+                <div class="table-responsive"><table class="table detail-table">
                     <thead><tr><th>#</th><th>Product</th><th class="text-center">Qty</th><th class="text-end">Price</th><th class="text-end">Discount</th><?php if($isTaxEnabled && $isGstEnabled): ?><th class="text-end">Tax</th><?php endif; ?><th class="text-end">Total</th></tr></thead>
                     <tbody>
                     <?php if (!empty($sale['items'])): $i=0; foreach ($sale['items'] as $item): $i++; ?>
@@ -95,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
     <div class="col-lg-4">
-        <div class="card">
+        <div class="card detail-card">
             <div class="card-header"><h6>Summary</h6></div>
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-2"><span>Subtotal</span><span><?= Helper::formatCurrency($sale['subtotal']) ?></span></div>
@@ -136,4 +140,5 @@ document.addEventListener('DOMContentLoaded', function() {
             </button>
         <?php endif; ?>
     </div>
+</div>
 </div>

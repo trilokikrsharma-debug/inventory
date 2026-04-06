@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="7" x2="56" y2="57" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#08111D"/>
+      <stop offset="0.56" stop-color="#142A45"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="18" y1="16" x2="44" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#D7DEE8"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="35" y1="13" x2="38" y2="50" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#bg)"/>
+  <path d="M18 19H46" stroke="url(#metal)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M32 19V46" stroke="url(#metal)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M22 46H44" stroke="url(#metal)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M38 15V48" stroke="url(#accent)" stroke-width="2.8" stroke-linecap="round"/>
+  <circle cx="38" cy="14" r="2.8" fill="#60A5FA"/>
+</svg>

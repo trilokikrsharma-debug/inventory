@@ -69,7 +69,39 @@ function migrationManifest(string $migrationDir): array
         ['filename' => '018_deduplicate_indexes.sql'],
         ['filename' => '019_tenant_integrity_hardening.sql'],
         ['filename' => '020_tenant_subscription_nullable_ids.sql'],
+        ['filename' => '021_saas_plans_cleanup.sql'],
+        ['filename' => '030_add_auth_remember_tokens.sql'],
     ];
+
+    $knownFilenames = [];
+    foreach ($orderedFiles as $entry) {
+        $knownFilenames[strtolower((string)$entry['filename'])] = true;
+    }
+
+    $discovered = glob($migrationDir . DIRECTORY_SEPARATOR . '*.sql') ?: [];
+    $append = [];
+    foreach ($discovered as $path) {
+        $filename = basename($path);
+        $normalized = strtolower($filename);
+
+        if (isset($knownFilenames[$normalized])) {
+            continue;
+        }
+        if (in_array($normalized, ['demo_seeder.sql'], true)) {
+            continue;
+        }
+        if (!preg_match('/^\d{3}_[a-z0-9_]+\.sql$/i', $filename)) {
+            continue;
+        }
+
+        $append[] = ['filename' => $filename];
+    }
+
+    usort($append, static function (array $left, array $right): int {
+        return strnatcasecmp((string)$left['filename'], (string)$right['filename']);
+    });
+
+    $orderedFiles = array_merge($orderedFiles, $append);
 
     $manifest = [];
     foreach ($orderedFiles as $entry) {

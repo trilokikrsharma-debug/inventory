@@ -4,7 +4,7 @@
  */
 class CustomerController extends Controller {
 
-    protected $allowedActions = ['index', 'create', 'edit', 'view_customer', 'delete', 'recalculate_balance'];
+    protected $allowedActions = ['index', 'create', 'edit', 'view_customer', 'delete', 'recalculate_balance', 'import', 'download_template'];
 
     public function index() {
         $this->requirePermission('customers.view');
@@ -17,6 +17,60 @@ class CustomerController extends Controller {
             'customers' => $customers,
             'search'    => $search,
         ]);
+    }
+
+    public function import() {
+        $this->requireFeature('bulk_import');
+        $this->requirePermission('customers.create');
+
+        $analysis = null;
+        $dryRun = true;
+        $service = new ContactImportService();
+
+        if ($this->isPost()) {
+            $this->validateCSRF();
+            $dryRun = $this->post('dry_run') === '1';
+
+            try {
+                $analysis = $service->analyzeUploadedFile('customer', $_FILES['import_file'] ?? [], $service->buildContext('customer'));
+                if (!$dryRun) {
+                    $validRows = (array)($analysis['valid_rows'] ?? []);
+                    $invalidCount = (int)($analysis['summary']['invalid_rows'] ?? 0);
+
+                    if ($invalidCount > 0) {
+                        $this->setFlash('error', 'Fix invalid rows before importing customers.');
+                    } elseif (empty($validRows)) {
+                        $this->setFlash('error', 'No valid rows were found to import.');
+                    } else {
+                        $imported = $this->persistImportedContacts($validRows);
+                        $this->setFlash('success', 'Imported ' . $imported . ' customer(s) successfully.');
+                    }
+                }
+            } catch (\Throwable $e) {
+                $this->setFlash('error', $e->getMessage());
+            }
+        }
+
+        $this->view('shared.contact-import', [
+            'pageTitle' => 'Bulk Import Customers',
+            'entityLabel' => 'Customers',
+            'entityKey' => 'customers',
+            'templateAction' => 'download_template',
+            'analysis' => $analysis,
+            'dryRun' => $dryRun,
+        ]);
+    }
+
+    public function download_template() {
+        $this->requireFeature('bulk_import');
+        $this->requirePermission('customers.create');
+
+        $service = new ContactImportService();
+        $filename = 'customer_import_template_' . date('Ymd_His') . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        echo $service->templateCsv('customer');
+        exit;
     }
 
     public function create() {
@@ -70,18 +124,27 @@ class CustomerController extends Controller {
                 return;
             }
 
-            $data = [
-                'name'            => $name,
-                'email'           => $email,
-                'phone'           => $phone,
-                'address'         => $this->sanitize($clean['address'] ?? ''),
-                'city'            => $this->sanitize($clean['city'] ?? ''),
-                'state'           => $this->sanitize($clean['state'] ?? ''),
-                'zip'             => $this->sanitize($clean['zip'] ?? ''),
-                'tax_number'      => !empty($clean['tax_number']) ? strtoupper($this->sanitize($clean['tax_number'])) : '',
-                'opening_balance' => $openingBalance,
-                'current_balance' => $openingBalance,
-            ];
+            try {
+                $data = [
+                    'name'            => $name,
+                    'email'           => $email,
+                    'phone'           => $phone,
+                    'address'         => $this->sanitize($clean['address'] ?? ''),
+                    'city'            => $this->sanitize($clean['city'] ?? ''),
+                    'state'           => $this->sanitize($clean['state'] ?? ''),
+                    'zip'             => $this->sanitize($clean['zip'] ?? ''),
+                    'tax_number'      => !empty($clean['tax_number']) ? strtoupper($this->sanitize($clean['tax_number'])) : '',
+                    'opening_balance' => $openingBalance,
+                    'current_balance' => $openingBalance,
+                ];
+                $data = $this->appendOptionalCustomerFields($data, [
+                    'custom_fields' => $this->extractCustomFieldsPayload(),
+                ]);
+            } catch (\RuntimeException $e) {
+                $this->setFlash('error', $e->getMessage());
+                $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old, 'customFieldsPretty' => $this->customFieldsPretty($old['custom_fields_json'] ?? '')]);
+                return;
+            }
 
             try {
                 $customerId = $customerModel->create($data);
@@ -92,11 +155,11 @@ class CustomerController extends Controller {
             } catch (Throwable $e) {
                 error_log('[CustomerController::create] ' . $e->getMessage());
                 $this->setFlash('error', 'Unable to create customer right now. Please try again.');
-                $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old]);
+                $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old, 'customFieldsPretty' => $this->customFieldsPretty($old['custom_fields_json'] ?? '')]);
                 return;
             }
         }
-        $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old]);
+        $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old, 'customFieldsPretty' => $this->customFieldsPretty($old['custom_fields_json'] ?? '')]);
     }
 
     public function edit() {
@@ -152,16 +215,25 @@ class CustomerController extends Controller {
                 return;
             }
 
-            $data = [
-                'name'       => $name,
-                'email'      => $email,
-                'phone'      => $phone,
-                'address'    => $this->sanitize($clean['address'] ?? ''),
-                'city'       => $this->sanitize($clean['city'] ?? ''),
-                'state'      => $this->sanitize($clean['state'] ?? ''),
-                'zip'        => $this->sanitize($clean['zip'] ?? ''),
-                'tax_number' => !empty($clean['tax_number']) ? strtoupper($this->sanitize($clean['tax_number'])) : '',
-            ];
+            try {
+                $data = [
+                    'name'       => $name,
+                    'email'      => $email,
+                    'phone'      => $phone,
+                    'address'    => $this->sanitize($clean['address'] ?? ''),
+                    'city'       => $this->sanitize($clean['city'] ?? ''),
+                    'state'      => $this->sanitize($clean['state'] ?? ''),
+                    'zip'        => $this->sanitize($clean['zip'] ?? ''),
+                    'tax_number' => !empty($clean['tax_number']) ? strtoupper($this->sanitize($clean['tax_number'])) : '',
+                ];
+                $data = $this->appendOptionalCustomerFields($data, [
+                    'custom_fields' => $this->extractCustomFieldsPayload(),
+                ]);
+            } catch (\RuntimeException $e) {
+                $this->setFlash('error', $e->getMessage());
+                $this->view('customers.edit', ['pageTitle' => 'Edit Customer', 'customer' => array_merge($customer, $old), 'customFieldsPretty' => $this->customFieldsPretty($old['custom_fields_json'] ?? ($customer['custom_fields'] ?? ''))]);
+                return;
+            }
 
             try {
                 $customerModel->update($id, $data);
@@ -171,12 +243,17 @@ class CustomerController extends Controller {
             } catch (Throwable $e) {
                 error_log('[CustomerController::edit] ' . $e->getMessage());
                 $this->setFlash('error', 'Unable to update customer right now. Please try again.');
-                $this->view('customers.edit', ['pageTitle' => 'Edit Customer', 'customer' => array_merge($customer, $old)]);
+                $this->view('customers.edit', ['pageTitle' => 'Edit Customer', 'customer' => array_merge($customer, $old), 'customFieldsPretty' => $this->customFieldsPretty($old['custom_fields_json'] ?? ($customer['custom_fields'] ?? ''))]);
                 return;
             }
         }
 
-        $this->view('customers.edit', ['pageTitle' => 'Edit Customer', 'customer' => $customer]);
+        $this->view('customers.edit', [
+            'pageTitle' => 'Edit Customer',
+            'customer' => $customer,
+            'customFieldsPretty' => $this->customFieldsPretty($customer['custom_fields'] ?? ''),
+            'customFieldsDecoded' => CustomFieldService::decode($customer['custom_fields'] ?? null),
+        ]);
     }
 
     public function view_customer() {
@@ -194,7 +271,41 @@ class CustomerController extends Controller {
             'pageTitle' => 'Customer Details',
             'customer'  => $customer,
             'ledger'    => $ledger,
+            'customFields' => CustomFieldService::decode($customer['custom_fields'] ?? null),
         ]);
+    }
+
+    private function appendOptionalCustomerFields(array $data, array $optionalFields): array {
+        $columns = [];
+        try {
+            $rows = Database::getInstance()->query("SHOW COLUMNS FROM customers")->fetchAll();
+            foreach ($rows as $row) {
+                if (!empty($row['Field'])) {
+                    $columns[$row['Field']] = true;
+                }
+            }
+        } catch (\Throwable $e) {
+            $columns = [];
+        }
+
+        foreach ($optionalFields as $field => $value) {
+            if (!empty($columns[$field])) {
+                $data[$field] = $value;
+            }
+        }
+
+        return $data;
+    }
+
+    private function extractCustomFieldsPayload(): ?string {
+        if (!(Session::isSuperAdmin() || Tenant::canUse('custom_fields'))) {
+            return null;
+        }
+        return CustomFieldService::encodeFromInput((string)$this->post('custom_fields_json', ''));
+    }
+
+    private function customFieldsPretty($raw): string {
+        return CustomFieldService::pretty($raw);
     }
 
     public function delete() {
@@ -266,5 +377,33 @@ class CustomerController extends Controller {
 
         $this->setFlash('success', 'Balance recalculated successfully. New balance: ₹' . number_format($newBalance, 2));
         $this->redirect('index.php?page=customers&action=view_customer&id=' . $id);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     */
+    private function persistImportedContacts(array $rows): int {
+        $model = new CustomerModel();
+        $count = 0;
+        foreach ($rows as $row) {
+            $data = (array)($row['normalized'] ?? []);
+            $payload = [
+                'name' => $this->sanitize((string)($data['name'] ?? '')),
+                'email' => !empty($data['email']) ? $this->sanitize((string)$data['email']) : null,
+                'phone' => !empty($data['phone']) ? $this->sanitize((string)$data['phone']) : null,
+                'address' => $this->sanitize((string)($data['address'] ?? '')),
+                'city' => $this->sanitize((string)($data['city'] ?? '')),
+                'state' => $this->sanitize((string)($data['state'] ?? '')),
+                'zip' => $this->sanitize((string)($data['zip'] ?? '')),
+                'tax_number' => !empty($data['tax_number']) ? strtoupper($this->sanitize((string)$data['tax_number'])) : '',
+                'opening_balance' => (float)($data['opening_balance'] ?? 0),
+                'current_balance' => (float)($data['current_balance'] ?? 0),
+                'is_active' => !empty($data['is_active']) ? 1 : 0,
+            ];
+            $payload = $this->appendOptionalCustomerFields($payload, ['custom_fields' => null]);
+            $model->create($payload);
+            $count++;
+        }
+        return $count;
     }
 }

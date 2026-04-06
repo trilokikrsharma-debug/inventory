@@ -1,4 +1,5 @@
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
+<div class="platform-page-shell">
+<div class="d-sm-flex align-items-center justify-content-between mb-4 page-header">
     <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-building text-primary me-2"></i> Tenant Management</h1>
 </div>
 
@@ -8,7 +9,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 platform-table">
                 <thead class="table-light">
                     <tr>
                         <th class="ps-4">ID</th>
@@ -86,4 +87,5 @@
             <?php endif; ?>
         </div>
     </div>
+</div>
 </div>

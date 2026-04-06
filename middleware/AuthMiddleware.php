@@ -10,7 +10,8 @@
 class AuthMiddleware implements MiddlewareInterface {
     /** @var string[] Pages that do not require authentication */
     private array $publicPages = [
-        '', 'login', 'install', 'signup', 'pricing', 'demo_login', 'home', 'privacy', 'terms', 'refund'
+        '', 'login', 'install', 'signup', 'pricing', 'demo_login', 'home', 'privacy', 'terms', 'refund', 'seo',
+        'gst-billing-software', 'inventory-management-software', 'billing-software-for-small-business', 'blog'
     ];
 
     public function handle(Request $request, callable $next): void {
@@ -18,6 +19,10 @@ class AuthMiddleware implements MiddlewareInterface {
             // API endpoints enforce auth in their controller/action as needed.
             $next($request);
             return;
+        }
+
+        if (!Session::isLoggedIn()) {
+            RememberMeService::resumeIfPossible();
         }
 
         $page = $request->page();

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="InvenBill Pro - Professional Inventory & Billing Management System">
+    <meta name="description" content="TSA Legacy - GST billing, inventory and business operations software for Indian SMEs">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title><?= Helper::escape($pageTitle ?? 'Dashboard') ?> | <?= Helper::escape(APP_NAME) ?></title>
     <?php
@@ -29,8 +29,10 @@
     
     <!-- PWA Setup -->
     <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
-    <meta name="theme-color" content="#4e73df">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="icon" type="image/svg+xml" href="<?= APP_URL ?>/assets/favicon.svg">
     <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/icon.svg">
+    <link rel="mask-icon" href="<?= APP_URL ?>/assets/safari-pinned-tab.svg" color="#4f46e5">
 </head>
 <body>
 

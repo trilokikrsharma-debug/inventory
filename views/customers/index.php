@@ -1,17 +1,23 @@
 <?php $pageTitle = 'Customers'; ?>
+<div class="list-page-shell">
 <div class="page-header">
     <div><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item active">Customers</li></ol></nav></div>
-    <a href="<?= APP_URL ?>/index.php?page=customers&action=create" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add Customer</a>
+    <div class="list-page-actions">
+        <?php if (Session::isSuperAdmin() || Tenant::canUse('bulk_import')): ?>
+        <a href="<?= APP_URL ?>/index.php?page=customers&action=import" class="btn btn-outline-secondary"><i class="fas fa-file-import me-1"></i>Bulk Import</a>
+        <?php endif; ?>
+        <a href="<?= APP_URL ?>/index.php?page=customers&action=create" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add Customer</a>
+    </div>
 </div>
-<div class="card">
+<div class="card list-card">
     <div class="card-header">
         <h6><i class="fas fa-users me-2"></i>Customer List</h6>
-        <form class="d-flex gap-2" method="GET"><input type="hidden" name="page" value="customers">
-            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search..." value="<?= Helper::escape($search) ?>" style="width:200px;">
+        <form class="report-filter-form" method="GET"><input type="hidden" name="page" value="customers">
+            <input type="text" name="search" class="form-control form-control-sm report-filter-field-wide" placeholder="Search..." value="<?= Helper::escape($search) ?>">
             <button class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
         </form>
     </div>
-    <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0">
+    <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0 list-table">
         <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>City</th><th>Balance</th><th>Actions</th></tr></thead>
         <tbody>
         <?php if (!empty($customers['data'])): $i = ($customers['page']-1) * $customers['perPage'];
@@ -40,4 +46,5 @@
     <?php if (($customers['totalPages'] ?? 0) > 1): ?>
     <div class="card-footer"><?= Helper::pagination($customers['page'], $customers['totalPages'], APP_URL . '/index.php?page=customers&search=' . urlencode($search)) ?></div>
     <?php endif; ?>
+</div>
 </div>

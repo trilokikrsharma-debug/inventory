@@ -6,10 +6,28 @@
  * No authentication required.
  */
 class SignupController extends Controller {
+    private const RESERVED_SUBDOMAINS = [
+        'www', 'admin', 'api', 'app', 'mail', 'smtp', 'imap', 'pop', 'cpanel',
+        'webmail', 'ftp', 'sftp', 'ssh', 'root', 'support', 'help', 'blog',
+        'status', 'billing', 'platform', 'dashboard', 'login', 'signup',
+        'demo', 'staging', 'dev', 'test', 'autodiscover', 'm', 'mobile'
+    ];
 
     protected $allowedActions = ['index'];
 
     public function index() {
+        $isDemoSignupExit = Session::isLoggedIn()
+            && Tenant::isDemo()
+            && $this->get('from_demo', '') === '1';
+
+        if ($isDemoSignupExit) {
+            RememberMeService::revokeCurrentToken();
+            Session::clearPermissionCache();
+            Session::destroy();
+            $this->redirect('signup');
+            return;
+        }
+
         if (Session::isLoggedIn()) {
             if (Session::isTwoFactorPending()) {
                 $this->redirect('twoFactor/verify');
@@ -23,7 +41,9 @@ class SignupController extends Controller {
         $error = '';
         $errors = [];
         $success = '';
-        $formData = [];
+        $formData = [
+            'email' => trim(strtolower((string)$this->get('email', ''))),
+        ];
 
         if ($this->isPost()) {
             $this->validateCSRF();
@@ -122,9 +142,10 @@ class SignupController extends Controller {
 
                 try {
                     $slug = $this->generateSlug($companyName);
-                    $companyId = $this->createCompanyRecord($db, $companyName, $slug);
+                    $signupPlan = $this->resolveSignupPlan($db);
+                    $companyId = $this->createCompanyRecord($db, $companyName, $slug, $signupPlan);
 
-                    $tenantAdminRoleId = $this->resolveTenantAdminRoleId($db, $companyId);
+                    $tenantAdminRoleId = $this->resolveTenantAdminRoleId($db, $companyId, $signupPlan);
                     if ($tenantAdminRoleId <= 0) {
                         throw new RuntimeException('Unable to resolve a safe tenant admin role.');
                     }
@@ -147,13 +168,7 @@ class SignupController extends Controller {
                     $defaults = [
                         'categories' => ['General', 'Electronics', 'Groceries', 'Clothing'],
                         'brands' => ['Generic', 'Unbranded'],
-                        'units' => [
-                            ['name' => 'Pieces', 'short_name' => 'pcs'],
-                            ['name' => 'Kilograms', 'short_name' => 'kg'],
-                            ['name' => 'Liters', 'short_name' => 'ltr'],
-                            ['name' => 'Meters', 'short_name' => 'mtr'],
-                            ['name' => 'Boxes', 'short_name' => 'box'],
-                        ],
+                        'units' => $this->defaultUnits(),
                     ];
 
                     foreach ($defaults['categories'] as $category) {
@@ -191,6 +206,8 @@ class SignupController extends Controller {
                     $company = $db->query('SELECT * FROM companies WHERE id = ?', [$companyId])->fetch();
 
                     session_regenerate_id(true);
+                    CSRF::rotateToken();
+                    Session::initFingerprint();
                     Session::clearPermissionCache();
                     unset($user['password'], $user['twofa_secret'], $user['twofa_recovery_codes']);
                     $user['is_super_admin'] = false;
@@ -243,6 +260,12 @@ class SignupController extends Controller {
         if ($slug === '') {
             $slug = 'company';
         }
+        if (strlen($slug) < 3) {
+            $slug = str_pad($slug, 3, 'x');
+        }
+        if (in_array($slug, self::RESERVED_SUBDOMAINS, true)) {
+            $slug .= '-account';
+        }
 
         $db = Database::getInstance();
         $original = $slug;
@@ -257,13 +280,13 @@ class SignupController extends Controller {
     /**
      * Create the tenant company record while tolerating additive schema drift.
      */
-    private function createCompanyRecord(Database $db, string $companyName, string $slug): int {
+    private function createCompanyRecord(Database $db, string $companyName, string $slug, array $signupPlan): int {
         $columns = ['name', 'slug'];
         $valueSql = ['?', '?'];
         $params = [$companyName, $slug];
 
         if ($this->tableHasColumn($db, 'companies', 'saas_plan_id')) {
-            $planId = $this->resolveSignupPlanId($db);
+            $planId = isset($signupPlan['id']) ? (int)$signupPlan['id'] : null;
             if ($planId === null) {
                 throw new RuntimeException('Signup is temporarily unavailable because pricing plans are not configured.');
             }
@@ -287,7 +310,7 @@ class SignupController extends Controller {
         if ($this->tableHasColumn($db, 'companies', 'plan')) {
             $columns[] = 'plan';
             $valueSql[] = '?';
-            $params[] = 'starter';
+            $params[] = (string)($signupPlan['slug'] ?? 'starter');
         }
 
         if ($this->tableHasColumn($db, 'companies', 'status')) {
@@ -299,13 +322,13 @@ class SignupController extends Controller {
         if ($this->tableHasColumn($db, 'companies', 'max_users')) {
             $columns[] = 'max_users';
             $valueSql[] = '?';
-            $params[] = 3;
+            $params[] = max(1, (int)($signupPlan['max_users'] ?? 3));
         }
 
         if ($this->tableHasColumn($db, 'companies', 'max_products')) {
             $columns[] = 'max_products';
             $valueSql[] = '?';
-            $params[] = 500;
+            $params[] = max(1, (int)($signupPlan['max_products'] ?? 500));
         }
 
         $db->query(
@@ -316,28 +339,42 @@ class SignupController extends Controller {
         return (int)$db->lastInsertId();
     }
 
-    private function resolveSignupPlanId(Database $db): ?int {
+    private function resolveSignupPlan(Database $db): array {
+        $fallback = [
+            'id' => null,
+            'slug' => 'starter',
+            'name' => 'Starter',
+            'max_users' => 3,
+            'max_products' => 500,
+            'features' => null,
+        ];
+
         if (!$this->tableExists($db, 'saas_plans')) {
-            return null;
+            return $fallback;
         }
 
         $queries = [
-            'SELECT id FROM saas_plans WHERE IFNULL(is_active, 1) = 1 ORDER BY IFNULL(is_default, 0) DESC, id ASC LIMIT 1',
-            'SELECT id FROM saas_plans ORDER BY id ASC LIMIT 1',
+            'SELECT id, slug, name, max_users, max_products, features FROM saas_plans WHERE IFNULL(is_active, 1) = 1 ORDER BY IFNULL(is_default, 0) DESC, id ASC LIMIT 1',
+            'SELECT id, slug, name, max_users, max_products, features FROM saas_plans ORDER BY id ASC LIMIT 1',
         ];
 
         foreach ($queries as $sql) {
             try {
-                $planId = $db->query($sql)->fetchColumn();
-                if ($planId !== false && $planId !== null) {
-                    return (int)$planId;
+                $plan = $db->query($sql)->fetch();
+                if ($plan) {
+                    $slug = strtolower(trim((string)($plan['slug'] ?? $plan['name'] ?? 'starter')));
+                    if ($slug === '') {
+                        $slug = 'starter';
+                    }
+                    $plan['slug'] = $slug;
+                    return array_merge($fallback, $plan);
                 }
             } catch (Throwable $e) {
                 error_log('[Signup] Plan lookup failed: ' . $e->getMessage());
             }
         }
 
-        return null;
+        return $fallback;
     }
 
     private function tableExists(Database $db, string $table): bool {
@@ -375,14 +412,14 @@ class SignupController extends Controller {
     /**
      * Resolve a tenant-local admin role, creating one when needed.
      */
-    private function resolveTenantAdminRoleId(Database $db, int $tenantId): int {
+    private function resolveTenantAdminRoleId(Database $db, int $tenantId, array $signupPlan): int {
         try {
             $role = $db->query(
                 "SELECT id, name, display_name, company_id
                  FROM roles
                  WHERE company_id = ? AND IFNULL(is_super_admin, 0) = 0
                  ORDER BY CASE
-                            WHEN LOWER(name) IN ('admin', 'tenant_admin', 'owner', 'administrator') THEN 0
+                            WHEN LOWER(name) IN ('admin', 'owner', 'administrator') OR LOWER(name) LIKE 'tenant_admin_%' THEN 0
                             WHEN LOWER(display_name) LIKE '%admin%' THEN 1
                             ELSE 2
                           END,
@@ -392,6 +429,7 @@ class SignupController extends Controller {
             )->fetch();
 
             if ($role) {
+                $this->syncTenantAdminPermissions($db, (int)$role['id'], $signupPlan);
                 return (int)$role['id'];
             }
 
@@ -403,7 +441,7 @@ class SignupController extends Controller {
             );
             $roleId = (int)$db->lastInsertId();
 
-            $this->grantAllPermissionsToRole($db, $roleId);
+            $this->syncTenantAdminPermissions($db, $roleId, $signupPlan);
             return $roleId;
         } catch (Throwable $e) {
             error_log('[Signup] Failed to resolve tenant admin role: ' . $e->getMessage());
@@ -449,9 +487,21 @@ class SignupController extends Controller {
     /**
      * Seed all permissions into a freshly-created tenant admin role.
      */
-    private function grantAllPermissionsToRole(Database $db, int $roleId): void {
+    private function syncTenantAdminPermissions(Database $db, int $roleId, array $signupPlan): void {
         try {
-            $permissions = $db->query('SELECT id FROM permissions ORDER BY id ASC')->fetchAll();
+            $permissionNames = SaaSBillingHelper::tenantAdminPermissionNames($signupPlan);
+            $db->query('DELETE FROM role_permissions WHERE role_id = ?', [$roleId]);
+
+            if (empty($permissionNames)) {
+                return;
+            }
+
+            $placeholders = implode(',', array_fill(0, count($permissionNames), '?'));
+            $permissions = $db->query(
+                "SELECT id FROM permissions WHERE name IN ($placeholders) ORDER BY id ASC",
+                $permissionNames
+            )->fetchAll();
+
             foreach ($permissions as $permission) {
                 $db->query(
                     'INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)',
@@ -461,5 +511,35 @@ class SignupController extends Controller {
         } catch (Throwable $e) {
             error_log('[Signup] Failed to seed role permissions: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Common starter units seeded for new tenants.
+     *
+     * @return array<int, array{name: string, short_name: string}>
+     */
+    private function defaultUnits(): array {
+        return [
+            ['name' => 'Pieces', 'short_name' => 'pcs'],
+            ['name' => 'Kilograms', 'short_name' => 'kg'],
+            ['name' => 'Grams', 'short_name' => 'g'],
+            ['name' => 'Meters', 'short_name' => 'mtr'],
+            ['name' => 'Centimeters', 'short_name' => 'cm'],
+            ['name' => 'Millimeters', 'short_name' => 'mm'],
+            ['name' => 'Liters', 'short_name' => 'ltr'],
+            ['name' => 'Milliliters', 'short_name' => 'ml'],
+            ['name' => 'Boxes', 'short_name' => 'box'],
+            ['name' => 'Packets', 'short_name' => 'pkt'],
+            ['name' => 'Packs', 'short_name' => 'pac'],
+            ['name' => 'Bags', 'short_name' => 'bag'],
+            ['name' => 'Bottles', 'short_name' => 'btl'],
+            ['name' => 'Cartons', 'short_name' => 'ctn'],
+            ['name' => 'Dozens', 'short_name' => 'doz'],
+            ['name' => 'Pairs', 'short_name' => 'pair'],
+            ['name' => 'Sets', 'short_name' => 'set'],
+            ['name' => 'Rolls', 'short_name' => 'roll'],
+            ['name' => 'Sheets', 'short_name' => 'sheet'],
+            ['name' => 'Units', 'short_name' => 'unit'],
+        ];
     }
 }

@@ -215,9 +215,34 @@ class UserModel extends Model {
      * Called by UserController::resetPassword().
      */
     public function resetPassword($userId, $newPassword) {
-        return $this->update($userId, [
-            'password' => password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12])
-        ]);
+        $minLen = defined('PASSWORD_MIN_LENGTH') ? PASSWORD_MIN_LENGTH : 8;
+        if (strlen((string)$newPassword) < $minLen) {
+            return ['success' => false, 'message' => "Password must be at least {$minLen} characters."];
+        }
+
+        if (defined('PASSWORD_COMPLEXITY') && PASSWORD_COMPLEXITY) {
+            if (!preg_match('/[A-Z]/', $newPassword) || !preg_match('/[0-9]/', $newPassword)) {
+                return ['success' => false, 'message' => 'Password must contain at least 1 uppercase letter and 1 number.'];
+            }
+        }
+
+        $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+        $where = ['id = ?'];
+        $params = [$hashedPassword, (int)$userId];
+
+        if (Tenant::id() !== null) {
+            $where[] = 'company_id = ?';
+            $params[] = Tenant::id();
+        }
+
+        $sql = "UPDATE {$this->table} SET password = ? WHERE " . implode(' AND ', $where);
+        $updated = (int)$this->db->query($sql, $params)->rowCount();
+
+        if ($updated < 1) {
+            return ['success' => false, 'message' => 'Password reset failed. Please try again.'];
+        }
+
+        return ['success' => true, 'message' => 'Password reset successfully.'];
     }
 
     /**

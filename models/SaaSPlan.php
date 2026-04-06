@@ -100,6 +100,7 @@ class SaaSPlan extends Model {
         $isFeatured = !empty($input['is_featured']) ? 1 : 0;
         $sortOrder = max(0, (int)($input['sort_order'] ?? 0));
         $maxUsers = max(1, (int)($input['max_users'] ?? 1));
+        $maxProducts = max(1, (int)($input['max_products'] ?? 1));
         $status = !empty($input['status']) && strtolower((string)$input['status']) === 'inactive'
             ? 'inactive'
             : 'active';
@@ -142,6 +143,10 @@ class SaaSPlan extends Model {
             $errors[] = 'Max users is too high.';
         }
 
+        if ($maxProducts > 10000000) {
+            $errors[] = 'Max products is too high.';
+        }
+
         if ($razorpayPlanId !== '' && !preg_match('/^[a-zA-Z0-9_]+$/', $razorpayPlanId)) {
             $errors[] = 'Razorpay plan id contains invalid characters.';
         }
@@ -169,6 +174,7 @@ class SaaSPlan extends Model {
             'sort_order' => $sortOrder,
             'status' => $status,
             'max_users' => $maxUsers,
+            'max_products' => $maxProducts,
             'features' => $features,
             // Keep legacy columns in sync so old modules do not break.
             'billing_cycle' => $billingType,
@@ -363,6 +369,9 @@ class SaaSPlan extends Model {
                         slug VARCHAR(120) NULL,
                         description TEXT NULL,
                         price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                        max_users INT NOT NULL DEFAULT 1,
+                        max_products INT NOT NULL DEFAULT 100,
+                        features JSON NULL,
                         offer_price DECIMAL(10,2) NULL,
                         billing_type ENUM('one_time','monthly','yearly') NOT NULL DEFAULT 'monthly',
                         duration_days INT UNSIGNED NOT NULL DEFAULT 30,
@@ -388,6 +397,15 @@ class SaaSPlan extends Model {
                 }
                 if (!isset($columns['offer_price'])) {
                     $alter[] = "ADD COLUMN offer_price DECIMAL(10,2) NULL AFTER price";
+                }
+                if (!isset($columns['max_users'])) {
+                    $alter[] = "ADD COLUMN max_users INT NOT NULL DEFAULT 1 AFTER price";
+                }
+                if (!isset($columns['max_products'])) {
+                    $alter[] = "ADD COLUMN max_products INT NOT NULL DEFAULT 100 AFTER max_users";
+                }
+                if (!isset($columns['features'])) {
+                    $alter[] = "ADD COLUMN features JSON NULL AFTER max_products";
                 }
                 if (!isset($columns['billing_type'])) {
                     $alter[] = "ADD COLUMN billing_type ENUM('one_time','monthly','yearly') NULL AFTER offer_price";
@@ -452,6 +470,41 @@ class SaaSPlan extends Model {
                 );
             }
 
+            if ($this->hasColumn('max_users')) {
+                $this->db->query(
+                    "UPDATE {$this->table}
+                     SET max_users = 1
+                     WHERE max_users IS NULL OR max_users < 1"
+                );
+            }
+
+            if ($this->hasColumn('max_products')) {
+                $this->db->query(
+                    "UPDATE {$this->table}
+                     SET max_products = 100
+                     WHERE max_products IS NULL OR max_products < 1"
+                );
+            }
+
+            if ($this->hasColumn('features')) {
+                $rows = $this->db->query("SELECT id, slug, name, features FROM {$this->table}")->fetchAll();
+                foreach ($rows as $row) {
+                    $current = $row['features'] ?? null;
+                    if (is_string($current) && trim($current) !== '' && trim($current) !== 'null') {
+                        continue;
+                    }
+
+                    $default = $this->defaultFeaturesForPlan(
+                        (string)($row['slug'] ?? ''),
+                        (string)($row['name'] ?? '')
+                    );
+                    $this->db->query(
+                        "UPDATE {$this->table} SET features = ? WHERE id = ?",
+                        [$default, (int)$row['id']]
+                    );
+                }
+            }
+
             if ($this->hasColumn('slug') && !$this->indexExists('uq_saas_plans_slug')) {
                 $this->db->query("CREATE UNIQUE INDEX uq_saas_plans_slug ON {$this->table}(slug)");
             }
@@ -505,22 +558,38 @@ class SaaSPlan extends Model {
     private function defaultFeaturesForPlan(string $slug, string $name): string {
         $k = strtolower($slug !== '' ? $slug : $name);
         $features = [
+            'audit_trail' => true,
+            'basic_reports' => true,
+            'customer_management' => true,
+            'export_pdf' => true,
             'inventory' => true,
             'invoicing' => true,
-            'api' => false,
-            'crm' => false,
-            'hr' => false,
+            'payment_tracking' => true,
         ];
 
         if (strpos($k, 'professional') !== false || strpos($k, 'growth') !== false) {
-            $features['api'] = true;
-            $features['crm'] = true;
+            $features['advanced_reports'] = true;
+            $features['ai_insights'] = true;
+            $features['bulk_import'] = true;
+            $features['custom_fields'] = true;
+            $features['hr'] = true;
+            $features['multi_user'] = true;
+            $features['quotations'] = true;
+            $features['sale_returns'] = true;
         }
 
         if (strpos($k, 'enterprise') !== false || $k === 'pro') {
+            $features['advanced_reports'] = true;
             $features['api'] = true;
-            $features['crm'] = true;
+            $features['ai_insights'] = true;
+            $features['backup_restore'] = true;
+            $features['bulk_import'] = true;
+            $features['custom_fields'] = true;
             $features['hr'] = true;
+            $features['multi_warehouse'] = true;
+            $features['multi_user'] = true;
+            $features['quotations'] = true;
+            $features['sale_returns'] = true;
         }
 
         ksort($features);

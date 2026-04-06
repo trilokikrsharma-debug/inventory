@@ -15,8 +15,13 @@ class SecurityHeadersMiddleware implements MiddlewareInterface {
         header("Permissions-Policy: camera=(), microphone=(), geolocation=()");
         header("Cross-Origin-Opener-Policy: same-origin");
         header("Cross-Origin-Resource-Policy: cross-origin");
-        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-        header("Pragma: no-cache");
+        if ($this->shouldAllowPublicCaching($request)) {
+            header("Cache-Control: public, max-age=300, stale-while-revalidate=60");
+            header_remove("Pragma");
+        } else {
+            header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+            header("Pragma: no-cache");
+        }
 
         $isHttps = (
             (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
@@ -44,5 +49,30 @@ class SecurityHeadersMiddleware implements MiddlewareInterface {
             . "frame-ancestors 'self';");
 
         $next($request);
+    }
+
+    private function shouldAllowPublicCaching(Request $request): bool {
+        if (!$request->isGet() || $request->isApiPath()) {
+            return false;
+        }
+
+        $publicPages = [
+            '',
+            'home',
+            'pricing',
+            'privacy',
+            'terms',
+            'refund',
+            'seo',
+            'gst-billing-software',
+            'inventory-management-software',
+            'billing-software-for-small-business',
+            'blog',
+        ];
+        if (in_array($request->page(), $publicPages, true)) {
+            return true;
+        }
+
+        return $request->path() === '/';
     }
 }

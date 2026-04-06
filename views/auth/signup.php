@@ -9,6 +9,8 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up | <?= Helper::escape(APP_NAME) ?></title>
     <meta name="description" content="Create your free <?= Helper::escape(APP_NAME) ?> account. Inventory & billing for small businesses in India.">
+    <meta name="robots" content="noindex,nofollow">
+    <link rel="icon" type="image/svg+xml" href="<?= APP_URL ?>/assets/favicon.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="<?= APP_URL ?>/assets/css/style.css" rel="stylesheet">
@@ -46,13 +48,14 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
             z-index: 1;
         }
         .brand-icon {
-            width: 48px; height: 48px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #6366f1, #06b6d4);
+            width: 220px; height: auto;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.25rem; color: #fff;
             margin: 0 auto 1.5rem;
-            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+        }
+        .brand-icon img {
+            width: 220px;
+            height: auto;
+            display: block;
         }
         .signup-card h2 { color: #fff; font-weight: 800; text-align: center; margin-bottom: 0.5rem; font-size: 1.75rem; }
         .signup-subtitle { color: #94a3b8; text-align: center; margin-bottom: 2rem; font-size: 0.95rem; }
@@ -111,7 +114,7 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
 <div class="signup-wrapper">
     <div class="signup-card animate-fade-in-up">
         <div class="text-center mb-3">
-            <div class="brand-icon"><i class="fas fa-bolt"></i></div>
+            <div class="brand-icon"><img src="<?= APP_URL ?>/assets/logo-lockup.svg" alt="<?= Helper::escape(APP_NAME) ?>"></div>
             <h2><?= Helper::escape(APP_NAME) ?></h2>
             <p class="signup-subtitle">Create your free account</p>
         </div>

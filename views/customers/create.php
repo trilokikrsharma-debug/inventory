@@ -1,5 +1,7 @@
 <?php $pageTitle = 'Add Customer'; ?>
 <?php $old = $old ?? []; ?>
+<?php $customFieldsPretty = (string)($customFieldsPretty ?? ''); ?>
+<?php $hasCustomFields = Session::isSuperAdmin() || Tenant::canUse('custom_fields'); ?>
 <div class="page-header"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=customers">Customers</a></li><li class="breadcrumb-item active">Add</li></ol></nav></div>
 <div class="card"><div class="card-body">
 <form method="POST"><?= CSRF::field() ?>
@@ -13,6 +15,9 @@
         <div class="col-md-4"><label class="form-label">ZIP</label><input type="text" name="zip" class="form-control" value="<?= Helper::escape($old['zip'] ?? '') ?>" maxlength="20" pattern="[A-Za-z0-9\\-\\s]{2,20}" inputmode="text"></div>
         <div class="col-md-6"><label class="form-label">Tax Number (GSTIN)</label><input type="text" name="tax_number" class="form-control" value="<?= Helper::escape($old['tax_number'] ?? '') ?>" maxlength="20" pattern="[A-Za-z0-9\\/-]{6,20}"></div>
         <div class="col-md-6"><label class="form-label">Opening Balance</label><input type="number" name="opening_balance" class="form-control" step="0.01" value="<?= Helper::escape($old['opening_balance'] ?? '0') ?>" min="-999999999" max="999999999"></div>
+        <?php if ($hasCustomFields): ?>
+        <div class="col-12"><label class="form-label">Custom Fields (JSON)</label><textarea name="custom_fields_json" class="form-control font-monospace" rows="6" placeholder='{"Route":"North Zone","Priority":"Gold"}'><?= Helper::escape($customFieldsPretty) ?></textarea><div class="form-text">Optional JSON object for extra customer metadata.</div></div>
+        <?php endif; ?>
     </div>
     <div class="mt-4"><button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save Customer</button> <a href="<?= APP_URL ?>/index.php?page=customers" class="btn btn-outline-secondary">Cancel</a></div>
 </form>

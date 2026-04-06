@@ -20,6 +20,10 @@
  *   }
  */
 class ApiAuth {
+    public const AVAILABLE_SCOPES = [
+        'catalog.read',
+        'reports.read',
+    ];
 
     /**
      * Generate a new API token for a tenant
@@ -30,15 +34,16 @@ class ApiAuth {
      * @param array  $scopes     Permission scopes ['sales.read', 'products.write']
      * @return array ['token' => 'inv_...', 'id' => int]
      */
-    public static function generateToken(int $companyId, int $userId, string $name, array $scopes = ['*']): array {
+    public static function generateToken(int $companyId, int $userId, string $name, array $scopes = ['*'], ?string $expiresAt = null): array {
         $rawToken = 'inv_' . bin2hex(random_bytes(32));
         $hash = hash('sha256', $rawToken);
+        $scopes = self::normalizeScopes($scopes);
         
         $db = Database::getInstance();
         $db->query(
-            "INSERT INTO api_tokens (company_id, user_id, name, token_hash, scopes, last_used_at, created_at) 
-             VALUES (?, ?, ?, ?, ?, NULL, NOW())",
-            [$companyId, $userId, $name, $hash, json_encode($scopes)]
+            "INSERT INTO api_tokens (company_id, user_id, name, token_hash, scopes, expires_at, last_used_at, created_at) 
+             VALUES (?, ?, ?, ?, ?, ?, NULL, NOW())",
+            [$companyId, $userId, $name, $hash, json_encode($scopes), $expiresAt]
         );
         
         $id = $db->lastInsertId();
@@ -56,7 +61,7 @@ class ApiAuth {
      * @return array|null Token data (company_id, user_id, scopes) or null
      */
     public static function validateRequest(): ?array {
-        $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        $header = self::authorizationHeader();
         
         if (stripos($header, 'Bearer ') !== 0) {
             return null;
@@ -102,6 +107,7 @@ class ApiAuth {
             'company_id' => $token['company_id'],
             'user_id'    => $token['user_id'],
             'name'       => $token['name'],
+            'expires_at' => $token['expires_at'],
             'scopes'     => json_decode($token['scopes'], true) ?: ['*'],
         ];
     }
@@ -128,5 +134,50 @@ class ApiAuth {
             Logger::audit('api_token_revoked', 'api_tokens', $tokenId);
         }
         return $affected > 0;
+    }
+
+    public static function normalizeScopes(array $scopes): array {
+        $normalized = [];
+        foreach ($scopes as $scope) {
+            $scope = strtolower(trim((string)$scope));
+            if ($scope === '') {
+                continue;
+            }
+            if ($scope === '*') {
+                return ['*'];
+            }
+            if (in_array($scope, self::AVAILABLE_SCOPES, true)) {
+                $normalized[$scope] = $scope;
+            }
+        }
+
+        return array_values($normalized) ?: ['*'];
+    }
+
+    private static function authorizationHeader(): string {
+        $candidates = [
+            $_SERVER['HTTP_AUTHORIZATION'] ?? '',
+            $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '',
+            $_SERVER['Authorization'] ?? '',
+        ];
+
+        if (function_exists('getallheaders')) {
+            try {
+                $headers = getallheaders();
+                if (is_array($headers)) {
+                    $candidates[] = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+                }
+            } catch (\Throwable $e) {
+                // Ignore header parsing issues and fall back to server variables.
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
+        }
+
+        return '';
     }
 }

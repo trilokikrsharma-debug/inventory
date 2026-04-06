@@ -1,12 +1,15 @@
 <?php $pageTitle = 'Quotations'; ?>
+<div class="list-page-shell">
 <div class="page-header">
     <div>
         <h4 class="mb-0">Quotations</h4>
         <small class="text-muted">Create and manage customer quotations</small>
     </div>
-    <a href="<?= APP_URL ?>/index.php?page=quotations&action=create" class="btn btn-success">
-        <i class="fas fa-plus me-2"></i>New Quotation
-    </a>
+    <div class="list-page-actions">
+        <a href="<?= APP_URL ?>/index.php?page=quotations&action=create" class="btn btn-success">
+            <i class="fas fa-plus me-2"></i>New Quotation
+        </a>
+    </div>
 </div>
 
 <!-- Stats Row -->
@@ -30,14 +33,14 @@
 </div>
 
 <!-- Filters -->
-<div class="card mb-3">
+<div class="card mb-3 list-card">
     <div class="card-body py-2">
-        <form method="GET" class="row g-2 align-items-center">
+        <form method="GET" class="report-filter-form">
             <input type="hidden" name="page" value="quotations">
-            <div class="col-md-3"><input type="text" name="search" class="form-control form-control-sm" placeholder="Search #, customer..." value="<?= Helper::escape($search) ?>"></div>
-            <div class="col-md-2"><input type="date" name="from_date" class="form-control form-control-sm" value="<?= $fromDate ?>"></div>
-            <div class="col-md-2"><input type="date" name="to_date" class="form-control form-control-sm" value="<?= $toDate ?>"></div>
-            <div class="col-md-2">
+            <div class="report-filter-field-wide"><input type="text" name="search" class="form-control form-control-sm" placeholder="Search #, customer..." value="<?= Helper::escape($search) ?>"></div>
+            <div class="report-filter-field"><input type="date" name="from_date" class="form-control form-control-sm" value="<?= $fromDate ?>"></div>
+            <div class="report-filter-field"><input type="date" name="to_date" class="form-control form-control-sm" value="<?= $toDate ?>"></div>
+            <div class="report-filter-field">
                 <select name="status" class="form-select form-select-sm">
                     <option value="">All Status</option>
                     <option value="draft" <?= $status==='draft'?'selected':'' ?>>Draft</option>
@@ -46,18 +49,16 @@
                     <option value="cancelled" <?= $status==='cancelled'?'selected':'' ?>>Cancelled</option>
                 </select>
             </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
-                <a href="<?= APP_URL ?>/index.php?page=quotations" class="btn btn-sm btn-outline-secondary">Clear</a>
-            </div>
+            <button type="submit" class="btn btn-sm btn-primary report-filter-submit">Filter</button>
+            <a href="<?= APP_URL ?>/index.php?page=quotations" class="btn btn-sm btn-outline-secondary report-filter-submit">Clear</a>
         </form>
     </div>
 </div>
 
-<div class="card">
+<div class="card list-card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 list-table">
                 <thead>
                     <tr><th>#</th><th>Quotation No</th><th>Customer</th><th>Date</th><th>Valid Until</th><th>Amount</th><th>Status</th><th></th></tr>
                 </thead>
@@ -125,4 +126,5 @@
         </ul></nav>
     </div>
     <?php endif; ?>
+</div>
 </div>

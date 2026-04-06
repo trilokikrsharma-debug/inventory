@@ -133,9 +133,21 @@ class UserController extends Controller {
         $this->validateCSRF();
 
         $id       = (int)$this->post('id');
-        $password = $this->post('new_password');
-        if (strlen($password) < 6) {
-            $this->setFlash('error', 'Password must be at least 6 characters.'); $this->redirect('index.php?page=users'); return;
+        $password = (string)$this->post('new_password');
+        $minLen = defined('PASSWORD_MIN_LENGTH') ? PASSWORD_MIN_LENGTH : 8;
+
+        if (strlen($password) < $minLen) {
+            $this->setFlash('error', "Password must be at least {$minLen} characters.");
+            $this->redirect('index.php?page=users');
+            return;
+        }
+
+        if (defined('PASSWORD_COMPLEXITY') && PASSWORD_COMPLEXITY) {
+            if (!preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
+                $this->setFlash('error', 'Password must contain at least 1 uppercase letter and 1 number.');
+                $this->redirect('index.php?page=users');
+                return;
+            }
         }
 
         // SECURITY FIX (IDOR-1): Verify target user belongs to current tenant.
@@ -173,10 +185,18 @@ class UserController extends Controller {
             }
         }
 
-        $model->resetPassword($id, $password);
+        $result = $model->resetPassword($id, $password);
+        if (empty($result['success'])) {
+            $this->setFlash('error', (string)($result['message'] ?? 'Password reset failed.'));
+            $this->redirect('index.php?page=users');
+            return;
+        }
+
+        RememberMeService::revokeAllForUser($id);
+
         $this->logActivity('Reset password for user ID: ' . $id, 'users', $id);
         Helper::securityLog('PASSWORD_RESET', 'Admin reset password for user ID: ' . $id);
-        $this->setFlash('success', 'Password reset successfully.');
+        $this->setFlash('success', (string)($result['message'] ?? 'Password reset successfully.'));
         $this->redirect('index.php?page=users');
     }
 
@@ -262,14 +282,15 @@ class UserController extends Controller {
             }
 
             if ($tenantId !== null) {
-                return $db->query(
+                $roles = $db->query(
                     "SELECT id, name, display_name, company_id, is_super_admin
                      FROM roles
                      WHERE (company_id IS NULL OR company_id = ?)
                        AND IFNULL(is_super_admin, 0) = 0
-                     ORDER BY company_id IS NULL DESC, display_name ASC, id ASC",
+                     ORDER BY company_id IS NULL ASC, display_name ASC, id ASC",
                     [$tenantId]
                 )->fetchAll();
+                return $this->deduplicateAssignableRoles($roles, $tenantId);
             }
 
             return $db->query(
@@ -283,6 +304,58 @@ class UserController extends Controller {
             error_log('[RBAC] Failed to load roles: ' . $e->getMessage());
             return [];
         }
+    }
+
+    private function deduplicateAssignableRoles(array $roles, int $tenantId): array {
+        usort($roles, static function (array $a, array $b) use ($tenantId): int {
+            $aCompany = isset($a['company_id']) && $a['company_id'] !== null ? (int)$a['company_id'] : null;
+            $bCompany = isset($b['company_id']) && $b['company_id'] !== null ? (int)$b['company_id'] : null;
+            $aScore = ($aCompany === $tenantId) ? 0 : 1;
+            $bScore = ($bCompany === $tenantId) ? 0 : 1;
+            if ($aScore !== $bScore) {
+                return $aScore <=> $bScore;
+            }
+
+            $byName = strcasecmp((string)($a['display_name'] ?? ''), (string)($b['display_name'] ?? ''));
+            if ($byName !== 0) {
+                return $byName;
+            }
+
+            return ((int)($a['id'] ?? 0)) <=> ((int)($b['id'] ?? 0));
+        });
+
+        $seen = [];
+        $deduped = [];
+        foreach ($roles as $role) {
+            $keys = [];
+            $nameKey = strtolower(trim((string)($role['name'] ?? '')));
+            $displayKey = strtolower(trim((string)($role['display_name'] ?? '')));
+            if ($nameKey !== '') {
+                $keys[] = 'name:' . $nameKey;
+            }
+            if ($displayKey !== '') {
+                $keys[] = 'display:' . $displayKey;
+            }
+
+            $skip = false;
+            foreach ($keys as $key) {
+                if (isset($seen[$key])) {
+                    $skip = true;
+                    break;
+                }
+            }
+
+            if ($skip) {
+                continue;
+            }
+
+            foreach ($keys as $key) {
+                $seen[$key] = true;
+            }
+            $deduped[] = $role;
+        }
+
+        return $deduped;
     }
 
     /**

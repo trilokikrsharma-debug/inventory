@@ -20,7 +20,10 @@ class RoleController extends Controller {
         $cid = Tenant::id();
         if ($cid !== null) {
             $roles = $db->query(
-                "SELECT r.* FROM roles r WHERE r.company_id IS NULL OR r.company_id = ? ORDER BY r.id ASC",
+                "SELECT r.* FROM roles r
+                 WHERE r.company_id = ?
+                    OR (r.company_id IS NULL AND IFNULL(r.is_super_admin, 0) = 0)
+                 ORDER BY r.company_id IS NULL ASC, r.id ASC",
                 [$cid]
             )->fetchAll();
         } else {
@@ -132,12 +135,23 @@ class RoleController extends Controller {
         // SECURITY: Tenant-scoped role lookup — prevent cross-tenant editing
         $cid = Tenant::id();
         if ($cid !== null) {
-            $role = $db->query("SELECT * FROM roles WHERE id = ? AND (company_id = ? OR company_id IS NULL)", [$id, $cid])->fetch();
+            $role = $db->query(
+                "SELECT * FROM roles
+                 WHERE id = ?
+                   AND (company_id = ? OR (company_id IS NULL AND IFNULL(is_super_admin, 0) = 0))",
+                [$id, $cid]
+            )->fetch();
         } else {
             $role = $db->query("SELECT * FROM roles WHERE id = ?", [$id])->fetch();
         }
         if (!$role) {
             $this->setFlash('error', 'Role not found.');
+            $this->redirect('index.php?page=roles');
+            return;
+        }
+
+        if ($cid !== null && !empty($role['is_super_admin'])) {
+            $this->setFlash('error', 'Super admin roles are not assignable to tenants.');
             $this->redirect('index.php?page=roles');
             return;
         }
@@ -236,7 +250,12 @@ class RoleController extends Controller {
         // SECURITY: Tenant-scoped role lookup — prevent cross-tenant deletion
         $cid = Tenant::id();
         if ($cid !== null) {
-            $role = $db->query("SELECT * FROM roles WHERE id = ? AND (company_id = ? OR company_id IS NULL)", [$id, $cid])->fetch();
+            $role = $db->query(
+                "SELECT * FROM roles
+                 WHERE id = ?
+                   AND (company_id = ? OR (company_id IS NULL AND IFNULL(is_super_admin, 0) = 0))",
+                [$id, $cid]
+            )->fetch();
         } else {
             $role = $db->query("SELECT * FROM roles WHERE id = ?", [$id])->fetch();
         }
@@ -310,6 +329,9 @@ class RoleController extends Controller {
         $all = $db->query("SELECT * FROM permissions ORDER BY module ASC, id ASC")->fetchAll();
         $grouped = [];
         foreach ($all as $p) {
+            if (!$this->isPermissionAvailableForTenant($p)) {
+                continue;
+            }
             $grouped[$p['module']][] = $p;
         }
         return $grouped;
@@ -338,6 +360,11 @@ class RoleController extends Controller {
                 array_map('intval', $permIds)
             )->fetchAll(\PDO::FETCH_COLUMN);
 
+            $allowedPermissionIds = $this->getAllowedPermissionIds($db);
+            $validIds = array_filter($validIds, function ($permissionId) use ($allowedPermissionIds) {
+                return isset($allowedPermissionIds[(int)$permissionId]);
+            });
+
             foreach ($validIds as $pid) {
                 $db->query(
                     "INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)",
@@ -345,5 +372,38 @@ class RoleController extends Controller {
                 );
             }
         }
+    }
+
+    private function isPermissionAvailableForTenant(array $permission): bool {
+        if (Session::isSuperAdmin() || Tenant::id() === null) {
+            return true;
+        }
+
+        $name = (string)($permission['name'] ?? '');
+        if (str_starts_with($name, 'quotations.')) {
+            return Tenant::canUse('quotations');
+        }
+        if (str_starts_with($name, 'returns.')) {
+            return Tenant::canUse('sale_returns');
+        }
+        if ($name === 'backup.manage') {
+            return Tenant::canUse('backup_restore');
+        }
+        if ($name === 'reports.view') {
+            return Tenant::canUse('basic_reports') || Tenant::canUse('advanced_reports');
+        }
+
+        return true;
+    }
+
+    private function getAllowedPermissionIds($db): array {
+        $allowed = [];
+        $rows = $db->query("SELECT id, name FROM permissions ORDER BY id ASC")->fetchAll();
+        foreach ($rows as $row) {
+            if ($this->isPermissionAvailableForTenant($row)) {
+                $allowed[(int)$row['id']] = true;
+            }
+        }
+        return $allowed;
     }
 }

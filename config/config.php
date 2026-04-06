@@ -74,17 +74,45 @@ if (file_exists($envFile)) {
     }
 }
 
-// APP_URL: Use environment variable if set, otherwise auto-detect from request.
-// For production, ALWAYS set APP_URL in your environment (Apache SetEnv, .env file, etc.)
+// APP_URL: Prefer configured value, but keep navigation on the current valid host
+// when the request is served from a different domain/subdomain. This avoids
+// session loss when absolute APP_URL links bounce the user across hosts.
 $_autoProtocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$_autoHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$_autoHost = strtolower((string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
 $_scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
 $_autoBasePath = str_replace('\\', '/', dirname($_scriptName));
 if ($_autoBasePath === '/' || $_autoBasePath === '.') {
     $_autoBasePath = '';
 }
-define('APP_URL', getenv('APP_URL') ?: "{$_autoProtocol}://{$_autoHost}{$_autoBasePath}");
-unset($_autoProtocol, $_autoHost, $_scriptName, $_autoBasePath);
+
+$_configuredAppUrl = trim((string)(getenv('APP_URL') ?: ''));
+$_resolvedAppUrl = $_configuredAppUrl !== '' ? $_configuredAppUrl : "{$_autoProtocol}://{$_autoHost}{$_autoBasePath}";
+
+if ($_configuredAppUrl !== '' && $_autoHost !== '') {
+    $_configuredHost = strtolower((string)(parse_url($_configuredAppUrl, PHP_URL_HOST) ?: ''));
+    $_requestHostIsLocal = $_autoHost === 'localhost' || filter_var($_autoHost, FILTER_VALIDATE_IP);
+    $_configuredHostMatches = $_configuredHost !== '' && (
+        $_autoHost === $_configuredHost ||
+        str_ends_with($_autoHost, '.' . ltrim($_configuredHost, '.'))
+    );
+
+    if (!$_requestHostIsLocal && !$_configuredHostMatches) {
+        $_resolvedAppUrl = "{$_autoProtocol}://{$_autoHost}{$_autoBasePath}";
+    }
+}
+
+define('APP_URL', $_resolvedAppUrl);
+unset(
+    $_autoProtocol,
+    $_autoHost,
+    $_scriptName,
+    $_autoBasePath,
+    $_configuredAppUrl,
+    $_resolvedAppUrl,
+    $_configuredHost,
+    $_requestHostIsLocal,
+    $_configuredHostMatches
+);
 
 // Environment hint (development / production)
 // Fail-safe default is production. Explicitly set APP_ENV=development locally.

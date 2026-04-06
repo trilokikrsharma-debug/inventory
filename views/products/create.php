@@ -1,4 +1,8 @@
 <?php $pageTitle = 'Add Product'; ?>
+<?php $customFieldsPretty = (string)($customFieldsPretty ?? ''); ?>
+<?php $hasCustomFields = Session::isSuperAdmin() || Tenant::canUse('custom_fields'); ?>
+<?php $hasWarehouseFeature = !empty($hasWarehouseFeature); ?>
+<?php $warehouses = is_array($warehouses ?? null) ? $warehouses : []; ?>
 <div class="page-header">
     <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=products">Products</a></li><li class="breadcrumb-item active">Add</li></ol></nav>
 </div>
@@ -58,6 +62,13 @@
                             <label class="form-label">Description</label>
                             <textarea name="description" class="form-control" rows="3"></textarea>
                         </div>
+                        <?php if ($hasCustomFields): ?>
+                        <div class="col-12">
+                            <label class="form-label">Custom Fields (JSON)</label>
+                            <textarea name="custom_fields_json" class="form-control font-monospace" rows="6" placeholder='{"Shelf":"A-12","Internal Code":"P-001"}'><?= Helper::escape($customFieldsPretty) ?></textarea>
+                            <div class="form-text">Optional JSON object for extra product metadata.</div>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -91,6 +102,19 @@
                         <label class="form-label">Opening Stock</label>
                         <input type="number" name="opening_stock" class="form-control" step="0.001" value="0">
                     </div>
+                    <?php if ($hasWarehouseFeature): ?>
+                    <div class="mb-3">
+                        <label class="form-label">Opening Warehouse</label>
+                        <select name="opening_warehouse_id" class="form-select">
+                            <?php foreach ($warehouses as $warehouse): ?>
+                            <option value="<?= (int)$warehouse['id'] ?>" <?= !empty($warehouse['is_default']) ? 'selected' : '' ?>>
+                                <?= Helper::escape($warehouse['name']) ?><?= !empty($warehouse['code']) ? ' (' . Helper::escape($warehouse['code']) . ')' : '' ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Opening stock will be booked into this warehouse.</div>
+                    </div>
+                    <?php endif; ?>
                     <div class="mb-3">
                         <label class="form-label">Low Stock Alert Level</label>
                         <input type="number" name="low_stock_alert" class="form-control" placeholder="Use default">

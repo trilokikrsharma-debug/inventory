@@ -7,6 +7,7 @@
  */
 class ProductModel extends Model {
     protected $table = 'products';
+    private static ?bool $warehouseTablesAvailable = null;
 
     /**
      * Keep dashboard + sidebar stock indicators in sync after any product/stock mutation.
@@ -30,6 +31,21 @@ class ProductModel extends Model {
             'page' => $page,
             'per_page' => $perPage,
         ]));
+    }
+
+    private function warehouseTablesAvailable(): bool {
+        if (self::$warehouseTablesAvailable !== null) {
+            return self::$warehouseTablesAvailable;
+        }
+
+        try {
+            $tables = $this->db->query("SHOW TABLES LIKE 'product_warehouse_stock'")->fetchAll();
+            self::$warehouseTablesAvailable = !empty($tables);
+        } catch (\Throwable $e) {
+            self::$warehouseTablesAvailable = false;
+        }
+
+        return self::$warehouseTablesAvailable;
     }
 
     /**
@@ -149,7 +165,7 @@ class ProductModel extends Model {
     /**
      * Update stock (tenant-scoped via product lookup)
      */
-    public function updateStock($productId, $quantity, $type, $referenceId = null, $userId = null, $note = '') {
+    public function updateStock($productId, $quantity, $type, $referenceId = null, $userId = null, $note = '', ?int $warehouseId = null) {
         $where = ["id = ?"];
         $params = [$productId];
         if (Tenant::id() !== null) {
@@ -171,6 +187,8 @@ class ProductModel extends Model {
             Tenant::id() !== null ? [$quantity, $productId, Tenant::id()] : [$quantity, $productId]
         );
 
+        $this->applyWarehouseDelta((int)$productId, (float)$quantity, $warehouseId);
+
         // Log stock history (with company_id)
         $this->db->query(
             "INSERT INTO stock_history (company_id, product_id, type, reference_id, quantity, stock_before, stock_after, note, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -179,6 +197,117 @@ class ProductModel extends Model {
 
         $this->flushStockCaches();
         return $stockAfter;
+    }
+
+    public function allocateOpeningStock(int $productId, ?int $warehouseId, float $quantity): void {
+        if ($quantity <= 0 || Tenant::id() === null || !$this->warehouseTablesAvailable()) {
+            return;
+        }
+
+        $targetWarehouseId = $warehouseId ?: (new WarehouseModel())->defaultWarehouseId();
+        if (!$targetWarehouseId) {
+            return;
+        }
+
+        $this->db->query(
+            "INSERT INTO product_warehouse_stock (company_id, product_id, warehouse_id, quantity)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), updated_at = NOW()",
+            [Tenant::id(), $productId, $targetWarehouseId, round($quantity, 3)]
+        );
+    }
+
+    public function getWarehouseBreakdown(int $productId): array {
+        if (Tenant::id() === null || !$this->warehouseTablesAvailable()) {
+            return [];
+        }
+
+        return $this->db->query(
+            "SELECT
+                w.id,
+                w.name,
+                w.code,
+                w.location,
+                w.is_default,
+                COALESCE(pws.quantity, 0) AS quantity
+             FROM warehouses w
+             LEFT JOIN product_warehouse_stock pws
+               ON pws.company_id = w.company_id
+              AND pws.warehouse_id = w.id
+              AND pws.product_id = ?
+             WHERE w.company_id = ?
+               AND w.deleted_at IS NULL
+               AND w.is_active = 1
+             ORDER BY w.is_default DESC, w.name ASC, w.id ASC",
+            [$productId, Tenant::id()]
+        )->fetchAll();
+    }
+
+    /**
+     * @param array<int, array{warehouse_id:int, quantity:float}> $allocations
+     */
+    public function syncWarehouseAllocations(int $productId, array $allocations, ?int $userId = null, string $note = 'Warehouse stock rebalanced'): float {
+        if (Tenant::id() === null || !$this->warehouseTablesAvailable()) {
+            return 0.0;
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $product = $this->db->query(
+                "SELECT current_stock
+                 FROM {$this->table}
+                 WHERE id = ?
+                   AND company_id = ?
+                   AND deleted_at IS NULL
+                 FOR UPDATE",
+                [$productId, Tenant::id()]
+            )->fetch();
+            if (!$product) {
+                throw new \RuntimeException('Product not found.');
+            }
+
+            $stockBefore = (float)$product['current_stock'];
+            $stockAfter = WarehouseStockService::totalQuantity($allocations);
+
+            $this->db->query(
+                "DELETE FROM product_warehouse_stock
+                 WHERE company_id = ?
+                   AND product_id = ?",
+                [Tenant::id(), $productId]
+            );
+
+            foreach ($allocations as $allocation) {
+                $this->db->query(
+                    "INSERT INTO product_warehouse_stock (company_id, product_id, warehouse_id, quantity)
+                     VALUES (?, ?, ?, ?)",
+                    [Tenant::id(), $productId, (int)$allocation['warehouse_id'], (float)$allocation['quantity']]
+                );
+            }
+
+            $this->db->query(
+                "UPDATE {$this->table}
+                 SET current_stock = ?
+                 WHERE id = ?
+                   AND company_id = ?",
+                [$stockAfter, $productId, Tenant::id()]
+            );
+
+            $delta = round($stockAfter - $stockBefore, 3);
+            if ($delta != 0.0) {
+                $this->db->query(
+                    "INSERT INTO stock_history (company_id, product_id, type, quantity, stock_before, stock_after, note, created_by)
+                     VALUES (?, ?, 'adjustment', ?, ?, ?, ?, ?)",
+                    [Tenant::id(), $productId, $delta, $stockBefore, $stockAfter, $note, $userId]
+                );
+            }
+
+            $this->db->commit();
+            $this->flushStockCaches();
+            return $stockAfter;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            throw $e;
+        }
     }
 
     /**
@@ -297,6 +426,83 @@ class ProductModel extends Model {
         )->fetchAll();
     }
 
+    public function getStockReport(string $search = '', string $categoryId = '', ?int $warehouseId = null, int $page = 1, int $perPage = RECORDS_PER_PAGE): array {
+        $offset = ($page - 1) * $perPage;
+        $params = [];
+        $where = ["p.deleted_at IS NULL"];
+        $stockSelect = "p.current_stock";
+        $warehouseJoin = '';
+
+        if (Tenant::id() !== null) {
+            $where[] = "p.company_id = ?";
+            $params[] = Tenant::id();
+        }
+
+        if ($search !== '') {
+            $where[] = "(p.name LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?)";
+            $term = '%' . $search . '%';
+            array_push($params, $term, $term, $term);
+        }
+
+        if ($categoryId !== '') {
+            $where[] = "p.category_id = ?";
+            $params[] = $categoryId;
+        }
+
+        if ($warehouseId !== null && $warehouseId > 0 && Tenant::id() !== null && $this->warehouseTablesAvailable()) {
+            $warehouseJoin = " LEFT JOIN product_warehouse_stock pws
+                                 ON pws.company_id = p.company_id
+                                AND pws.product_id = p.id
+                                AND pws.warehouse_id = " . (int)$warehouseId . "
+                               LEFT JOIN warehouses rw
+                                 ON rw.id = " . (int)$warehouseId . "
+                                AND rw.company_id = p.company_id ";
+            $stockSelect = "COALESCE(pws.quantity, 0)";
+        } else {
+            $warehouseJoin = " LEFT JOIN warehouses rw ON 1 = 0 ";
+        }
+
+        $whereClause = implode(' AND ', $where);
+
+        $total = (int)$this->db->query(
+            "SELECT COUNT(*)
+             FROM {$this->table} p
+             {$warehouseJoin}
+             WHERE {$whereClause}",
+            $params
+        )->fetchColumn();
+
+        $rows = $this->db->query(
+            "SELECT
+                p.id,
+                p.name,
+                p.sku,
+                p.purchase_price,
+                p.selling_price,
+                p.low_stock_alert,
+                {$stockSelect} AS stock_quantity,
+                c.name AS category_name,
+                u.short_name AS unit_name,
+                rw.name AS report_warehouse_name
+             FROM {$this->table} p
+             LEFT JOIN categories c ON p.category_id = c.id
+             LEFT JOIN units u ON p.unit_id = u.id
+             {$warehouseJoin}
+             WHERE {$whereClause}
+             ORDER BY p.name ASC, p.id DESC
+             LIMIT {$perPage} OFFSET {$offset}",
+            $params
+        )->fetchAll();
+
+        return [
+            'data' => $rows,
+            'total' => $total,
+            'page' => $page,
+            'perPage' => $perPage,
+            'totalPages' => (int)ceil($total / max(1, $perPage)),
+        ];
+    }
+
     /**
      * Get total stock value (tenant-scoped)
      */
@@ -313,5 +519,166 @@ class ProductModel extends Model {
              WHERE " . implode(' AND ', $where),
             $params
         )->fetch();
+    }
+
+    public function warehouseQuantity(int $productId, int $warehouseId): float {
+        if (Tenant::id() === null || !$this->warehouseTablesAvailable()) {
+            return 0.0;
+        }
+
+        $value = $this->db->query(
+            "SELECT COALESCE(quantity, 0)
+             FROM product_warehouse_stock
+             WHERE company_id = ?
+               AND product_id = ?
+               AND warehouse_id = ?
+             LIMIT 1",
+            [Tenant::id(), $productId, $warehouseId]
+        )->fetchColumn();
+
+        return round((float)$value, 3);
+    }
+
+    public function transferWarehouseStock(int $productId, int $sourceWarehouseId, int $destinationWarehouseId, float $quantity): void {
+        if (Tenant::id() === null || !$this->warehouseTablesAvailable()) {
+            throw new \RuntimeException('Warehouse stock tracking is not available.');
+        }
+        if ($sourceWarehouseId === $destinationWarehouseId) {
+            throw new \RuntimeException('Source and destination warehouses must be different.');
+        }
+
+        $quantity = round($quantity, 3);
+        if ($quantity <= 0) {
+            throw new \RuntimeException('Transfer quantity must be greater than zero.');
+        }
+
+        $this->db->query(
+            "INSERT INTO product_warehouse_stock (company_id, product_id, warehouse_id, quantity)
+             VALUES (?, ?, ?, 0)
+             ON DUPLICATE KEY UPDATE updated_at = NOW()",
+            [Tenant::id(), $productId, $sourceWarehouseId]
+        );
+        $this->db->query(
+            "INSERT INTO product_warehouse_stock (company_id, product_id, warehouse_id, quantity)
+             VALUES (?, ?, ?, 0)
+             ON DUPLICATE KEY UPDATE updated_at = NOW()",
+            [Tenant::id(), $productId, $destinationWarehouseId]
+        );
+
+        $sourceQuantity = $this->db->query(
+            "SELECT quantity
+             FROM product_warehouse_stock
+             WHERE company_id = ?
+               AND product_id = ?
+               AND warehouse_id = ?
+             LIMIT 1
+             FOR UPDATE",
+            [Tenant::id(), $productId, $sourceWarehouseId]
+        )->fetchColumn();
+
+        if (round((float)$sourceQuantity, 3) + 0.0001 < $quantity) {
+            throw new \RuntimeException('Insufficient stock in the selected source warehouse.');
+        }
+
+        $this->db->query(
+            "UPDATE product_warehouse_stock
+             SET quantity = quantity - ?, updated_at = NOW()
+             WHERE company_id = ?
+               AND product_id = ?
+               AND warehouse_id = ?",
+            [$quantity, Tenant::id(), $productId, $sourceWarehouseId]
+        );
+        $this->db->query(
+            "UPDATE product_warehouse_stock
+             SET quantity = quantity + ?, updated_at = NOW()
+             WHERE company_id = ?
+               AND product_id = ?
+               AND warehouse_id = ?",
+            [$quantity, Tenant::id(), $productId, $destinationWarehouseId]
+        );
+    }
+
+    private function applyWarehouseDelta(int $productId, float $quantity, ?int $warehouseId = null): void {
+        if (Tenant::id() === null || !$this->warehouseTablesAvailable() || $quantity == 0.0) {
+            return;
+        }
+
+        $warehouseModel = new WarehouseModel();
+        $targetWarehouseId = $warehouseId ?: $warehouseModel->defaultWarehouseId();
+        if (!$targetWarehouseId) {
+            return;
+        }
+
+        if ($quantity > 0) {
+            $this->db->query(
+                "INSERT INTO product_warehouse_stock (company_id, product_id, warehouse_id, quantity)
+                 VALUES (?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity), updated_at = NOW()",
+                [Tenant::id(), $productId, $targetWarehouseId, round($quantity, 3)]
+            );
+            return;
+        }
+
+        $remaining = round(abs($quantity), 3);
+        if ($warehouseId !== null) {
+            $available = $this->warehouseQuantity($productId, $targetWarehouseId);
+            if ($available + 0.0001 < $remaining) {
+                throw new \RuntimeException('Insufficient stock in the selected warehouse.');
+            }
+
+            $this->db->query(
+                "INSERT INTO product_warehouse_stock (company_id, product_id, warehouse_id, quantity)
+                 VALUES (?, ?, ?, 0)
+                 ON DUPLICATE KEY UPDATE updated_at = NOW()",
+                [Tenant::id(), $productId, $targetWarehouseId]
+            );
+            $this->db->query(
+                "UPDATE product_warehouse_stock
+                 SET quantity = quantity - ?, updated_at = NOW()
+                 WHERE company_id = ?
+                   AND product_id = ?
+                   AND warehouse_id = ?",
+                [$remaining, Tenant::id(), $productId, $targetWarehouseId]
+            );
+            return;
+        }
+
+        $rows = $this->db->query(
+            "SELECT pws.id, pws.warehouse_id, pws.quantity
+             FROM product_warehouse_stock pws
+             JOIN warehouses w
+               ON w.id = pws.warehouse_id
+              AND w.company_id = pws.company_id
+              AND w.deleted_at IS NULL
+             WHERE pws.company_id = ?
+               AND pws.product_id = ?
+             ORDER BY pws.quantity DESC, w.is_default DESC, pws.id ASC",
+            [Tenant::id(), $productId]
+        )->fetchAll();
+
+        foreach ($rows as $row) {
+            $available = max(0, (float)$row['quantity']);
+            if ($available <= 0 || $remaining <= 0) {
+                continue;
+            }
+
+            $consume = min($available, $remaining);
+            $this->db->query(
+                "UPDATE product_warehouse_stock
+                 SET quantity = quantity - ?, updated_at = NOW()
+                 WHERE id = ?",
+                [$consume, (int)$row['id']]
+            );
+            $remaining = round($remaining - $consume, 3);
+        }
+
+        if ($remaining > 0) {
+            $this->db->query(
+                "INSERT INTO product_warehouse_stock (company_id, product_id, warehouse_id, quantity)
+                 VALUES (?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE quantity = quantity - VALUES(quantity), updated_at = NOW()",
+                [Tenant::id(), $productId, $targetWarehouseId, $remaining]
+            );
+        }
     }
 }

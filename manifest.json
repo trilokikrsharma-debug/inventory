@@ -1,11 +1,11 @@
 {
-  "name": "InvenBill Pro",
-  "short_name": "InvenBill",
-  "description": "Inventory & Billing System",
+  "name": "TSA Legacy",
+  "short_name": "TSA Legacy",
+  "description": "GST billing, inventory, payments and operations software for Indian SMEs.",
   "start_url": "./index.php?page=dashboard",
   "display": "standalone",
   "background_color": "#1a1c2e",
-  "theme_color": "#4e73df",
+  "theme_color": "#4f46e5",
   "icons": [
     {
       "src": "./assets/icon.svg",

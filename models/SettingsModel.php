@@ -29,18 +29,30 @@ class SettingsModel extends Model {
                     'company_name' => defined('APP_NAME') ? APP_NAME : 'InvenBill',
                     'currency_symbol' => '₹',
                     'currency_code' => 'INR',
-                    'enable_gst' => 1,
-                    'enable_tax' => 1,
-                    'tax_rate' => 18,
+                    'date_format' => 'd-m-Y',
+                    'timezone' => 'Asia/Kolkata',
+                    'enable_gst' => 0,
+                    'enable_tax' => 0,
+                    'tax_rate' => 0,
                     'low_stock_threshold' => 10,
                     'invoice_prefix' => 'INV-',
                     'purchase_prefix' => 'PUR-',
                     'payment_prefix' => 'PAY-',
                     'receipt_prefix' => 'REC-',
-                    'show_paid_due_on_invoice' => 1,
-                    'show_unit_on_invoice' => 0,
-                    'show_discount_on_invoice' => 1,
-                    'show_hsn_on_invoice' => 1,
+                    'invoice_title' => 'Invoice',
+                    'purchase_invoice_title' => 'Purchase Bill',
+                    'invoice_signature_image' => null,
+                    'invoice_seal_image' => null,
+                    'invoice_show_signature' => 1,
+                    'invoice_show_seal' => 1,
+                    'invoice_signature_label' => 'Authorised Signatory',
+                    'invoice_notes_label' => 'Notes',
+                    'invoice_show_logo' => 1,
+                    'invoice_show_payment_status' => 1,
+                    'show_paid_due_on_invoice' => 0,
+                    'show_unit_on_invoice' => 1,
+                    'show_discount_on_invoice' => 0,
+                    'show_hsn_on_invoice' => 0,
                     'auto_round_off_rupee' => 0,
                 ];
             }
@@ -106,8 +118,13 @@ class SettingsModel extends Model {
      */
     public function createDefaultSettings($companyId, $companyName) {
         return $this->db->query(
-            "INSERT INTO {$this->table} (company_id, company_name, company_email, company_phone, company_address, company_city, company_state, company_country, currency_symbol, currency_code)
-             VALUES (?, ?, '', '', '', '', '', 'India', '₹', 'INR')",
+            "INSERT INTO {$this->table} (
+                company_id, company_name, company_email, company_phone, company_address, company_city, company_state,
+                company_country, currency_symbol, currency_code, date_format, timezone, enable_tax, enable_gst, tax_rate,
+                invoice_title, purchase_invoice_title, invoice_signature_image, invoice_seal_image, invoice_show_signature, invoice_show_seal, invoice_signature_label, invoice_notes_label, invoice_show_logo,
+                invoice_show_payment_status, show_paid_due_on_invoice, show_unit_on_invoice, show_discount_on_invoice,
+                show_hsn_on_invoice, auto_round_off_rupee
+            ) VALUES (?, ?, '', '', '', '', '', 'India', '₹', 'INR', 'd-m-Y', 'Asia/Kolkata', 0, 0, 0, 'Invoice', 'Purchase Bill', NULL, NULL, 1, 1, 'Authorised Signatory', 'Notes', 1, 1, 0, 1, 0, 0, 0)",
             [$companyId, $companyName]
         );
     }

@@ -1,7 +1,8 @@
 <?php $pageTitle = 'Customer: ' . Helper::escape($customer['name']); ?>
+<div class="detail-page-shell">
 <div class="page-header">
     <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=customers">Customers</a></li><li class="breadcrumb-item active"><?= Helper::escape($customer['name']) ?></li></ol></nav>
-    <div class="d-flex gap-2">
+    <div class="detail-page-actions">
         <a href="<?= APP_URL ?>/index.php?page=customers&action=edit&id=<?= $customer['id'] ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit me-1"></i>Edit</a>
         <?php if (Session::hasPermission('customers.edit')): ?>
         <form method="POST" action="<?= APP_URL ?>/index.php?page=customers&action=recalculate_balance" class="d-inline">
@@ -14,10 +15,11 @@
 </div>
 <div class="row g-3">
     <div class="col-lg-4">
-        <div class="card">
+        <div class="card detail-card">
             <div class="card-body">
                 <h5 class="mb-3"><?= Helper::escape($customer['name']) ?></h5>
-                <table class="table table-sm mb-0">
+                <div class="table-responsive">
+                <table class="table table-sm mb-0 detail-table">
                     <tr><td class="text-muted">Phone</td><td><?= Helper::escape($customer['phone'] ?? '-') ?></td></tr>
                     <tr><td class="text-muted">Email</td><td><?= Helper::escape($customer['email'] ?? '-') ?></td></tr>
                     <tr><td class="text-muted">City</td><td><?= Helper::escape($customer['city'] ?? '-') ?></td></tr>
@@ -26,20 +28,38 @@
                     <tr><td class="text-muted">Opening Bal.</td><td><?= Helper::formatCurrency($customer['opening_balance']) ?></td></tr>
                     <tr><td class="text-muted fw-bold">Current Bal.</td><td class="fw-bold <?= $customer['current_balance'] > 0 ? 'text-danger' : 'text-success' ?>"><?= Helper::formatCurrency($customer['current_balance']) ?></td></tr>
                 </table>
+                </div>
             </div>
         </div>
+        <?php if (!empty($customFields)): ?>
+        <div class="card detail-card mt-3">
+            <div class="card-body">
+                <h6 class="mb-3"><i class="fas fa-brackets-curly me-2"></i>Custom Fields</h6>
+                <div class="table-responsive">
+                <table class="table table-sm mb-0 detail-table">
+                    <?php foreach ($customFields as $key => $value): ?>
+                    <tr>
+                        <td class="text-muted"><?= Helper::escape($key) ?></td>
+                        <td><?= Helper::escape(is_bool($value) ? ($value ? 'Yes' : 'No') : ($value === null ? '-' : (string)$value)) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
     <div class="col-lg-8">
-        <div class="card">
+        <div class="card detail-card">
             <div class="card-header"><h6><i class="fas fa-book me-2"></i>Ledger</h6>
-                <form class="d-flex gap-2" method="GET"><input type="hidden" name="page" value="customers"><input type="hidden" name="action" value="view_customer"><input type="hidden" name="id" value="<?= $customer['id'] ?>">
-                    <input type="date" name="from_date" class="form-control form-control-sm" value="<?= Helper::escape($_GET['from_date'] ?? '') ?>" style="width:130px;">
-                    <input type="date" name="to_date" class="form-control form-control-sm" value="<?= Helper::escape($_GET['to_date'] ?? '') ?>" style="width:130px;">
+                <form class="report-filter-form" method="GET"><input type="hidden" name="page" value="customers"><input type="hidden" name="action" value="view_customer"><input type="hidden" name="id" value="<?= $customer['id'] ?>">
+                    <input type="date" name="from_date" class="form-control form-control-sm report-filter-field" value="<?= Helper::escape($_GET['from_date'] ?? '') ?>">
+                    <input type="date" name="to_date" class="form-control form-control-sm report-filter-field" value="<?= Helper::escape($_GET['to_date'] ?? '') ?>">
                     <button class="btn btn-sm btn-primary"><i class="fas fa-filter"></i></button>
                     <a href="<?= APP_URL ?>/index.php?page=invoice&action=statement&party=customer&id=<?= $customer['id'] ?>&from_date=<?= Helper::escape($_GET['from_date'] ?? '') ?>&to_date=<?= Helper::escape($_GET['to_date'] ?? '') ?>" class="btn btn-sm btn-outline-success" title="Download Statement PDF"><i class="fas fa-file-pdf me-1"></i>Statement</a>
                 </form>
             </div>
-            <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0">
+            <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0 detail-table">
                 <thead><tr><th>Date/Time</th><th>Type</th><th>Invoice/Ref</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
                 <tbody>
                 <?php if (!empty($ledger)):
@@ -61,4 +81,5 @@
             </table></div></div>
         </div>
     </div>
+</div>
 </div>

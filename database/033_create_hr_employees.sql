@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS hr_employees (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    company_id INT UNSIGNED NOT NULL,
+    employee_code VARCHAR(30) NOT NULL,
+    full_name VARCHAR(150) NOT NULL,
+    designation VARCHAR(120) NOT NULL,
+    department VARCHAR(120) DEFAULT NULL,
+    email VARCHAR(255) DEFAULT NULL,
+    phone VARCHAR(20) DEFAULT NULL,
+    status ENUM('active', 'inactive', 'on_leave') NOT NULL DEFAULT 'active',
+    joined_on DATE NOT NULL,
+    salary DECIMAL(12,2) DEFAULT NULL,
+    notes TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL DEFAULT NULL,
+    UNIQUE KEY uniq_hr_employees_company_code (company_id, employee_code),
+    KEY idx_hr_employees_company_status (company_id, status),
+    KEY idx_hr_employees_company_joined (company_id, joined_on)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

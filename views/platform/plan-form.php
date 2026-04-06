@@ -85,13 +85,19 @@ if (!empty($plan['features'])) {
                            value="<?= e(isset($plan['max_users']) ? (string)$plan['max_users'] : '1') ?>">
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <label class="form-label">Max Products *</label>
+                    <input type="number" name="max_products" min="1" max="10000000" required class="form-control"
+                           value="<?= e(isset($plan['max_products']) ? (string)$plan['max_products'] : '100') ?>">
+                </div>
+
+                <div class="col-md-3">
                     <label class="form-label">Razorpay Plan ID</label>
                     <input type="text" name="razorpay_plan_id" class="form-control"
                            value="<?= e($plan['razorpay_plan_id'] ?? '') ?>" placeholder="plan_XXXXXXXXXX">
                 </div>
 
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label class="form-label">Sort Order</label>
                     <input type="number" name="sort_order" min="0" class="form-control"
                            value="<?= e(isset($plan['sort_order']) ? (string)$plan['sort_order'] : '0') ?>">

@@ -1,6 +1,7 @@
 <?php $pageTitle = 'Supplier Dues'; ?>
+<div class="report-page-shell">
 <div class="page-header"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=reports">Reports</a></li><li class="breadcrumb-item active">Supplier Dues</li></ol></nav>
-    <div class="d-flex gap-2">
+    <div class="report-page-actions">
         <form method="POST" action="<?= APP_URL ?>/index.php?page=reports&action=queue_export">
             <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
             <input type="hidden" name="report_type" value="supplier_dues">
@@ -11,7 +12,7 @@
 </div>
 <?php $totalDue = 0; if (!empty($suppliers)) foreach ($suppliers as $s) $totalDue += ($s['current_balance'] ?? 0); ?>
 <div class="stat-card stat-danger mb-3"><div class="stat-value"><?= Helper::formatCurrency($totalDue) ?></div><div class="stat-label">Total Supplier Dues</div></div>
-<div class="card" id="reportTable"><div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0">
+<div class="card report-data-card" id="reportTable"><div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0 report-data-table">
     <thead><tr><th>#</th><th>Supplier</th><th>Phone</th><th>City</th><th class="text-end">Balance Due</th><th>Action</th></tr></thead>
     <tbody>
     <?php if (!empty($suppliers)): $i=0; foreach ($suppliers as $s): $i++; ?>
@@ -20,3 +21,4 @@
     <?php endforeach; else: ?><tr><td colspan="6" class="text-center py-3 text-muted">No dues</td></tr><?php endif; ?>
     </tbody>
 </table></div></div></div>
+</div>

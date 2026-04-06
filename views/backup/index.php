@@ -457,14 +457,16 @@
             Backup Files
         </h5>
         <div class="d-flex gap-2 flex-wrap">
+            <?php if (empty($isSuperAdmin) || !empty($companyId)): ?>
             <form method="POST" action="<?= APP_URL ?>/index.php?page=backup&action=create" id="createBackupForm">
                 <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
                 <input type="hidden" name="backup_type" value="tenant">
                 <button type="submit" class="btn-create-backup" id="btnCreateBackup">
                     <i class="fas fa-building"></i>
-                    Backup My Company Data
+                    <?= !empty($isSuperAdmin) ? 'Backup Current Tenant Data' : 'Backup My Company Data' ?>
                 </button>
             </form>
+            <?php endif; ?>
             <?php if (!empty($isSuperAdmin)): ?>
             <form method="POST" action="<?= APP_URL ?>/index.php?page=backup&action=create" id="createFullBackupForm">
                 <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
@@ -514,9 +516,9 @@
                         <td>
                             <?php 
                                 $type = $backup['type'] ?? 'unknown';
-                                $typeColor = ['tenant' => '#28a745', 'full' => '#4e73df', 'legacy' => '#6c757d'][$type] ?? '#999';
-                                $typeIcon = ['tenant' => 'fa-building', 'full' => 'fa-server', 'legacy' => 'fa-clock-rotate-left'][$type] ?? 'fa-file';
-                                $typeLabel = ['tenant' => 'Company', 'full' => 'Full DB', 'legacy' => 'Legacy'][$type] ?? ucfirst($type);
+                                $typeColor = ['tenant' => '#28a745', 'full' => '#4e73df', 'legacy' => '#6c757d', 'legacy_full' => '#495057'][$type] ?? '#999';
+                                $typeIcon = ['tenant' => 'fa-building', 'full' => 'fa-server', 'legacy' => 'fa-clock-rotate-left', 'legacy_full' => 'fa-database'][$type] ?? 'fa-file';
+                                $typeLabel = ['tenant' => 'Company', 'full' => 'Full DB', 'legacy' => 'Legacy', 'legacy_full' => 'Legacy Full'][$type] ?? ucfirst($type);
                             ?>
                             <span class="badge" style="background: <?= $typeColor ?>; font-size: 0.72rem; padding: 0.35rem 0.65rem; border-radius: 6px;">
                                 <i class="fas <?= $typeIcon ?> me-1"></i><?= $typeLabel ?>
@@ -530,13 +532,17 @@
                             <div style="font-size: 0.78rem; color: var(--text-secondary, #636e72);"><?= date('h:i A', strtotime($backup['created'])) ?></div>
                         </td>
                         <td>
+                            <?php $deleteFormId = 'delete-backup-' . md5((string)$backup['filename']); ?>
                             <div class="d-flex align-items-center justify-content-center gap-2">
                                 <!-- Download -->
-                                <a href="<?= APP_URL ?>/index.php?page=backup&action=download&file=<?= urlencode($backup['filename']) ?>" 
-                                   class="btn-action btn-download" title="Download">
-                                    <i class="fas fa-download"></i>
-                                </a>
-                                <?php if (!empty($isSuperAdmin) && ($backup['type'] ?? '') === 'full'): ?>
+                                <form method="POST" action="<?= APP_URL ?>/index.php?page=backup&action=download" class="d-inline">
+                                    <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
+                                    <input type="hidden" name="file" value="<?= htmlspecialchars((string)$backup['filename'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <button type="submit" class="btn-action btn-download" title="Download">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                </form>
+                                <?php if (!empty($isSuperAdmin) && in_array(($backup['type'] ?? ''), ['full', 'legacy_full'], true)): ?>
                                 <!-- Restore from existing (super-admin + full backup only) -->
                                 <button
                                     type="button"
@@ -547,13 +553,17 @@
                                 </button>
                                 <?php endif; ?>
                                 <!-- Delete -->
-                                <button
-                                    type="button"
-                                    class="btn-action btn-delete js-delete-backup"
-                                    title="Delete"
-                                    data-backup-file="<?= htmlspecialchars((string)$backup['filename'], ENT_QUOTES, 'UTF-8') ?>">
+                                <form method="POST" action="<?= APP_URL ?>/index.php?page=backup&action=delete" class="d-inline">
+                                    <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
+                                    <input type="hidden" name="file" value="<?= htmlspecialchars((string)$backup['filename'], ENT_QUOTES, 'UTF-8') ?>">
+                                    <button
+                                        type="submit"
+                                        class="btn-action btn-delete"
+                                        title="Delete"
+                                        onclick="return window.confirm('Delete backup: <?= htmlspecialchars((string)$backup['filename'], ENT_QUOTES, 'UTF-8') ?>?');">
                                     <i class="fas fa-trash-can"></i>
-                                </button>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -576,6 +586,12 @@
         </h5>
     </div>
     <div class="section-body">
+        <?php if (empty($companyId)): ?>
+        <div class="alert alert-info mb-3" style="border-radius: 12px;">
+            <i class="fas fa-circle-info me-2"></i>
+            You are at platform level. Full database backups work here. To create a tenant-only backup, open that tenant from the tenants area first.
+        </div>
+        <?php endif; ?>
         <form method="POST" action="<?= APP_URL ?>/index.php?page=backup&action=restore" enctype="multipart/form-data" id="restoreUploadForm">
             <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
             <input type="hidden" name="restore_source" value="upload">
@@ -620,33 +636,6 @@
     </div>
 </div>
 <?php endif; ?>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal fade modal-confirm" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-trash-can me-2"></i> Delete Backup</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this backup file?</p>
-                <p class="mb-0" style="font-weight: 600; color: #dc3545;" id="deleteFileName"></p>
-                <p class="mt-2 text-muted small">This action cannot be undone.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 10px;">Cancel</button>
-                <form method="POST" action="<?= APP_URL ?>/index.php?page=backup&action=delete" id="deleteForm">
-                    <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
-                    <input type="hidden" name="file" id="deleteFileInput">
-                    <button type="submit" class="btn btn-danger" style="border-radius: 10px;">
-                        <i class="fas fa-trash-can me-1"></i> Yes, Delete
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Restore Confirmation Modal (for upload) -->
 <div class="modal fade modal-confirm" id="restoreUploadModal" tabindex="-1">
@@ -706,28 +695,20 @@
 
 <script>
 // ==========================================
-// Delete confirmation
-// ==========================================
-function confirmDelete(filename) {
-    document.getElementById('deleteFileName').textContent = filename;
-    document.getElementById('deleteFileInput').value = filename;
-    new bootstrap.Modal(document.getElementById('deleteModal')).show();
-}
-
-// ==========================================
 // Restore from existing backup
 // ==========================================
 function confirmRestoreExisting(filename) {
-    document.getElementById('restoreExistingFileName').textContent = filename;
-    document.getElementById('restoreExistingFileInput').value = filename;
-    new bootstrap.Modal(document.getElementById('restoreExistingModal')).show();
-}
+    const filenameNode = document.getElementById('restoreExistingFileName');
+    const inputNode = document.getElementById('restoreExistingFileInput');
+    const modalNode = document.getElementById('restoreExistingModal');
+    if (!filenameNode || !inputNode || !modalNode) {
+        return;
+    }
 
-document.querySelectorAll('.js-delete-backup').forEach((button) => {
-    button.addEventListener('click', () => {
-        confirmDelete(button.dataset.backupFile || '');
-    });
-});
+    filenameNode.textContent = filename;
+    inputNode.value = filename;
+    new bootstrap.Modal(modalNode).show();
+}
 
 document.querySelectorAll('.js-restore-existing').forEach((button) => {
     button.addEventListener('click', () => {
@@ -743,6 +724,9 @@ function handleFileSelect(input) {
     const infoDiv = document.getElementById('selectedFileInfo');
     const nameSpan = document.getElementById('selectedFileName');
     const btn = document.getElementById('btnRestoreUpload');
+    if (!infoDiv || !nameSpan || !btn) {
+        return;
+    }
 
     if (file) {
         nameSpan.textContent = file.name + ' (' + formatSize(file.size) + ')';
@@ -766,12 +750,25 @@ function formatSize(bytes) {
 // Restore from upload
 // ==========================================
 function confirmRestoreUpload() {
-    new bootstrap.Modal(document.getElementById('restoreUploadModal')).show();
+    const modalNode = document.getElementById('restoreUploadModal');
+    if (!modalNode) {
+        return;
+    }
+    new bootstrap.Modal(modalNode).show();
 }
 
 function submitRestoreUpload() {
-    bootstrap.Modal.getInstance(document.getElementById('restoreUploadModal')).hide();
-    document.getElementById('restoreUploadForm').submit();
+    const modalNode = document.getElementById('restoreUploadModal');
+    const formNode = document.getElementById('restoreUploadForm');
+    if (!modalNode || !formNode) {
+        return;
+    }
+
+    const modal = bootstrap.Modal.getInstance(modalNode);
+    if (modal) {
+        modal.hide();
+    }
+    formNode.submit();
 }
 
 // ==========================================
@@ -779,37 +776,41 @@ function submitRestoreUpload() {
 // ==========================================
 const dropZone = document.getElementById('restoreDropZone');
 const fileInput = document.getElementById('restoreFileInput');
-
-['dragenter', 'dragover'].forEach(event => {
-    dropZone.addEventListener(event, function(e) {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
+if (dropZone && fileInput) {
+    ['dragenter', 'dragover'].forEach(event => {
+        dropZone.addEventListener(event, function(e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
     });
-});
 
-['dragleave', 'drop'].forEach(event => {
-    dropZone.addEventListener(event, function(e) {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
+    ['dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
     });
-});
 
-dropZone.addEventListener('drop', function(e) {
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-        fileInput.files = files;
-        handleFileSelect(fileInput);
-    }
-});
+    dropZone.addEventListener('drop', function(e) {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFileSelect(fileInput);
+        }
+    });
+}
 
 // ==========================================
 // Create backup loading state
 // ==========================================
-document.getElementById('createBackupForm').addEventListener('submit', function() {
-    const btn = document.getElementById('btnCreateBackup');
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Backup...';
-    btn.disabled = true;
-});
+const tenantBackupForm = document.getElementById('createBackupForm');
+if (tenantBackupForm) {
+    tenantBackupForm.addEventListener('submit', function() {
+        const btn = document.getElementById('btnCreateBackup');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Backup...';
+        btn.disabled = true;
+    });
+}
 
 // Full backup loading state (if button exists)
 const fullForm = document.getElementById('createFullBackupForm');

@@ -6,12 +6,8 @@
  * Supports percentage rollouts and plan-based gating.
  * 
  * Usage:
- *   if (FeatureFlag::isEnabled('ai_insights')) {
- *       // Show AI insights widget
- *   }
- *   
- *   if (FeatureFlag::isEnabled('bulk_import', $companyId)) {
- *       // Allow bulk import for this specific tenant
+ *   if (FeatureFlag::isEnabled('webhooks')) {
+ *       // Allow webhook dispatch for this tenant
  *   }
  */
 class FeatureFlag {
@@ -24,13 +20,8 @@ class FeatureFlag {
      * Override per-tenant via DB table `feature_flags`.
      */
     private static $defaults = [
-        'ai_insights'       => ['enabled' => true,   'plans' => ['starter', 'professional', 'enterprise']],
-        'bulk_import'       => ['enabled' => true,   'plans' => ['professional', 'enterprise']],
-        'multi_warehouse'   => ['enabled' => false,  'plans' => ['enterprise']],
-        'api_access'        => ['enabled' => true,   'plans' => ['professional', 'enterprise']],
         'webhooks'          => ['enabled' => true,   'plans' => ['professional', 'enterprise']],
         'advanced_reports'  => ['enabled' => true,   'plans' => ['professional', 'enterprise']],
-        'custom_fields'     => ['enabled' => false,  'plans' => ['enterprise']],
         'audit_trail'       => ['enabled' => true,   'plans' => ['starter', 'professional', 'enterprise']],
         'export_pdf'        => ['enabled' => true,   'plans' => ['starter', 'professional', 'enterprise']],
         'backup_restore'    => ['enabled' => true,   'plans' => ['professional', 'enterprise']],

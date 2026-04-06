@@ -1,4 +1,7 @@
 <?php $pageTitle = 'Edit Purchase: ' . Helper::escape($purchase['invoice_number']); ?>
+<?php $hasWarehouseFeature = !empty($hasWarehouseFeature); ?>
+<?php $warehouses = is_array($warehouses ?? null) ? $warehouses : []; ?>
+<div class="sales-entry-shell">
 <div class="page-header"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=purchases">Purchases</a></li><li class="breadcrumb-item active">Edit <?= Helper::escape($purchase['invoice_number']) ?></li></ol></nav></div>
 
 <div class="alert alert-info py-2 small"><i class="fas fa-info-circle me-1"></i>Editing will <strong>reverse old stock/balance</strong> and <strong>apply new values</strong> automatically.</div>
@@ -7,20 +10,28 @@
     <?= CSRF::field() ?>
     <div class="row g-3">
         <div class="col-lg-8">
-            <div class="card mb-3">
+            <div class="card mb-3 sales-entry-card">
                 <div class="card-header"><h6><i class="fas fa-info-circle me-2"></i>Purchase Details</h6></div>
                 <div class="card-body"><div class="row g-3">
                     <div class="col-md-4"><label class="form-label">Supplier <span class="text-danger">*</span></label>
                         <select name="supplier_id" class="form-select" required><option value="">Select Supplier</option>
                             <?php foreach ($suppliers as $s): ?><option value="<?= $s['id'] ?>" <?= $s['id'] == $purchase['supplier_id'] ? 'selected' : '' ?>><?= Helper::escape($s['name']) ?></option><?php endforeach; ?>
                         </select></div>
+                    <?php if ($hasWarehouseFeature): ?>
+                    <div class="col-md-4"><label class="form-label">Warehouse <span class="text-danger">*</span></label>
+                        <select name="warehouse_id" class="form-select" required>
+                            <option value="">Select Warehouse</option>
+                            <?php foreach ($warehouses as $warehouse): ?><option value="<?= (int)$warehouse['id'] ?>" <?= (int)($purchase['warehouse_id'] ?? 0) === (int)$warehouse['id'] ? 'selected' : '' ?>><?= Helper::escape($warehouse['name']) ?></option><?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
                     <div class="col-md-4"><label class="form-label">Date <span class="text-danger">*</span></label><input type="date" name="purchase_date" class="form-control" value="<?= $purchase['purchase_date'] ?>" required></div>
                     <div class="col-md-4"><label class="form-label">Reference No.</label><input type="text" name="reference_number" class="form-control" value="<?= Helper::escape($purchase['reference_number'] ?? '') ?>"></div>
                 </div></div>
             </div>
-            <div class="card mb-3">
+            <div class="card mb-3 sales-entry-card">
                 <div class="card-header"><h6><i class="fas fa-list me-2"></i>Items</h6><button type="button" class="btn btn-sm btn-primary" id="addItemBtn"><i class="fas fa-plus me-1"></i>Add Item</button></div>
-                <div class="card-body p-0"><div class="table-responsive"><table class="table mb-0" id="itemsTable">
+                <div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 sales-items-table" id="itemsTable">
                     <thead><tr><th style="width:30%">Product</th><th>Qty</th><th>Price</th><th>Discount</th><?php if((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])): ?><th>Tax %</th><?php endif; ?><th>Total</th><th></th></tr></thead>
                     <tbody id="itemsBody"></tbody>
                     <tfoot><tr><td colspan="<?= ((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])) ? 5 : 4 ?>" class="text-end fw-bold">Subtotal:</td><td class="fw-bold" id="subtotalDisplay">₹0.00</td><td></td></tr></tfoot>
@@ -28,21 +39,24 @@
             </div>
         </div>
         <div class="col-lg-4">
-            <div class="card mb-3">
+            <div class="sales-entry-summary">
+            <div class="card mb-3 sales-entry-summary-card">
                 <div class="card-header"><h6><i class="fas fa-calculator me-2"></i>Summary</h6></div>
                 <div class="card-body">
+                    <div class="sales-entry-summary-grid">
                     <div class="mb-2"><label class="form-label small">Discount</label><input type="number" name="discount_amount" class="form-control form-control-sm" step="0.01" value="<?= $purchase['discount_amount'] ?>" id="discountInput"></div>
                     <div class="mb-2"><label class="form-label small">Shipping</label><input type="number" name="shipping_cost" class="form-control form-control-sm" step="0.01" value="<?= $purchase['shipping_cost'] ?>" id="shippingInput"></div>
+                    </div>
                     <hr>
-                    <div class="d-flex justify-content-between mb-2"><span>Subtotal</span><span id="summarySubtotal">₹0.00</span></div>
-                    <div class="d-flex justify-content-between mb-2"><span>Tax</span><span id="summaryTax">₹0.00</span></div>
-                    <div class="d-flex justify-content-between mb-2"><span>Discount</span><span id="summaryDiscount">-₹0.00</span></div>
-                    <div class="d-flex justify-content-between mb-2"><span>Shipping</span><span id="summaryShipping">₹0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Subtotal</span><span class="sales-entry-summary-value" id="summarySubtotal">₹0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Tax</span><span class="sales-entry-summary-value" id="summaryTax">₹0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Discount</span><span class="sales-entry-summary-value" id="summaryDiscount">-₹0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Shipping</span><span class="sales-entry-summary-value" id="summaryShipping">₹0.00</span></div>
                     <hr>
-                    <div class="d-flex justify-content-between mb-3 fs-5 fw-bold"><span>Grand Total</span><span id="summaryGrand" class="text-primary">₹0.00</span></div>
+                    <div class="sales-entry-summary-line sales-entry-grand-total mb-3 fs-5 fw-bold"><span class="sales-entry-summary-label">Grand Total</span><span class="sales-entry-summary-value text-primary" id="summaryGrand">₹0.00</span></div>
                 </div>
             </div>
-            <div class="card mb-3">
+            <div class="card mb-3 sales-entry-summary-card">
                 <div class="card-header"><h6><i class="fas fa-money-bill me-2"></i>Payment</h6></div>
                 <div class="card-body">
                     <div class="mb-2"><label class="form-label small">Paid Amount</label><input type="number" name="paid_amount" class="form-control" step="0.01" value="<?= $purchase['paid_amount'] ?>" id="paidInput"></div>
@@ -51,9 +65,11 @@
             </div>
             <button type="submit" class="btn btn-warning w-100 btn-lg"><i class="fas fa-save me-2"></i>Update Purchase</button>
             <a href="<?= APP_URL ?>/index.php?page=purchases&action=view_purchase&id=<?= $purchase['id'] ?>" class="btn btn-outline-secondary w-100 mt-2">Cancel</a>
+            </div>
         </div>
     </div>
 </form>
+</div>
 
 <?php
 $existingItems = json_encode(array_map(function($item) {
@@ -191,9 +207,6 @@ existingItems.forEach(item => addItemRow(item));
 if (existingItems.length === 0) addItemRow();
 ";
 ?>
-
-
-
 
 
 

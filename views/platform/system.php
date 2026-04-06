@@ -1,4 +1,5 @@
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
+<div class="platform-page-shell">
+<div class="d-sm-flex align-items-center justify-content-between mb-4 page-header">
     <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-terminal text-dark me-2"></i> System Diagnostics</h1>
 </div>
 
@@ -10,7 +11,8 @@
                 <h6 class="m-0 font-weight-bold text-dark"><i class="fas fa-memory me-2"></i> Global Health Vector</h6>
             </div>
             <div class="card-body">
-                <table class="table table-borderless table-sm">
+                <div class="table-responsive">
+                <table class="table table-borderless table-sm platform-table">
                     <tr><td class="text-muted fw-bold">PHP Version</td><td class="text-end"><?php echo htmlspecialchars($sysHealth['php']); ?></td></tr>
                     <tr><td class="text-muted fw-bold">OPCache Core</td><td class="text-end"><span class="badge bg-<?php echo $sysHealth['opcache'] === 'Enabled' ? 'success' : 'danger'; ?>"><?php echo htmlspecialchars($sysHealth['opcache']); ?></span></td></tr>
                     <tr><td class="text-muted fw-bold">RAM Allocation Limit</td><td class="text-end"><?php echo ini_get('memory_limit'); ?></td></tr>
@@ -18,6 +20,7 @@
                     <tr><td class="text-muted fw-bold">Redis Connection</td><td class="text-end"><span class="badge bg-<?php echo $sysHealth['redis'] === 'Connected' ? 'success' : 'danger'; ?>"><?php echo htmlspecialchars($sysHealth['redis']); ?></span></td></tr>
                     <tr><td class="text-muted fw-bold">Disk Free Volume</td><td class="text-end"><?php echo htmlspecialchars($sysHealth['disk']); ?></td></tr>
                 </table>
+                </div>
             </div>
         </div>
     </div>
@@ -67,4 +70,5 @@
             <?php endif; ?>
         </div>
     </div>
+</div>
 </div>

@@ -15,6 +15,27 @@ class SalesController extends Controller {
      */
     private static $salesColumnMap = null;
 
+    private function warehouseFeatureEnabled(): bool {
+        return !Session::isSuperAdmin()
+            && Tenant::id() !== null
+            && Tenant::canUse('multi_warehouse');
+    }
+
+    private function validatedWarehouseId(array $warehouses, string $field = 'warehouse_id'): ?int {
+        if (!$this->warehouseFeatureEnabled()) {
+            return null;
+        }
+
+        $selected = (int)$this->post($field, 0);
+        foreach ($warehouses as $warehouse) {
+            if ((int)$warehouse['id'] === $selected) {
+                return $selected;
+            }
+        }
+
+        throw new \RuntimeException('Please select a valid warehouse.');
+    }
+
     public function index() {
         $this->requirePermission('sales.view');
         $sales = (new SalesModel())->getAllWithCustomer(
@@ -43,6 +64,7 @@ class SalesController extends Controller {
             $settingsModel = new SettingsModel();
             $invoiceNumber = $settingsModel->getNextNumber('invoice');
             $settings = $settingsModel->getSettings();
+            $warehouseOptions = $this->warehouseFeatureEnabled() ? (new SalesModel())->activeWarehouses() : [];
             $isTaxEnabled = !isset($settings['enable_tax']) || !empty($settings['enable_tax']);
             $isGstEnabled = !isset($settings['enable_gst']) || !empty($settings['enable_gst']);
             $allowTax = $isTaxEnabled && $isGstEnabled;
@@ -169,23 +191,30 @@ class SalesController extends Controller {
             if ($paidAmount >= $grandTotal) $paymentStatus = 'paid';
             elseif ($paidAmount > 0) $paymentStatus = 'partial';
 
-            $saleData = [
-                'invoice_number'  => $invoiceNumber,
-                'customer_id'     => $customerId,
-                'sale_date'       => $saleDate,
-                'reference_number'=> $this->sanitize($this->post('reference_number')),
-                'subtotal'        => $subtotal,
-                'discount_amount' => $discountAmount,
-                'tax_amount'      => $totalTax,
-                'shipping_cost'   => $shippingCost,
-                'round_off'       => $roundOff,
-                'grand_total'     => $grandTotal,
-                'paid_amount'     => $paidAmount,
-                'due_amount'      => $dueAmount,
-                'payment_status'  => $paymentStatus,
-                'status'          => $this->post('status', 'completed'),
-                'note'            => $this->sanitize($this->post('note')),
-            ];
+            try {
+                $saleData = [
+                    'invoice_number'  => $invoiceNumber,
+                    'customer_id'     => $customerId,
+                    'warehouse_id'    => $this->warehouseFeatureEnabled() ? $this->validatedWarehouseId($warehouseOptions) : null,
+                    'sale_date'       => $saleDate,
+                    'reference_number'=> $this->sanitize($this->post('reference_number')),
+                    'subtotal'        => $subtotal,
+                    'discount_amount' => $discountAmount,
+                    'tax_amount'      => $totalTax,
+                    'shipping_cost'   => $shippingCost,
+                    'round_off'       => $roundOff,
+                    'grand_total'     => $grandTotal,
+                    'paid_amount'     => $paidAmount,
+                    'due_amount'      => $dueAmount,
+                    'payment_status'  => $paymentStatus,
+                    'status'          => $this->post('status', 'completed'),
+                    'note'            => $this->sanitize($this->post('note')),
+                ];
+            } catch (\RuntimeException $e) {
+                $this->setFlash('error', $e->getMessage());
+                $this->redirect('index.php?page=sales&action=create');
+                return;
+            }
             $saleData = $this->appendOptionalSaleFields($saleData, [
                 'freight_charge' => $freightCharge,
                 'loading_charge' => $loadingCharge,
@@ -230,6 +259,8 @@ class SalesController extends Controller {
             'pageTitle' => 'New Sale',
             'customers' => $customers,
             'settings'  => $settings,
+            'warehouses' => $this->warehouseFeatureEnabled() ? (new SalesModel())->activeWarehouses() : [],
+            'hasWarehouseFeature' => $this->warehouseFeatureEnabled(),
         ]);
     }
 
@@ -247,6 +278,7 @@ class SalesController extends Controller {
 
         if ($this->isPost()) {
             $this->validateCSRF();
+            $warehouseOptions = $this->warehouseFeatureEnabled() ? (new SalesModel())->activeWarehouses() : [];
             $items = [];
             $subtotal = 0;
             $totalTax = 0;
@@ -354,21 +386,28 @@ class SalesController extends Controller {
             $paymentStatus  = $paidAmount >= $grandTotal ? 'paid' : ($paidAmount > 0 ? 'partial' : 'unpaid');
             $gstType = $this->resolveSaleGstType($customerId, (string)$this->post('gst_type', 'auto'), $settings);
 
-            $saleData = [
-                'customer_id'     => $customerId,
-                'sale_date'       => $saleDate,
-                'reference_number'=> $this->sanitize($this->post('reference_number')),
-                'subtotal'        => $subtotal,
-                'discount_amount' => $discountAmount,
-                'tax_amount'      => $totalTax,
-                'shipping_cost'   => $shippingCost,
-                'round_off'       => $roundOff,
-                'grand_total'     => $grandTotal,
-                'paid_amount'     => $paidAmount,
-                'due_amount'      => $dueAmount,
-                'payment_status'  => $paymentStatus,
-                'note'            => $this->sanitize($this->post('note')),
-            ];
+            try {
+                $saleData = [
+                    'customer_id'     => $customerId,
+                    'warehouse_id'    => $this->warehouseFeatureEnabled() ? $this->validatedWarehouseId($warehouseOptions) : null,
+                    'sale_date'       => $saleDate,
+                    'reference_number'=> $this->sanitize($this->post('reference_number')),
+                    'subtotal'        => $subtotal,
+                    'discount_amount' => $discountAmount,
+                    'tax_amount'      => $totalTax,
+                    'shipping_cost'   => $shippingCost,
+                    'round_off'       => $roundOff,
+                    'grand_total'     => $grandTotal,
+                    'paid_amount'     => $paidAmount,
+                    'due_amount'      => $dueAmount,
+                    'payment_status'  => $paymentStatus,
+                    'note'            => $this->sanitize($this->post('note')),
+                ];
+            } catch (\RuntimeException $e) {
+                $this->setFlash('error', $e->getMessage());
+                $this->redirect('index.php?page=sales&action=edit&id=' . $id);
+                return;
+            }
             $saleData = $this->appendOptionalSaleFields($saleData, [
                 'freight_charge' => $freightCharge,
                 'loading_charge' => $loadingCharge,
@@ -394,6 +433,8 @@ class SalesController extends Controller {
             'sale'      => $sale,
             'customers' => $customers,
             'settings'  => $settings,
+            'warehouses' => $this->warehouseFeatureEnabled() ? (new SalesModel())->activeWarehouses() : [],
+            'hasWarehouseFeature' => $this->warehouseFeatureEnabled(),
         ]);
     }
 
@@ -410,6 +451,7 @@ class SalesController extends Controller {
             'sale' => $sale,
             'company' => $company,
             'returnSummary' => $returnSummary,
+            'warehouseName' => $sale['warehouse_name'] ?? null,
         ]);
     }
 
@@ -529,7 +571,6 @@ class SalesController extends Controller {
         return !empty(self::$salesColumnMap[$column]);
     }
 }
-
 
 
 

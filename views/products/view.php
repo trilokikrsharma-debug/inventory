@@ -1,4 +1,6 @@
 <?php $pageTitle = 'Product Details'; ?>
+<?php $hasWarehouseFeature = !empty($hasWarehouseFeature); ?>
+<?php $warehouseBreakdown = is_array($warehouseBreakdown ?? null) ? $warehouseBreakdown : []; ?>
 <div class="page-header">
     <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=products">Products</a></li><li class="breadcrumb-item active"><?= Helper::escape($product['name']) ?></li></ol></nav>
     <a href="<?= APP_URL ?>/index.php?page=products&action=edit&id=<?= $product['id'] ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit me-1"></i>Edit</a>
@@ -36,6 +38,54 @@
         </div>
     </div>
     <div class="col-lg-8">
+        <?php if (!empty($customFields)): ?>
+        <div class="card mb-3">
+            <div class="card-header"><h6><i class="fas fa-brackets-curly me-2"></i>Custom Fields</h6></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <?php foreach ($customFields as $key => $value): ?>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="text-muted small"><?= Helper::escape($key) ?></div>
+                            <div class="fw-semibold"><?= Helper::escape(is_bool($value) ? ($value ? 'Yes' : 'No') : ($value === null ? '-' : (string)$value)) ?></div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+        <?php if ($hasWarehouseFeature && !empty($warehouseBreakdown)): ?>
+        <div class="card mb-3">
+            <div class="card-header"><h6><i class="fas fa-warehouse me-2"></i>Warehouse Distribution</h6></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Warehouse</th><th>Location</th><th class="text-end">Qty</th></tr></thead>
+                        <tbody>
+                        <?php foreach ($warehouseBreakdown as $warehouse): ?>
+                        <tr>
+                            <td>
+                                <div class="fw-semibold"><?= Helper::escape($warehouse['name']) ?></div>
+                                <?php if (!empty($warehouse['code'])): ?><div class="small text-muted"><?= Helper::escape($warehouse['code']) ?></div><?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if (!empty($warehouse['location'])): ?>
+                                    <?= Helper::escape($warehouse['location']) ?>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                                <?php if (!empty($warehouse['is_default'])): ?><span class="badge bg-primary-subtle text-primary ms-2">Default</span><?php endif; ?>
+                            </td>
+                            <td class="text-end fw-bold"><?= Helper::formatQty($warehouse['quantity']) ?> <?= $product['unit_short'] ?? '' ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
         <div class="card">
             <div class="card-header"><h6><i class="fas fa-history me-2"></i>Stock History</h6></div>
             <div class="card-body p-0">

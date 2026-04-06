@@ -100,6 +100,8 @@
                                 type="button"
                                 class="btn btn-sm btn-outline-info js-reset-user"
                                 title="Reset Password"
+                                data-bs-toggle="modal"
+                                data-bs-target="#resetPasswordModal"
                                 data-user-id="<?= (int)$u['id'] ?>"
                                 data-user-name="<?= htmlspecialchars((string)$u['full_name'], ENT_QUOTES, 'UTF-8') ?>">
                                 <i class="fas fa-key"></i>
@@ -149,7 +151,15 @@
                     <p class="small text-muted">Resetting password for: <strong id="resetUserName"></strong></p>
                     <div class="mb-3">
                         <label class="form-label">New Password <span class="text-danger">*</span></label>
-                        <input type="password" name="new_password" class="form-control" placeholder="Min 6 chars" required minlength="6" autocomplete="new-password">
+                        <input
+                            type="password"
+                            name="new_password"
+                            class="form-control"
+                            placeholder="Minimum <?= (int)(defined('PASSWORD_MIN_LENGTH') ? PASSWORD_MIN_LENGTH : 8) ?> chars"
+                            required
+                            minlength="<?= (int)(defined('PASSWORD_MIN_LENGTH') ? PASSWORD_MIN_LENGTH : 8) ?>"
+                            autocomplete="new-password">
+                        <div class="form-text">Use at least <?= (int)(defined('PASSWORD_MIN_LENGTH') ? PASSWORD_MIN_LENGTH : 8) ?> characters, including 1 uppercase letter and 1 number.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -160,18 +170,17 @@
         </div>
     </div>
 </div>
-<script>
-function openResetModal(id, name) {
-    document.getElementById('resetUserId').value = id;
-    document.getElementById('resetUserName').textContent = name;
-    new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
-}
+<script nonce="<?= $cspNonce ?? '' ?>">
+const resetPasswordModal = document.getElementById('resetPasswordModal');
+if (resetPasswordModal) {
+    resetPasswordModal.addEventListener('show.bs.modal', (event) => {
+        const trigger = event.relatedTarget;
+        if (!trigger) {
+            return;
+        }
 
-document.querySelectorAll('.js-reset-user').forEach((button) => {
-    button.addEventListener('click', () => {
-        const id = Number(button.dataset.userId || 0);
-        const name = button.dataset.userName || '';
-        openResetModal(id, name);
+        document.getElementById('resetUserId').value = Number(trigger.dataset.userId || 0);
+        document.getElementById('resetUserName').textContent = trigger.dataset.userName || '';
     });
-});
+}
 </script>

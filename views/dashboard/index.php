@@ -160,6 +160,8 @@
     </div>
 </div>
 
+<?php $hasInsightsFeature = Tenant::id() !== null && (Session::isSuperAdmin() || Tenant::canUse('ai_insights')); ?>
+<?php if ($hasInsightsFeature): ?>
 <!-- AI Business Insights -->
 <div class="row g-3 mt-3">
     <div class="col-12">
@@ -347,6 +349,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+<?php endif; ?>
 
 <?php $inlineScript = "
 document.addEventListener('DOMContentLoaded', function () {
@@ -438,4 +441,3 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 "; ?>
-

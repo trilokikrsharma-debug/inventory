@@ -18,13 +18,16 @@ class PaymentModel extends Model {
         $offset = ($page - 1) * $perPage;
         $params = [];
         $where = ["p.deleted_at IS NULL"];
-        $partyJoin = "LEFT JOIN customers c ON p.customer_id = c.id LEFT JOIN suppliers s ON p.supplier_id = s.id";
+        $partyJoin = "LEFT JOIN customers c ON p.customer_id = c.id
+            LEFT JOIN suppliers s ON p.supplier_id = s.id
+            LEFT JOIN hr_payroll_items hpi ON p.payroll_item_id = hpi.id AND hpi.company_id = p.company_id
+            LEFT JOIN hr_employees he ON hpi.employee_id = he.id AND he.company_id = p.company_id";
         if (Tenant::id() !== null) { $where[] = "p.company_id = ?"; $params[] = Tenant::id(); }
         if ($type) { $where[] = "p.type = ?"; $params[] = $type; }
         if ($search) {
-            $where[] = "(p.payment_number LIKE ? OR c.name LIKE ? OR s.name LIKE ?)";
+            $where[] = "(p.payment_number LIKE ? OR c.name LIKE ? OR s.name LIKE ? OR he.full_name LIKE ? OR he.employee_code LIKE ?)";
             $t = "%{$search}%";
-            $params = array_merge($params, [$t, $t, $t]);
+            $params = array_merge($params, [$t, $t, $t, $t, $t]);
         }
         if ($fromDate) { $where[] = "p.payment_date >= ?"; $params[] = $fromDate; }
         if ($toDate) { $where[] = "p.payment_date <= ?"; $params[] = $toDate; }
@@ -45,6 +48,7 @@ class PaymentModel extends Model {
                 p.supplier_id,
                 p.sale_id,
                 p.purchase_id,
+                p.payroll_item_id,
                 p.amount,
                 p.payment_method,
                 p.payment_date,
@@ -54,7 +58,9 @@ class PaymentModel extends Model {
                 p.created_by,
                 p.created_at,
                 c.name as customer_name,
-                s.name as supplier_name
+                s.name as supplier_name,
+                he.full_name AS payroll_employee_name,
+                he.employee_code AS payroll_employee_code
              FROM {$this->table} p
              {$partyJoin}
              WHERE {$whereClause}
@@ -161,7 +167,7 @@ class PaymentModel extends Model {
         $where = ["p.id = ?", "p.deleted_at IS NULL"];
         $params = [$id];
         if (Tenant::id() !== null) { $where[] = "p.company_id = ?"; $params[] = Tenant::id(); }
-        return $this->db->query(
+        $payment = $this->db->query(
             "SELECT
                 p.id,
                 p.payment_number,
@@ -170,6 +176,7 @@ class PaymentModel extends Model {
                 p.supplier_id,
                 p.sale_id,
                 p.purchase_id,
+                p.payroll_item_id,
                 p.amount,
                 p.payment_method,
                 p.payment_date,
@@ -182,10 +189,29 @@ class PaymentModel extends Model {
                 c.phone as customer_phone,
                 s.name as supplier_name,
                 s.phone as supplier_phone,
-                u.full_name as created_by_name
-             FROM {$this->table} p LEFT JOIN customers c ON p.customer_id = c.id LEFT JOIN suppliers s ON p.supplier_id = s.id LEFT JOIN users u ON p.created_by = u.id
+                u.full_name as created_by_name,
+                he.full_name AS payroll_employee_name,
+                he.employee_code AS payroll_employee_code
+             FROM {$this->table} p
+             LEFT JOIN customers c ON p.customer_id = c.id
+             LEFT JOIN suppliers s ON p.supplier_id = s.id
+             LEFT JOIN users u ON p.created_by = u.id
+             LEFT JOIN hr_payroll_items hpi ON p.payroll_item_id = hpi.id AND hpi.company_id = p.company_id
+             LEFT JOIN hr_employees he ON hpi.employee_id = he.id AND he.company_id = p.company_id
              WHERE " . implode(' AND ', $where), $params
         )->fetch();
+
+        if (!$payment) {
+            return null;
+        }
+
+        if (!empty($payment['payroll_item_id'])) {
+            $payment['journal_entries'] = $this->getPayrollJournalEntries((int)$payment['id']);
+        } else {
+            $payment['journal_entries'] = [];
+        }
+
+        return $payment;
     }
 
     public function getSummary($type = '', $period = 'all') {
@@ -210,6 +236,29 @@ class PaymentModel extends Model {
             $payment = $this->find($id);
             if (!$payment) throw new Exception('Payment not found.');
             $this->delete($id);
+            if (!empty($payment['payroll_item_id'])) {
+                $db->query(
+                    "DELETE FROM payroll_payment_journal_entries
+                     WHERE company_id = ?
+                       AND payment_id = ?",
+                    [Tenant::require(), (int)$payment['id']]
+                );
+                $db->query(
+                    "UPDATE hr_payroll_items
+                     SET payment_status = 'pending',
+                         paid_at = NULL,
+                         payroll_payment_id = NULL,
+                         updated_at = NOW()
+                     WHERE company_id = ?
+                       AND id = ?",
+                    [Tenant::require(), (int)$payment['payroll_item_id']]
+                );
+                $payroll = new HrPayroll();
+                $item = $payroll->getItemWithRun((int)$payment['payroll_item_id']);
+                if ($item) {
+                    $payroll->refreshRunPaymentStatus((int)($item['payroll_run_id'] ?? 0), (int)(Session::get('user')['id'] ?? 0));
+                }
+            }
             if ($payment['type'] === 'receipt' && !empty($payment['customer_id'])) {
                 $this->recalculateCustomerSalesPublic((int)$payment['customer_id']);
                 (new CustomerModel())->recalculateBalance((int)$payment['customer_id']);
@@ -284,5 +333,90 @@ class PaymentModel extends Model {
             $remaining -= $apply;
             if ($remaining < 0) $remaining = 0;
         }
+    }
+
+    public function createPayrollPayout(array $data, int $userId): int {
+        $settingsModel = new SettingsModel();
+        $paymentData = [
+            'payment_number' => $settingsModel->getNextNumber('payment'),
+            'type' => 'payment',
+            'customer_id' => null,
+            'supplier_id' => null,
+            'sale_id' => null,
+            'purchase_id' => null,
+            'payroll_item_id' => (int)$data['payroll_item_id'],
+            'amount' => round((float)$data['amount'], 2),
+            'payment_method' => $data['payment_method'],
+            'payment_date' => $data['payment_date'],
+            'reference_number' => $data['reference_number'] ?? null,
+            'bank_name' => $data['bank_name'] ?? null,
+            'note' => $data['note'] ?? null,
+        ];
+
+        $paymentId = (int)$this->createPayment($paymentData, $userId);
+        $this->createPayrollJournalEntries($paymentId, [
+            'payroll_item_id' => (int)$data['payroll_item_id'],
+            'amount' => round((float)$data['amount'], 2),
+            'payment_method' => (string)$data['payment_method'],
+            'memo' => $data['note'] ?? null,
+        ], $userId);
+
+        return $paymentId;
+    }
+
+    private function createPayrollJournalEntries(int $paymentId, array $data, int $userId): void {
+        $companyId = Tenant::require();
+        $amount = round((float)($data['amount'] ?? 0), 2);
+        if ($paymentId <= 0 || $amount <= 0 || (int)($data['payroll_item_id'] ?? 0) <= 0) {
+            return;
+        }
+
+        $cashAccount = $this->payrollCashAccount((string)($data['payment_method'] ?? 'cash'));
+        $memo = trim((string)($data['memo'] ?? '')) ?: 'Payroll payout posted to finance register';
+
+        $entries = [
+            ['debit', 'EXP-PAYROLL', 'Payroll Expense', $amount, $memo],
+            ['credit', $cashAccount['code'], $cashAccount['name'], $amount, $memo],
+        ];
+
+        foreach ($entries as [$side, $code, $name, $entryAmount, $entryMemo]) {
+            $this->db->query(
+                "INSERT INTO payroll_payment_journal_entries
+                 (company_id, payment_id, payroll_item_id, entry_side, account_code, account_name, amount, memo, created_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [
+                    $companyId,
+                    $paymentId,
+                    (int)$data['payroll_item_id'],
+                    $side,
+                    $code,
+                    $name,
+                    $entryAmount,
+                    $entryMemo,
+                    $userId,
+                ]
+            );
+        }
+    }
+
+    private function payrollCashAccount(string $paymentMethod): array {
+        return match ($paymentMethod) {
+            'bank' => ['code' => 'BANK-MAIN', 'name' => 'Bank Account'],
+            'online' => ['code' => 'BANK-ONLINE', 'name' => 'Online Settlement Account'],
+            'cheque' => ['code' => 'BANK-CHEQUE', 'name' => 'Cheque Clearing Account'],
+            'other' => ['code' => 'MISC-PAYOUT', 'name' => 'Misc Payroll Clearing'],
+            default => ['code' => 'CASH-ONHAND', 'name' => 'Cash on Hand'],
+        };
+    }
+
+    private function getPayrollJournalEntries(int $paymentId): array {
+        return $this->db->query(
+            "SELECT entry_side, account_code, account_name, amount, memo, created_at
+             FROM payroll_payment_journal_entries
+             WHERE company_id = ?
+               AND payment_id = ?
+             ORDER BY id ASC",
+            [Tenant::require(), $paymentId]
+        )->fetchAll();
     }
 }

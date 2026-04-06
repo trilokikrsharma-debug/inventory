@@ -1,4 +1,8 @@
 <?php $pageTitle = 'Edit Product'; ?>
+<?php $customFieldsPretty = (string)($customFieldsPretty ?? ''); ?>
+<?php $hasCustomFields = Session::isSuperAdmin() || Tenant::canUse('custom_fields'); ?>
+<?php $hasWarehouseFeature = !empty($hasWarehouseFeature); ?>
+<?php $warehouseBreakdown = is_array($warehouseBreakdown ?? null) ? $warehouseBreakdown : []; ?>
 <div class="page-header">
     <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=products">Products</a></li><li class="breadcrumb-item active">Edit</li></ol></nav>
 </div>
@@ -57,6 +61,13 @@
                             <label class="form-label">Description</label>
                             <textarea name="description" class="form-control" rows="3"><?= Helper::escape($product['description'] ?? '') ?></textarea>
                         </div>
+                        <?php if ($hasCustomFields): ?>
+                        <div class="col-12">
+                            <label class="form-label">Custom Fields (JSON)</label>
+                            <textarea name="custom_fields_json" class="form-control font-monospace" rows="6" placeholder='{"Shelf":"A-12","Internal Code":"P-001"}'><?= Helper::escape($customFieldsPretty) ?></textarea>
+                            <div class="form-text">Optional JSON object for extra product metadata.</div>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -76,6 +87,32 @@
                 <div class="card-body">
                     <div class="mb-3"><label class="form-label">Current Stock</label><input type="text" class="form-control" value="<?= Helper::formatQty($product['current_stock']) ?>" disabled></div>
                     <div class="mb-3"><label class="form-label">Low Stock Alert</label><input type="number" name="low_stock_alert" class="form-control" value="<?= $product['low_stock_alert'] ?? '' ?>"></div>
+                    <?php if ($hasWarehouseFeature && !empty($warehouseBreakdown)): ?>
+                    <div class="border rounded p-3 bg-light-subtle">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="fw-semibold">Warehouse Allocation</div>
+                            <a href="<?= APP_URL ?>/index.php?page=warehouses" class="small text-decoration-none">Manage Warehouses</a>
+                        </div>
+                        <div class="small text-muted mb-3">Adjust per-warehouse stock. Product total stock will sync automatically.</div>
+                        <?php foreach ($warehouseBreakdown as $warehouse): ?>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">
+                                <?= Helper::escape($warehouse['name']) ?>
+                                <?php if (!empty($warehouse['is_default'])): ?><span class="badge bg-primary-subtle text-primary ms-1">Default</span><?php endif; ?>
+                            </label>
+                            <input
+                                type="number"
+                                name="warehouse_stock[<?= (int)$warehouse['id'] ?>]"
+                                class="form-control"
+                                step="0.001"
+                                min="0"
+                                value="<?= Helper::escape((string)$warehouse['quantity']) ?>"
+                            >
+                            <?php if (!empty($warehouse['location'])): ?><div class="form-text"><?= Helper::escape($warehouse['location']) ?></div><?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="card mb-3">

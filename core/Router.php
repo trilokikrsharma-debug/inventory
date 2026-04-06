@@ -15,6 +15,8 @@ class Router {
         'categories'     => 'CategoryController',
         'brands'         => 'BrandController',
         'units'          => 'UnitController',
+        'warehouses'     => 'WarehouseController',
+        'hr'             => 'HrController',
         'customers'      => 'CustomerController',
         'suppliers'      => 'SupplierController',
         'purchases'      => 'PurchaseController',
@@ -22,6 +24,7 @@ class Router {
         'payments'       => 'PaymentController',
         'reports'        => 'ReportController',
         'settings'       => 'SettingsController',
+        'api'            => 'ApiController',
         'invoice'        => 'InvoiceController',
         'profile'        => 'ProfileController',
         'users'          => 'UserController',
@@ -45,6 +48,8 @@ class Router {
         'privacy'        => 'LegalController',
         'terms'          => 'LegalController',
         'refund'         => 'LegalController',
+        'seo'            => 'SeoController',
+        'blog'           => 'BlogController',
     ];
 
     /**
@@ -174,6 +179,9 @@ class Router {
             '/api/v1/saas/webhook'                => ['SaaSBillingController', 'webhook'],
             '/api/v1/webhook/razorpay'            => ['SaaSBillingController', 'webhook'],
             '/api/v1/tenant/subscription/upgrade' => ['SaaSBillingController', 'upgrade'],
+            '/api/v1/tenant/products'             => ['ApiController', 'products'],
+            '/api/v1/tenant/customers'            => ['ApiController', 'customers'],
+            '/api/v1/tenant/summary'              => ['ApiController', 'summary'],
         ];
 
         foreach ($apiRoutes as $routePath => $handler) {
@@ -229,6 +237,21 @@ class Router {
             '/dashboard' => ['page' => 'dashboard', 'action' => 'index'],
             '/logout' => ['page' => 'logout', 'action' => 'index'],
             '/pricing' => ['page' => 'pricing', 'action' => 'index'],
+            '/privacy' => ['page' => 'privacy', 'action' => 'index'],
+            '/terms' => ['page' => 'terms', 'action' => 'index'],
+            '/refund' => ['page' => 'refund', 'action' => 'index'],
+            '/gst-billing-software' => ['page' => 'seo', 'action' => 'show', 'params' => ['slug' => 'gst-billing-software']],
+            '/inventory-management-software' => ['page' => 'seo', 'action' => 'show', 'params' => ['slug' => 'inventory-management-software']],
+            '/billing-software-for-small-business' => ['page' => 'seo', 'action' => 'show', 'params' => ['slug' => 'billing-software-for-small-business']],
+            '/blog' => ['page' => 'blog', 'action' => 'index'],
+            '/blog/how-to-choose-gst-billing-software' => ['page' => 'blog', 'action' => 'show', 'params' => ['slug' => 'how-to-choose-gst-billing-software']],
+            '/blog/inventory-management-tips-small-business-india' => ['page' => 'blog', 'action' => 'show', 'params' => ['slug' => 'inventory-management-tips-small-business-india']],
+            '/blog/billing-software-vs-accounting-software' => ['page' => 'blog', 'action' => 'show', 'params' => ['slug' => 'billing-software-vs-accounting-software']],
+            '/blog/best-billing-software-for-kirana-shop' => ['page' => 'blog', 'action' => 'show', 'params' => ['slug' => 'best-billing-software-for-kirana-shop']],
+            '/blog/wholesale-billing-software-features' => ['page' => 'blog', 'action' => 'show', 'params' => ['slug' => 'wholesale-billing-software-features']],
+            '/blog/retail-billing-software-checklist' => ['page' => 'blog', 'action' => 'show', 'params' => ['slug' => 'retail-billing-software-checklist']],
+            '/blog/invoice-software-for-small-business-india' => ['page' => 'blog', 'action' => 'show', 'params' => ['slug' => 'invoice-software-for-small-business-india']],
+            '/blog/stock-management-software-benefits' => ['page' => 'blog', 'action' => 'show', 'params' => ['slug' => 'stock-management-software-benefits']],
             '/health' => ['page' => 'health', 'action' => 'index'],
             '/demo' => ['page' => 'demo_login', 'action' => 'index'],
             '/demo-login' => ['page' => 'demo_login', 'action' => 'index'],
@@ -372,6 +395,7 @@ class Router {
             error_log('[AuditLog] Failed to log logout: ' . $e->getMessage());
         }
 
+        RememberMeService::revokeCurrentToken();
         Session::destroy();
         $this->redirect('/login');
     }

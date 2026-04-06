@@ -1,5 +1,13 @@
 <?php $pageTitle = 'Edit Sale: ' . Helper::escape($sale['invoice_number']); ?>
-<div class="page-header"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=sales">Sales</a></li><li class="breadcrumb-item active">Edit <?= Helper::escape($sale['invoice_number']) ?></li></ol></nav></div>
+<?php $hasWarehouseFeature = !empty($hasWarehouseFeature); ?>
+<?php $warehouses = is_array($warehouses ?? null) ? $warehouses : []; ?>
+<div class="sales-entry-shell">
+<div class="page-header">
+    <nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=sales">Sales</a></li><li class="breadcrumb-item active">Edit <?= Helper::escape($sale['invoice_number']) ?></li></ol></nav>
+    <div class="app-page-actions">
+        <a href="<?= APP_URL ?>/index.php?page=sales&action=view_sale&id=<?= $sale['id'] ?>" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Back to Sale</a>
+    </div>
+</div>
 
 <div class="alert alert-info py-2 small"><i class="fas fa-info-circle me-1"></i>Editing will <strong>reverse old stock/balance</strong> and <strong>apply new values</strong> automatically.</div>
 
@@ -7,20 +15,26 @@
     <?= CSRF::field() ?>
     <div class="row g-3">
         <div class="col-lg-8">
-            <div class="card mb-3">
+            <div class="card mb-3 sales-entry-card">
                 <div class="card-header"><h6><i class="fas fa-info-circle me-2"></i>Sale Details</h6></div>
-                <div class="card-body"><div class="row g-3">
-                    <div class="col-md-4"><label class="form-label">Customer <span class="text-danger">*</span></label>
+                <div class="card-body"><div class="row g-3 sales-entry-details-grid">
+                    <div class="col-md-6 col-xl-4"><label class="form-label">Customer <span class="text-danger">*</span></label>
                         <select name="customer_id" class="form-select" required><option value="">Select</option>
                             <?php foreach ($customers as $c): ?><option value="<?= $c['id'] ?>" <?= $c['id'] == $sale['customer_id'] ? 'selected' : '' ?>><?= Helper::escape($c['name']) ?></option><?php endforeach; ?>
                         </select></div>
-                    <div class="col-md-4"><label class="form-label">Date <span class="text-danger">*</span></label><input type="date" name="sale_date" class="form-control" value="<?= $sale['sale_date'] ?>" required></div>
-                    <div class="col-md-4"><label class="form-label">Reference</label><input type="text" name="reference_number" class="form-control" value="<?= Helper::escape($sale['reference_number'] ?? '') ?>"></div>
+                    <?php if ($hasWarehouseFeature): ?>
+                    <div class="col-md-6 col-xl-4"><label class="form-label">Warehouse <span class="text-danger">*</span></label>
+                        <select name="warehouse_id" class="form-select" required><option value="">Select</option>
+                            <?php foreach ($warehouses as $warehouse): ?><option value="<?= (int)$warehouse['id'] ?>" <?= (int)($sale['warehouse_id'] ?? 0) === (int)$warehouse['id'] ? 'selected' : '' ?>><?= Helper::escape($warehouse['name']) ?></option><?php endforeach; ?>
+                        </select></div>
+                    <?php endif; ?>
+                    <div class="col-md-6 col-xl-4"><label class="form-label">Date <span class="text-danger">*</span></label><input type="date" name="sale_date" class="form-control" value="<?= $sale['sale_date'] ?>" required></div>
+                    <div class="col-md-6 col-xl-4"><label class="form-label">Reference</label><input type="text" name="reference_number" class="form-control" value="<?= Helper::escape($sale['reference_number'] ?? '') ?>"></div>
                 </div></div>
             </div>
-            <div class="card mb-3">
+            <div class="card mb-3 sales-entry-card">
                 <div class="card-header"><h6><i class="fas fa-list me-2"></i>Items</h6><button type="button" class="btn btn-sm btn-primary" id="addItemBtn"><i class="fas fa-plus me-1"></i>Add</button></div>
-                <div class="card-body p-0"><div class="table-responsive"><table class="table mb-0" id="itemsTable">
+                <div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 sales-items-table" id="itemsTable">
                     <thead><tr><th style="width:30%">Product</th><th>Qty</th><th>Price</th><th>Disc</th>
                         <?php if((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])): ?>
                         <th>Tax%</th>
@@ -32,9 +46,11 @@
             </div>
         </div>
         <div class="col-lg-4">
-            <div class="card mb-3">
+            <div class="sales-entry-summary">
+            <div class="card mb-3 sales-entry-summary-card">
                 <div class="card-header"><h6><i class="fas fa-calculator me-2"></i>Summary</h6></div>
                 <div class="card-body">
+                    <div class="sales-entry-summary-grid">
                     <div class="mb-2"><label class="form-label small">Discount</label><input type="number" name="discount_amount" class="form-control form-control-sm" step="0.01" value="<?= $sale['discount_amount'] ?>" id="discountInput" min="0"></div>
                     <?php if ((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])): ?>
                     <div class="mb-2">
@@ -51,32 +67,37 @@
                     <div class="mb-2"><label class="form-label small">Loading</label><input type="number" name="loading_charge" class="form-control form-control-sm" step="0.01" value="<?= Helper::escape($sale['loading_charge'] ?? 0) ?>" id="loadingInput" min="0"></div>
                     <input type="hidden" name="shipping_cost" id="shippingInput" value="<?= Helper::escape($sale['shipping_cost'] ?? 0) ?>">
                     <div class="mb-2"><label class="form-label small">Round Off</label><input type="number" name="round_off" class="form-control form-control-sm" step="0.01" value="<?= $sale['round_off'] ?? 0 ?>" id="roundOffInput" <?= !empty($settings['auto_round_off_rupee']) ? 'readonly' : '' ?>><?php if (!empty($settings['auto_round_off_rupee'])): ?><small class="text-muted">Auto mode: nearest Rs. 1 is applied automatically.</small><?php endif; ?></div>
+                    </div>
                     <hr>
-                    <div class="d-flex justify-content-between mb-2"><span>Subtotal</span><span id="summarySubtotal">₹0.00</span></div>
-                    <div class="d-flex justify-content-between mb-2"><span>Tax</span><span id="summaryTax">Rs.0.00</span></div>
-                    <div class="d-flex justify-content-between mb-2" id="summaryCgstRow" style="display:none;"><span>CGST</span><span id="summaryCgst">Rs.0.00</span></div>
-                    <div class="d-flex justify-content-between mb-2" id="summarySgstRow" style="display:none;"><span>SGST</span><span id="summarySgst">Rs.0.00</span></div>
-                    <div class="d-flex justify-content-between mb-2" id="summaryIgstRow" style="display:none;"><span>IGST</span><span id="summaryIgst">Rs.0.00</span></div>
-                    <div class="d-flex justify-content-between mb-2"><span>Discount</span><span id="summaryDiscount">-Rs.0.00</span></div>
-                    <div class="d-flex justify-content-between mb-2"><span>Freight</span><span id="summaryFreight">Rs.0.00</span></div>
-                    <div class="d-flex justify-content-between mb-2"><span>Loading</span><span id="summaryLoading">Rs.0.00</span></div>
-                    <div class="d-flex justify-content-between mb-2"><span>Total Charges</span><span id="summaryShipping">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Subtotal</span><span class="sales-entry-summary-value" id="summarySubtotal">₹0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Tax</span><span class="sales-entry-summary-value" id="summaryTax">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2" id="summaryCgstRow" style="display:none;"><span class="sales-entry-summary-label">CGST</span><span class="sales-entry-summary-value" id="summaryCgst">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2" id="summarySgstRow" style="display:none;"><span class="sales-entry-summary-label">SGST</span><span class="sales-entry-summary-value" id="summarySgst">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2" id="summaryIgstRow" style="display:none;"><span class="sales-entry-summary-label">IGST</span><span class="sales-entry-summary-value" id="summaryIgst">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Discount</span><span class="sales-entry-summary-value" id="summaryDiscount">-Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Freight</span><span class="sales-entry-summary-value" id="summaryFreight">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Loading</span><span class="sales-entry-summary-value" id="summaryLoading">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Total Charges</span><span class="sales-entry-summary-value" id="summaryShipping">Rs.0.00</span></div>
                     <hr>
-                    <div class="d-flex justify-content-between mb-3 fs-5 fw-bold"><span>Grand Total</span><span id="summaryGrand" class="text-primary">₹0.00</span></div>
+                    <div class="sales-entry-summary-line sales-entry-grand-total mb-3 fs-5 fw-bold"><span class="sales-entry-summary-label">Grand Total</span><span class="sales-entry-summary-value text-primary" id="summaryGrand">₹0.00</span></div>
                 </div>
             </div>
-            <div class="card mb-3">
+            <div class="card mb-3 sales-entry-summary-card">
                 <div class="card-header"><h6><i class="fas fa-money-bill me-2"></i>Payment</h6></div>
                 <div class="card-body">
                     <div class="mb-2"><label class="form-label small">Paid</label><input type="number" name="paid_amount" class="form-control" step="0.01" value="<?= $sale['paid_amount'] ?>" id="paidInput" min="0"></div>
                     <div class="mb-2"><label class="form-label small">Note</label><textarea name="note" class="form-control form-control-sm" rows="2"><?= Helper::escape($sale['note'] ?? '') ?></textarea></div>
                 </div>
             </div>
-            <button type="submit" class="btn btn-warning w-100 btn-lg"><i class="fas fa-save me-2"></i>Update Sale</button>
-            <a href="<?= APP_URL ?>/index.php?page=sales&action=view_sale&id=<?= $sale['id'] ?>" class="btn btn-outline-secondary w-100 mt-2">Cancel</a>
+            <div class="sales-entry-summary-actions">
+                <button type="submit" class="btn btn-warning btn-lg"><i class="fas fa-save me-2"></i>Update Sale</button>
+                <a href="<?= APP_URL ?>/index.php?page=sales&action=view_sale&id=<?= $sale['id'] ?>" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+            </div>
         </div>
     </div>
 </form>
+</div>
 
 <?php
 // Encode existing items as JSON for JS prefill
@@ -153,7 +174,7 @@ function showDD(products, row, input) {
     
     products.forEach((p, idx) => {
         const d = document.createElement('div');
-        d.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:0.85rem;color:var(--body-color, #212529);';
+        d.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:0.85rem;color:var(--text-primary, #212529);';
         let mrpText = p.mrp ? ' | MRP: ₹' + p.mrp : '';
         const strong = document.createElement('strong');
         strong.textContent = p.name || '';
@@ -182,7 +203,7 @@ function showDD(products, row, input) {
     function updateSelection() {
         items.forEach((item, index) => {
             if (index === currentIndex) {
-                item.style.background = 'var(--hover-bg, #f0f0f0)';
+                item.style.background = 'var(--surface-soft, #f0f0f0)';
                 item.scrollIntoView({ block: 'nearest' });
             } else {
                 item.style.background = 'transparent';
@@ -295,4 +316,3 @@ existingItems.forEach(item => addItem(item));
 if (existingItems.length === 0) addItem();
 ";
 ?>
-

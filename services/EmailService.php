@@ -51,32 +51,8 @@ class EmailService {
      * Send password reset email.
      */
     public static function sendPasswordReset(int $userId, string $resetToken): int {
-        $db = Database::getInstance();
-        $user = $db->query("SELECT email, name FROM users WHERE id = ?", [$userId])->fetch(\PDO::FETCH_ASSOC);
-
-        if (!$user || empty($user['email'])) {
-            throw new \RuntimeException('User has no email address');
-        }
-
-        $resetUrl = APP_URL . '/index.php?page=auth&action=resetPassword&token=' . urlencode($resetToken);
-        $companyName = self::companyName();
-
-        $body = <<<HTML
-        <div style="font-family:sans-serif; max-width:500px; margin:0 auto; padding:20px;">
-            <h2 style="color:#4e73df;">{$companyName}</h2>
-            <p>Hi {$user['name']},</p>
-            <p>You requested a password reset. Click the button below:</p>
-            <p style="text-align:center; margin:30px 0;">
-                <a href="{$resetUrl}" 
-                   style="background:#4e73df; color:white; padding:12px 30px; text-decoration:none; border-radius:5px; display:inline-block;">
-                    Reset Password
-                </a>
-            </p>
-            <p style="color:#888; font-size:12px;">This link expires in 1 hour. If you didn't request this, ignore this email.</p>
-        </div>
-HTML;
-
-        return self::send($user['email'], "Password Reset — {$companyName}", $body);
+        Helper::securityLog('PASSWORD_RESET_EMAIL_BLOCKED', 'Password reset email was requested but no self-service reset flow is enabled.');
+        throw new \RuntimeException('Password reset email flow is disabled until a complete token-based reset implementation is added.');
     }
 
     /**

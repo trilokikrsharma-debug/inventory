@@ -4,7 +4,7 @@
  */
 class SupplierController extends Controller {
 
-    protected $allowedActions = ['index', 'create', 'edit', 'view_supplier', 'delete'];
+    protected $allowedActions = ['index', 'create', 'edit', 'view_supplier', 'delete', 'import', 'download_template'];
 
     public function index() {
         $this->requirePermission('suppliers.view');
@@ -12,6 +12,60 @@ class SupplierController extends Controller {
         $page = max(1, (int)$this->get('pg', 1));
         $suppliers = (new SupplierModel())->getAllPaginated($search, $page);
         $this->view('suppliers.index', ['pageTitle' => 'Suppliers', 'suppliers' => $suppliers, 'search' => $search]);
+    }
+
+    public function import() {
+        $this->requireFeature('bulk_import');
+        $this->requirePermission('suppliers.create');
+
+        $analysis = null;
+        $dryRun = true;
+        $service = new ContactImportService();
+
+        if ($this->isPost()) {
+            $this->validateCSRF();
+            $dryRun = $this->post('dry_run') === '1';
+
+            try {
+                $analysis = $service->analyzeUploadedFile('supplier', $_FILES['import_file'] ?? [], $service->buildContext('supplier'));
+                if (!$dryRun) {
+                    $validRows = (array)($analysis['valid_rows'] ?? []);
+                    $invalidCount = (int)($analysis['summary']['invalid_rows'] ?? 0);
+
+                    if ($invalidCount > 0) {
+                        $this->setFlash('error', 'Fix invalid rows before importing suppliers.');
+                    } elseif (empty($validRows)) {
+                        $this->setFlash('error', 'No valid rows were found to import.');
+                    } else {
+                        $imported = $this->persistImportedContacts($validRows);
+                        $this->setFlash('success', 'Imported ' . $imported . ' supplier(s) successfully.');
+                    }
+                }
+            } catch (\Throwable $e) {
+                $this->setFlash('error', $e->getMessage());
+            }
+        }
+
+        $this->view('shared.contact-import', [
+            'pageTitle' => 'Bulk Import Suppliers',
+            'entityLabel' => 'Suppliers',
+            'entityKey' => 'suppliers',
+            'templateAction' => 'download_template',
+            'analysis' => $analysis,
+            'dryRun' => $dryRun,
+        ]);
+    }
+
+    public function download_template() {
+        $this->requireFeature('bulk_import');
+        $this->requirePermission('suppliers.create');
+
+        $service = new ContactImportService();
+        $filename = 'supplier_import_template_' . date('Ymd_His') . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        echo $service->templateCsv('supplier');
+        exit;
     }
 
     public function create() {
@@ -137,5 +191,31 @@ class SupplierController extends Controller {
         $this->logActivity('Deleted supplier: ' . ($supplier['name'] ?? $id), 'suppliers', $id, 'Balance: ' . ($supplier['current_balance'] ?? 0));
         $this->setFlash('success', 'Supplier deleted.');
         $this->redirect('index.php?page=suppliers');
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     */
+    private function persistImportedContacts(array $rows): int {
+        $model = new SupplierModel();
+        $count = 0;
+        foreach ($rows as $row) {
+            $data = (array)($row['normalized'] ?? []);
+            $model->create([
+                'name' => $this->sanitize((string)($data['name'] ?? '')),
+                'email' => !empty($data['email']) ? $this->sanitize((string)$data['email']) : null,
+                'phone' => !empty($data['phone']) ? $this->sanitize((string)$data['phone']) : null,
+                'address' => $this->sanitize((string)($data['address'] ?? '')),
+                'city' => $this->sanitize((string)($data['city'] ?? '')),
+                'state' => $this->sanitize((string)($data['state'] ?? '')),
+                'zip' => $this->sanitize((string)($data['zip'] ?? '')),
+                'tax_number' => !empty($data['tax_number']) ? strtoupper($this->sanitize((string)$data['tax_number'])) : '',
+                'opening_balance' => (float)($data['opening_balance'] ?? 0),
+                'current_balance' => (float)($data['current_balance'] ?? 0),
+                'is_active' => !empty($data['is_active']) ? 1 : 0,
+            ]);
+            $count++;
+        }
+        return $count;
     }
 }

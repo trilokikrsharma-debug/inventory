@@ -44,6 +44,267 @@ class SaaSBillingHelper {
     }
 
     /**
+     * Convert plan feature keys into a consistent user-facing label.
+     */
+    public static function formatFeatureLabel(string $key): string {
+        $featureLabels = [
+            'inventory' => 'Inventory Management',
+            'invoicing' => 'GST Invoicing',
+            'multi_user' => 'Multi User',
+            'quotations' => 'Quotations',
+            'advanced_reports' => 'Advanced Reports',
+            'backup_restore' => 'Backup & Restore',
+            'backup' => 'Backup & Restore',
+            'webhooks' => 'Webhooks',
+            'basic_reports' => 'Basic Reports',
+            'customer_management' => 'Customer Management',
+            'payment_tracking' => 'Payment Tracking',
+            'sale_returns' => 'Sale Returns',
+            'audit_trail' => 'Audit Trail',
+            'export_pdf' => 'PDF Export',
+            'api' => 'API Access',
+            'bulk_import' => 'Bulk Import',
+            'ai_insights' => 'AI Insights',
+            'custom_fields' => 'Custom Fields',
+            'multi_warehouse' => 'Multi Warehouse',
+            'crm' => 'CRM Tools',
+            'hr' => 'HR Tools',
+        ];
+
+        $normalized = strtolower(trim($key));
+        $normalized = str_replace([' ', '-'], '_', $normalized);
+        $normalized = preg_replace('/[^a-z0-9_]/', '', $normalized) ?: '';
+        if ($normalized === '') {
+            return 'Feature';
+        }
+        if (isset($featureLabels[$normalized])) {
+            return $featureLabels[$normalized];
+        }
+        return ucwords(str_replace('_', ' ', $normalized));
+    }
+
+    public static function planLimitsSummary(array $plan): array {
+        $users = max(1, (int)($plan['max_users'] ?? 1));
+        $products = max(1, (int)($plan['max_products'] ?? 1));
+
+        return [
+            'users' => $users,
+            'products' => $products,
+            'users_label' => $users >= 1000000 ? 'Unlimited users' : $users . ' users',
+            'products_label' => $products >= 10000000 ? 'Unlimited products' : number_format($products) . ' products',
+        ];
+    }
+
+    /**
+     * Return enabled/disabled plan features for consistent rendering across views.
+     *
+     * @return array{enabled: array<int, string>, disabled: array<int, string>}
+     */
+    public static function extractPlanFeatures(array $plan, int $enabledLimit = 8, int $disabledLimit = 3): array {
+        $raw = $plan['features'] ?? null;
+        $decoded = null;
+        if (is_string($raw) && trim($raw) !== '') {
+            $decoded = json_decode($raw, true);
+        } elseif (is_array($raw)) {
+            $decoded = $raw;
+        }
+
+        $enabled = [];
+        $disabled = [];
+
+        if (is_array($decoded)) {
+            $isAssoc = array_keys($decoded) !== range(0, count($decoded) - 1);
+            if ($isAssoc) {
+                foreach ($decoded as $k => $v) {
+                    $label = self::formatFeatureLabel((string)$k);
+                    if ((bool)$v) {
+                        $enabled[] = $label;
+                    } else {
+                        $disabled[] = $label;
+                    }
+                }
+            } else {
+                foreach ($decoded as $k) {
+                    $enabled[] = self::formatFeatureLabel((string)$k);
+                }
+            }
+        }
+
+        if (empty($enabled)) {
+            $enabled = ['Inventory Management', 'GST Invoicing', 'Basic Reports'];
+        }
+
+        return [
+            'enabled' => array_slice(array_values(array_unique($enabled)), 0, max(0, $enabledLimit)),
+            'disabled' => array_slice(array_values(array_unique($disabled)), 0, max(0, $disabledLimit)),
+        ];
+    }
+
+    /**
+     * Evaluate whether a plan exposes a given feature key.
+     */
+    public static function planHasFeature(array $plan, string $feature): bool {
+        $feature = self::normalizeFeatureKey($feature);
+        if ($feature === '') {
+            return false;
+        }
+
+        $configured = self::extractConfiguredFeatureFlags($plan['features'] ?? null);
+        if (!empty($configured)) {
+            foreach (self::featureAliases($feature) as $alias) {
+                if (array_key_exists($alias, $configured)) {
+                    return (bool)$configured[$alias];
+                }
+            }
+        }
+
+        $slug = strtolower(trim((string)($plan['slug'] ?? $plan['name'] ?? 'starter')));
+        if (!in_array($slug, ['starter', 'professional', 'enterprise'], true)) {
+            $slug = 'starter';
+        }
+
+        $defaults = [
+            'starter' => [
+                'basic_reports', 'invoicing', 'inventory', 'customer_management',
+                'payment_tracking', 'audit_trail', 'export_pdf',
+            ],
+            'professional' => [
+                'basic_reports', 'invoicing', 'inventory', 'customer_management',
+                'payment_tracking', 'audit_trail', 'export_pdf', 'multi_user',
+                'quotations', 'advanced_reports', 'sale_returns', 'bulk_import', 'ai_insights', 'custom_fields', 'hr',
+            ],
+            'enterprise' => [
+                'basic_reports', 'invoicing', 'inventory', 'customer_management',
+                'payment_tracking', 'audit_trail', 'export_pdf', 'multi_user',
+                'quotations', 'advanced_reports', 'sale_returns', 'backup_restore', 'api', 'bulk_import', 'ai_insights', 'custom_fields', 'multi_warehouse', 'hr',
+            ],
+        ];
+
+        $allowed = $defaults[$slug] ?? [];
+        foreach (self::featureAliases($feature) as $alias) {
+            if (in_array($alias, $allowed, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Default tenant-admin permission set constrained by plan features.
+     *
+     * @return array<int, string>
+     */
+    public static function tenantAdminPermissionNames(array $plan): array {
+        $permissions = [
+            'dashboard.view',
+            'sales.view', 'sales.create', 'sales.edit', 'sales.delete',
+            'purchases.view', 'purchases.create', 'purchases.edit', 'purchases.delete',
+            'payments.view', 'payments.create', 'payments.delete',
+            'products.view', 'products.create', 'products.edit', 'products.delete',
+            'customers.view', 'customers.create', 'customers.edit', 'customers.delete',
+            'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete',
+            'catalog.manage',
+            'users.view', 'users.create', 'users.edit', 'users.delete',
+            'roles.manage',
+            'settings.manage',
+        ];
+
+        if (self::planHasFeature($plan, 'basic_reports') || self::planHasFeature($plan, 'advanced_reports')) {
+            $permissions[] = 'reports.view';
+        }
+
+        if (self::planHasFeature($plan, 'quotations')) {
+            array_push($permissions, 'quotations.view', 'quotations.create', 'quotations.convert', 'quotations.delete');
+        }
+
+        if (self::planHasFeature($plan, 'sale_returns')) {
+            array_push($permissions, 'returns.view', 'returns.create');
+        }
+
+        if (self::planHasFeature($plan, 'backup_restore')) {
+            $permissions[] = 'backup.manage';
+        }
+
+        return array_values(array_unique($permissions));
+    }
+
+    private static function normalizeFeatureKey(string $feature): string {
+        $normalized = strtolower(trim($feature));
+        $normalized = str_replace([' ', '-'], '_', $normalized);
+        return preg_replace('/[^a-z0-9_]/', '', $normalized) ?: '';
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private static function extractConfiguredFeatureFlags($raw): array {
+        if ($raw === null || $raw === '') {
+            return [];
+        }
+
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+        } elseif (is_array($raw)) {
+            $decoded = $raw;
+        } else {
+            $decoded = null;
+        }
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $isAssoc = array_keys($decoded) !== range(0, count($decoded) - 1);
+        $result = [];
+
+        if ($isAssoc) {
+            foreach ($decoded as $key => $enabled) {
+                $normalized = self::normalizeFeatureKey((string)$key);
+                if ($normalized === '') {
+                    continue;
+                }
+                $result[$normalized] = (bool)$enabled;
+            }
+            return $result;
+        }
+
+        foreach ($decoded as $item) {
+            $normalized = self::normalizeFeatureKey((string)$item);
+            if ($normalized === '') {
+                continue;
+            }
+            $result[$normalized] = true;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function featureAliases(string $feature): array {
+        $aliases = [
+            'api' => ['api', 'api_access'],
+            'api_access' => ['api_access', 'api'],
+            'backup' => ['backup', 'backup_restore'],
+            'backup_restore' => ['backup_restore', 'backup'],
+            'quotations' => ['quotations', 'quotation'],
+            'advanced_reports' => ['advanced_reports', 'reports_advanced'],
+            'basic_reports' => ['basic_reports', 'reports'],
+            'customer_management' => ['customer_management', 'customers', 'crm'],
+            'payment_tracking' => ['payment_tracking', 'payments'],
+            'multi_user' => ['multi_user', 'team_users', 'users'],
+            'multi_warehouse' => ['multi_warehouse', 'warehouse', 'warehouses'],
+            'invoicing' => ['invoicing', 'invoice', 'gst_invoicing'],
+            'hr' => ['hr'],
+            'sale_returns' => ['sale_returns', 'returns', 'sale_return'],
+        ];
+
+        return $aliases[$feature] ?? [$feature];
+    }
+
+    /**
      * Calculate discount amount from promo inputs.
      */
     public static function discountAmount(
@@ -168,4 +429,3 @@ class SaaSBillingHelper {
         return strtoupper($prefix) . '-' . date('YmdHis') . '-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
     }
 }
-

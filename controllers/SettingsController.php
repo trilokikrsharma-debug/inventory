@@ -26,19 +26,27 @@ class SettingsController extends Controller {
                 'tax_rate_nongst' => 'nullable|numeric|min:0|max:100',
                 'currency_symbol' => 'nullable|string|max:10',
                 'currency_code' => 'nullable|string|max:10',
+                'date_format' => 'nullable|string|max:20',
+                'timezone' => 'nullable|string|max:50',
                 'low_stock_threshold' => 'nullable|integer|min:0|max:100000',
                 'invoice_prefix' => 'nullable|string|max:20',
                 'purchase_prefix' => 'nullable|string|max:20',
                 'payment_prefix' => 'nullable|string|max:20',
                 'receipt_prefix' => 'nullable|string|max:20',
                 'invoice_title' => 'nullable|string|max:100',
+                'invoice_subtitle' => 'nullable|string|max:100',
                 'purchase_invoice_title' => 'nullable|string|max:100',
                 'invoice_footer_text' => 'nullable|string|max:255',
                 'invoice_terms' => 'nullable|string|max:1000',
                 'invoice_bank_details' => 'nullable|string|max:1000',
                 'invoice_signature_label' => 'nullable|string|max:100',
+                'invoice_notes_label' => 'nullable|string|max:100',
                 'auto_round_off_rupee' => 'nullable|boolean',
                 'show_hsn_on_invoice' => 'nullable|boolean',
+                'invoice_show_logo' => 'nullable|boolean',
+                'invoice_show_signature' => 'nullable|boolean',
+                'invoice_show_seal' => 'nullable|boolean',
+                'invoice_show_payment_status' => 'nullable|boolean',
             ]);
             if ($validation->fails()) {
                 $this->setFlash('error', $validation->firstError());
@@ -90,6 +98,8 @@ class SettingsController extends Controller {
                 // Currency
                 'currency_symbol'     => $this->sanitize($this->post('currency_symbol')),
                 'currency_code'       => $this->sanitize($this->post('currency_code')),
+                'date_format'         => $this->sanitize($this->post('date_format', 'd-m-Y')),
+                'timezone'            => $this->sanitize($this->post('timezone', 'Asia/Kolkata')),
                 'low_stock_threshold' => (int)$this->post('low_stock_threshold', 10),
 
                 // Prefixes
@@ -99,12 +109,18 @@ class SettingsController extends Controller {
                 'receipt_prefix'  => $this->sanitize($this->post('receipt_prefix')),
 
                 // Invoice Customization
-                'invoice_title'          => $this->sanitize($this->post('invoice_title', 'Tax Invoice')),
+                'invoice_title'          => $this->sanitize($this->post('invoice_title', $enableGst ? 'Tax Invoice' : 'Invoice')),
+                'invoice_subtitle'       => $this->sanitize($this->post('invoice_subtitle')),
                 'purchase_invoice_title' => $this->sanitize($this->post('purchase_invoice_title', 'Purchase Bill')),
                 'invoice_footer_text'    => $this->sanitize($this->post('invoice_footer_text')),
                 'invoice_terms'          => $this->sanitize($this->post('invoice_terms')),
                 'invoice_bank_details'   => $this->sanitize($this->post('invoice_bank_details')),
                 'invoice_signature_label'=> $this->sanitize($this->post('invoice_signature_label', 'Authorised Signatory')),
+                'invoice_notes_label'    => $this->sanitize($this->post('invoice_notes_label', 'Notes')),
+                'invoice_show_logo'      => $this->post('invoice_show_logo', 0) ? 1 : 0,
+                'invoice_show_signature' => $this->post('invoice_show_signature', 0) ? 1 : 0,
+                'invoice_show_seal'      => $this->post('invoice_show_seal', 0) ? 1 : 0,
+                'invoice_show_payment_status' => $this->post('invoice_show_payment_status', 0) ? 1 : 0,
                 'show_paid_due_on_invoice' => $this->post('show_paid_due_on_invoice', 0) ? 1 : 0,
                 'show_unit_on_invoice' => $this->post('show_unit_on_invoice', 0) ? 1 : 0,
                 'show_discount_on_invoice' => $this->post('show_discount_on_invoice', 0) ? 1 : 0,
@@ -117,6 +133,14 @@ class SettingsController extends Controller {
             if (!empty($_FILES['company_logo']['name'])) {
                 $r = Helper::uploadFile($_FILES['company_logo'], 'logo', ALLOWED_IMAGE_TYPES);
                 if ($r['success']) $data['company_logo'] = $r['filepath'];
+            }
+            if (!empty($_FILES['invoice_signature_image']['name'])) {
+                $r = Helper::uploadFile($_FILES['invoice_signature_image'], 'signature', ALLOWED_IMAGE_TYPES);
+                if ($r['success']) $data['invoice_signature_image'] = $r['filepath'];
+            }
+            if (!empty($_FILES['invoice_seal_image']['name'])) {
+                $r = Helper::uploadFile($_FILES['invoice_seal_image'], 'seal', ALLOWED_IMAGE_TYPES);
+                if ($r['success']) $data['invoice_seal_image'] = $r['filepath'];
             }
 
             (new SettingsModel())->updateSettings($data);

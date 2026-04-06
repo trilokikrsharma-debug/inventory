@@ -138,6 +138,15 @@ class WebhookDispatcher {
      * Deliver a webhook payload to the endpoint
      */
     private static function deliver(array $job): bool {
+        $url = trim((string)($job['url'] ?? ''));
+        if (!self::isAllowedWebhookUrl($url)) {
+            Logger::security('Webhook delivery blocked for unsafe target URL', [
+                'webhook_id' => $job['webhook_id'] ?? null,
+                'url' => $url,
+            ]);
+            return false;
+        }
+
         $payload = json_encode([
             'event'      => $job['event'],
             'data'       => $job['payload'],
@@ -158,7 +167,7 @@ class WebhookDispatcher {
             'User-Agent: InvenBill-Webhook/1.0',
         ];
 
-        $ch = curl_init($job['url']);
+        $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $payload,
@@ -194,6 +203,10 @@ class WebhookDispatcher {
      * Register a webhook for a tenant
      */
     public static function register(int $companyId, string $url, array $events = ['*']): array {
+        if (!self::isAllowedWebhookUrl($url)) {
+            throw new \InvalidArgumentException('Webhook URL must use HTTPS and cannot target localhost or private networks.');
+        }
+
         $secret = bin2hex(random_bytes(32));
         
         $db = Database::getInstance();
@@ -207,5 +220,51 @@ class WebhookDispatcher {
         ]);
 
         return ['id' => $db->lastInsertId(), 'secret' => $secret];
+    }
+
+    private static function isAllowedWebhookUrl(string $url): bool {
+        $url = trim($url);
+        if ($url === '') {
+            return false;
+        }
+
+        $parts = parse_url($url);
+        if (!is_array($parts)) {
+            return false;
+        }
+
+        $scheme = strtolower((string)($parts['scheme'] ?? ''));
+        $host = strtolower((string)($parts['host'] ?? ''));
+        if ($scheme !== 'https' || $host === '') {
+            return false;
+        }
+
+        if (in_array($host, ['localhost', '127.0.0.1', '::1'], true) || str_ends_with($host, '.local')) {
+            return false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return filter_var(
+                $host,
+                FILTER_VALIDATE_IP,
+                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+            ) !== false;
+        }
+
+        $resolved = gethostbynamel($host);
+        if ($resolved === false || $resolved === [$host]) {
+            return false;
+        }
+
+        foreach ($resolved as $ip) {
+            if (
+                filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false ||
+                filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false
+            ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

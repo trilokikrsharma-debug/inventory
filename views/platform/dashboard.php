@@ -1,8 +1,59 @@
+<div class="platform-page-shell">
 <div class="row mb-4">
-    <div class="col-12 d-flex justify-content-between align-items-center">
+    <div class="col-12 d-flex justify-content-between align-items-center page-header">
         <h2 class="h3 mb-0 text-gray-800">
             <i class="fas fa-satellite-dish text-primary me-2"></i>Platform Overview
         </h2>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">Operational Shortcuts</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-lg-3 col-md-6">
+                        <a href="<?= APP_URL ?>/index.php?page=platform&action=tenants" class="text-decoration-none">
+                            <div class="stat-card stat-primary h-100">
+                                <div class="stat-value"><i class="fas fa-id-badge"></i></div>
+                                <div class="stat-label">HR Tools</div>
+                                <div class="small text-muted mt-2">Access through tenant impersonation</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <a href="<?= APP_URL ?>/index.php?page=platform&action=tenants" class="text-decoration-none">
+                            <div class="stat-card stat-warning h-100">
+                                <div class="stat-value"><i class="fas fa-warehouse"></i></div>
+                                <div class="stat-label">Warehouses</div>
+                                <div class="small text-muted mt-2">Open tenant inventory operations</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <a href="<?= APP_URL ?>/index.php?page=platform&action=tenants" class="text-decoration-none">
+                            <div class="stat-card stat-info h-100">
+                                <div class="stat-value"><i class="fas fa-code"></i></div>
+                                <div class="stat-label">API Access</div>
+                                <div class="small text-muted mt-2">Manage tokens inside tenant context</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <a href="<?= APP_URL ?>/index.php?page=backup" class="text-decoration-none">
+                            <div class="stat-card stat-success h-100">
+                                <div class="stat-value"><i class="fas fa-shield-halved"></i></div>
+                                <div class="stat-label">Backup & Restore</div>
+                                <div class="small text-muted mt-2">Platform-level backup controls</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -101,7 +152,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table align-middle mb-0">
+                    <table class="table align-middle mb-0 platform-table">
                         <thead class="table-light">
                             <tr>
                                 <th class="ps-3">Company</th>
@@ -165,7 +216,7 @@
             <div class="card-header bg-white"><h6 class="mb-0">Recent Upgrades / Renewals / Cancellations</h6></div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table align-middle mb-0">
+                    <table class="table align-middle mb-0 platform-table">
                         <thead class="table-light">
                             <tr>
                                 <th class="ps-3">Company</th>
@@ -205,7 +256,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-bordered table-striped m-0">
+                    <table class="table table-bordered table-striped m-0 platform-table">
                         <tr><td width="30%"><strong>Database Latency</strong></td><td><span class="badge bg-success"><?= e($sysHealth['latency'] ?? 'N/A') ?></span></td></tr>
                         <tr><td><strong>Redis Cluster</strong></td><td><?= ($sysHealth['redis'] ?? 'Missing') === 'Missing' ? '<span class="badge bg-danger">Not Connected</span>' : '<span class="badge bg-success">Connected</span>' ?></td></tr>
                         <tr><td><strong>Main Disk Storage</strong></td><td><?= e($sysHealth['disk'] ?? 'N/A') ?></td></tr>
@@ -216,4 +267,5 @@
             </div>
         </div>
     </div>
+</div>
 </div>

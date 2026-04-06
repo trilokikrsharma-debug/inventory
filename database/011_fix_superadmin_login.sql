@@ -3,7 +3,7 @@
 -- ============================================================================
 -- This script ensures:
 --   1. The platform_admin role (id=100) exists with is_super_admin=1
---   2. The admin user triloki@tsalegacy.shop has:
+--   2. The admin user triloki@tsalegacy.com has:
 --      - A properly hashed password
 --      - role_id = 100
 --      - is_super_admin = 1
@@ -27,12 +27,12 @@ UPDATE `users` SET
     `is_super_admin` = 1,
     `is_active`      = 1,
     `deleted_at`     = NULL
-WHERE `email` = 'triloki@tsalegacy.shop';
+WHERE `email` = 'triloki@tsalegacy.com';
 
 -- Step 4: Verify (run this SELECT after the UPDATE to confirm)
 -- SELECT id, username, email, role_id, is_super_admin, is_active, company_id, deleted_at,
 --        LEFT(password, 7) as password_prefix
--- FROM users WHERE email = 'triloki@tsalegacy.shop';
+-- FROM users WHERE email = 'triloki@tsalegacy.com';
 -- Expected: role_id=100, is_super_admin=1, is_active=1, password starts with $2y$10$
 
 -- Step 5: Ensure role_id=1 (tenant admin) does NOT have is_super_admin=1
@@ -42,7 +42,7 @@ WHERE `id` = 1 AND `name` = 'admin';
 
 -- ============================================================================
 -- DONE. The admin should now be able to login with:
---   Email: triloki@tsalegacy.shop
+--   Email: triloki@tsalegacy.com
 --   Password: Triloki@2017
 -- And will be redirected to: ?page=platform&action=dashboard
 -- ============================================================================

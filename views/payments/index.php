@@ -1,31 +1,41 @@
 <?php $pageTitle = 'Payments & Receipts'; ?>
+<div class="list-page-shell">
 <div class="page-header">
     <div><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item active">Payments</li></ol></nav></div>
-    <div class="d-flex gap-2">
+    <div class="list-page-actions">
         <a href="<?= APP_URL ?>/index.php?page=payments&action=create&type=receipt" class="btn btn-success btn-sm"><i class="fas fa-plus me-1"></i>Receipt</a>
         <a href="<?= APP_URL ?>/index.php?page=payments&action=create&type=payment" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>Payment</a>
     </div>
 </div>
-<div class="card">
+<div class="card list-card">
     <div class="card-header">
         <h6><i class="fas fa-money-bill-wave me-2"></i>Transactions</h6>
-        <form class="d-flex gap-2" method="GET"><input type="hidden" name="page" value="payments">
-            <select name="type" class="form-select form-select-sm" style="width:120px;"><option value="">All</option><option value="receipt" <?= $type==='receipt'?'selected':'' ?>>Receipts</option><option value="payment" <?= $type==='payment'?'selected':'' ?>>Payments</option></select>
-            <input type="date" name="from_date" class="form-control form-control-sm" value="<?= $filters['from_date'] ?? '' ?>" style="width:130px;">
-            <input type="date" name="to_date" class="form-control form-control-sm" value="<?= $filters['to_date'] ?? '' ?>" style="width:130px;">
-            <button class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
-            <a href="<?= APP_URL ?>/index.php?page=invoice&action=statement&party=receipt&id=0&from_date=<?= Helper::escape($filters['from_date'] ?? '') ?>&to_date=<?= Helper::escape($filters['to_date'] ?? '') ?>" class="btn btn-sm btn-outline-success" title="Download Receipt Register PDF"><i class="fas fa-file-pdf me-1"></i>Receipt Statement</a>
-            <a href="<?= APP_URL ?>/index.php?page=invoice&action=statement&party=payment&id=0&from_date=<?= Helper::escape($filters['from_date'] ?? '') ?>&to_date=<?= Helper::escape($filters['to_date'] ?? '') ?>" class="btn btn-sm btn-outline-info" title="Download Payment Register PDF"><i class="fas fa-file-pdf me-1"></i>Payment Statement</a>
+        <form class="report-filter-form" method="GET"><input type="hidden" name="page" value="payments">
+            <select name="type" class="form-select form-select-sm report-filter-field">
+                <option value="">All</option>
+                <option value="receipt" <?= $type==='receipt'?'selected':'' ?>>Receipts</option>
+                <option value="payment" <?= $type==='payment'?'selected':'' ?>>Payments</option>
+            </select>
+            <input type="date" name="from_date" class="form-control form-control-sm report-filter-field" value="<?= $filters['from_date'] ?? '' ?>">
+            <input type="date" name="to_date" class="form-control form-control-sm report-filter-field" value="<?= $filters['to_date'] ?? '' ?>">
+            <button class="btn btn-sm btn-primary report-filter-submit"><i class="fas fa-search me-1"></i>Filter</button>
+            <a href="<?= APP_URL ?>/index.php?page=invoice&action=statement&party=receipt&id=0&from_date=<?= Helper::escape($filters['from_date'] ?? '') ?>&to_date=<?= Helper::escape($filters['to_date'] ?? '') ?>" class="btn btn-sm btn-outline-success report-filter-submit" title="Download Receipt Register PDF"><i class="fas fa-file-pdf me-1"></i>Receipt Statement</a>
+            <a href="<?= APP_URL ?>/index.php?page=invoice&action=statement&party=payment&id=0&from_date=<?= Helper::escape($filters['from_date'] ?? '') ?>&to_date=<?= Helper::escape($filters['to_date'] ?? '') ?>" class="btn btn-sm btn-outline-info report-filter-submit" title="Download Payment Register PDF"><i class="fas fa-file-pdf me-1"></i>Payment Statement</a>
         </form>
     </div>
-    <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0">
+    <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0 list-table">
         <thead><tr><th>Number</th><th>Type</th><th>Party</th><th>Date</th><th>Method</th><th class="text-end">Amount</th><th>Actions</th></tr></thead>
         <tbody>
         <?php if (!empty($payments['data'])): foreach ($payments['data'] as $p): ?>
         <tr>
             <td class="fw-bold"><?= Helper::escape($p['payment_number']) ?></td>
             <td><span class="badge bg-<?= $p['type']==='receipt' ? 'success' : 'primary' ?>"><?= ucfirst($p['type']) ?></span></td>
-            <td><?= Helper::escape($p['customer_name'] ?? $p['supplier_name'] ?? '-') ?></td>
+            <td>
+                <?= Helper::escape($p['customer_name'] ?? $p['supplier_name'] ?? $p['payroll_employee_name'] ?? '-') ?>
+                <?php if (!empty($p['payroll_item_id'])): ?>
+                <div class="small text-muted">Payroll payout<?= !empty($p['payroll_employee_code']) ? ' • ' . Helper::escape($p['payroll_employee_code']) : '' ?></div>
+                <?php endif; ?>
+            </td>
             <td><?= Helper::formatDate($p['payment_date']) ?></td>
             <td><span class="badge bg-secondary bg-opacity-10 text-secondary"><?= Helper::escape(Helper::paymentMethodLabel($p['payment_method'] ?? 'cash')) ?></span></td>
             <td class="text-end fw-bold"><?= Helper::formatCurrency($p['amount']) ?></td>
@@ -48,4 +58,5 @@
     <?php if (($payments['totalPages'] ?? 0) > 1): ?>
     <div class="card-footer"><?= Helper::pagination($payments['page'], $payments['totalPages'], APP_URL . '/index.php?page=payments&type=' . $type) ?></div>
     <?php endif; ?>
+</div>
 </div>

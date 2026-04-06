@@ -1,36 +1,37 @@
 <?php $pageTitle = 'Sale Returns'; ?>
+<div class="list-page-shell">
 <div class="page-header">
     <div>
         <h4 class="mb-0">Sale Returns</h4>
         <small class="text-muted">Manage customer returns and stock reversals</small>
     </div>
-    <a href="<?= APP_URL ?>/index.php?page=sale_returns&action=create" class="btn btn-warning">
-        <i class="fas fa-undo me-2"></i>New Return
-    </a>
+    <div class="list-page-actions">
+        <a href="<?= APP_URL ?>/index.php?page=sale_returns&action=create" class="btn btn-warning">
+            <i class="fas fa-undo me-2"></i>New Return
+        </a>
+    </div>
 </div>
 
 <!-- Filters -->
-<div class="card mb-3">
+<div class="card mb-3 list-card">
     <div class="card-body py-2">
-        <form method="GET" class="row g-2 align-items-center">
+        <form method="GET" class="report-filter-form">
             <input type="hidden" name="page" value="sale_returns">
-            <div class="col-md-4">
+            <div class="report-filter-field-wide">
                 <input type="text" name="search" class="form-control form-control-sm" placeholder="Search return#, customer, invoice..." value="<?= Helper::escape($search) ?>">
             </div>
-            <div class="col-md-2"><input type="date" name="from_date" class="form-control form-control-sm" value="<?= $fromDate ?>"></div>
-            <div class="col-md-2"><input type="date" name="to_date" class="form-control form-control-sm" value="<?= $toDate ?>"></div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
-                <a href="<?= APP_URL ?>/index.php?page=sale_returns" class="btn btn-sm btn-outline-secondary">Clear</a>
-            </div>
+            <div class="report-filter-field"><input type="date" name="from_date" class="form-control form-control-sm" value="<?= $fromDate ?>"></div>
+            <div class="report-filter-field"><input type="date" name="to_date" class="form-control form-control-sm" value="<?= $toDate ?>"></div>
+            <button type="submit" class="btn btn-sm btn-primary report-filter-submit">Filter</button>
+            <a href="<?= APP_URL ?>/index.php?page=sale_returns" class="btn btn-sm btn-outline-secondary report-filter-submit">Clear</a>
         </form>
     </div>
 </div>
 
-<div class="card">
+<div class="card list-card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 list-table">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -54,12 +55,12 @@
                     <td><?= Helper::escape($r['customer_name'] ?? '-') ?></td>
                     <td class="fw-bold text-danger"><?= Helper::formatCurrency($r['total_amount']) ?></td>
                     <td><?= Helper::formatDate($r['return_date']) ?></td>
-                    <td><small class="text-muted"><?= Helper::escape($r['note'] ?? '') ?></small></td>
+                    <td class="text-wrap" style="max-width: 240px;"><small class="text-muted"><?= Helper::escape($r['note'] ?? '') ?></small></td>
                     <td>
-                        <div class="d-flex gap-1">
-                        <a href="<?= APP_URL ?>/index.php?page=sale_returns&action=detail&id=<?= $r['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a>
-                        <a href="<?= APP_URL ?>/index.php?page=invoice&type=return&id=<?= $r['id'] ?>" class="btn btn-sm btn-outline-info" target="_blank" title="Print"><i class="fas fa-print"></i></a>
-                        <a href="<?= APP_URL ?>/index.php?page=invoice&action=download&type=return&id=<?= $r['id'] ?>" class="btn btn-sm btn-outline-success" title="Download PDF"><i class="fas fa-file-pdf"></i></a>
+                        <div class="action-btns">
+                        <a href="<?= APP_URL ?>/index.php?page=sale_returns&action=detail&id=<?= $r['id'] ?>" class="btn btn-sm btn-outline-primary btn-icon"><i class="fas fa-eye"></i></a>
+                        <a href="<?= APP_URL ?>/index.php?page=invoice&type=return&id=<?= $r['id'] ?>" class="btn btn-sm btn-outline-info btn-icon" target="_blank" title="Print"><i class="fas fa-print"></i></a>
+                        <a href="<?= APP_URL ?>/index.php?page=invoice&action=download&type=return&id=<?= $r['id'] ?>" class="btn btn-sm btn-outline-success btn-icon" title="Download PDF"><i class="fas fa-file-pdf"></i></a>
                         </div>
                     </td>
                 </tr>
@@ -79,4 +80,5 @@
         </ul></nav>
     </div>
     <?php endif; ?>
+</div>
 </div>

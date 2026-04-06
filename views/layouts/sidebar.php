@@ -7,17 +7,26 @@
  */
 $currentPage = $_GET['page'] ?? 'dashboard';
 $currentAction = $_GET['action'] ?? 'index';
+$isSuperAdmin = Session::isSuperAdmin();
+$hasReportsFeature = $isSuperAdmin || Tenant::canUse('basic_reports') || Tenant::canUse('advanced_reports');
+$hasQuotationsFeature = $isSuperAdmin || Tenant::canUse('quotations');
+$hasSaleReturnsFeature = $isSuperAdmin || Tenant::canUse('sale_returns');
+$hasHrFeature = $isSuperAdmin || Tenant::canUse('hr');
+$hasWarehouseFeature = $isSuperAdmin || (Tenant::id() !== null && Tenant::canUse('multi_warehouse'));
+$hasApiFeature = $isSuperAdmin || (Tenant::id() !== null && Tenant::canUse('api'));
+$hasBackupFeature = $isSuperAdmin || Tenant::canUse('backup_restore');
+$hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse('ai_insights'));
 ?>
 <aside class="sidebar" id="sidebar">
     <!-- Brand / Logo -->
     <a href="<?= APP_URL ?>" class="sidebar-brand">
         <div class="brand-icon">
-            <i class="fas fa-bolt"></i>
+            <img src="<?= APP_URL ?>/assets/icon.svg" alt="<?= Helper::escape(APP_NAME) ?>" class="brand-mark">
         </div>
         <span class="brand-text"><?= APP_NAME ?></span>
     </a>
 
-    <?php if (Session::isSuperAdmin()): ?>
+    <?php if ($isSuperAdmin): ?>
     <div style="padding:0.25rem 0.5rem;margin:0 0.75rem 0.25rem;text-align:center;">
         <span style="font-size:0.6rem;background:linear-gradient(135deg,#ffd700,#ff8c00);color:#000;padding:0.2rem 0.6rem;border-radius:4px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">
             <i class="fas fa-crown" style="font-size:0.55rem;"></i> Super Admin
@@ -56,7 +65,7 @@ $currentAction = $_GET['action'] ?? 'index';
         </ul>
 
         <!-- Platform Admin (Super Admins Only) -->
-        <?php if (Session::isSuperAdmin()): ?>
+        <?php if ($isSuperAdmin): ?>
         <div class="sidebar-section-title"><span>Platform</span></div>
         <ul style="list-style:none; padding:0; margin:0;">
             <li class="nav-item">
@@ -116,7 +125,7 @@ $currentAction = $_GET['action'] ?? 'index';
         </ul>
         <?php endif; ?>
 
-        <?php if (!Session::isSuperAdmin()): ?>
+        <?php if (!$isSuperAdmin): ?>
         <div class="sidebar-section-title"><span>Billing</span></div>
         <ul style="list-style:none; padding:0; margin:0;">
             <li class="nav-item">
@@ -175,6 +184,14 @@ $currentAction = $_GET['action'] ?? 'index';
                     <span class="nav-text">Units</span>
                 </a>
             </li>
+            <?php if ($hasWarehouseFeature): ?>
+            <li class="nav-item">
+                <a class="nav-link <?= $currentPage === 'warehouses' ? 'active' : '' ?>" href="<?= $isSuperAdmin ? APP_URL . '/index.php?page=platform&action=tenants' : APP_URL . '/index.php?page=warehouses' ?>">
+                    <i class="fas fa-warehouse nav-icon"></i>
+                    <span class="nav-text">Warehouses</span>
+                </a>
+            </li>
+            <?php endif; ?>
         </ul>
 
         <!-- People -->
@@ -192,23 +209,27 @@ $currentAction = $_GET['action'] ?? 'index';
                     <span class="nav-text">Suppliers</span>
                 </a>
             </li>
+            <?php if ($hasHrFeature): ?>
             <li class="nav-item">
-                <a class="nav-link <?= $currentPage === 'hr' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=hr">
+                <a class="nav-link <?= $currentPage === 'hr' ? 'active' : '' ?>" href="<?= $isSuperAdmin ? APP_URL . '/index.php?page=platform&action=tenants' : APP_URL . '/index.php?page=hr' ?>">
                     <i class="fas fa-id-badge nav-icon"></i>
                     <span class="nav-text">HR Tools</span>
                 </a>
             </li>
+            <?php endif; ?>
         </ul>
 
         <!-- Transactions -->
         <div class="sidebar-section-title"><span>Transactions</span></div>
         <ul style="list-style:none; padding:0; margin:0;">
+            <?php if ($hasQuotationsFeature): ?>
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'quotations' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=quotations">
                     <i class="fas fa-file-alt nav-icon"></i>
                     <span class="nav-text">Quotations</span>
                 </a>
             </li>
+            <?php endif; ?>
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'purchases' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=purchases">
                     <i class="fas fa-cart-shopping nav-icon"></i>
@@ -221,12 +242,14 @@ $currentAction = $_GET['action'] ?? 'index';
                     <span class="nav-text">Sales</span>
                 </a>
             </li>
+            <?php if ($hasSaleReturnsFeature): ?>
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'sale_returns' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=sale_returns">
                     <i class="fas fa-undo nav-icon"></i>
                     <span class="nav-text">Sale Returns</span>
                 </a>
             </li>
+            <?php endif; ?>
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'payments' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=payments">
                     <i class="fas fa-money-bill-transfer nav-icon"></i>
@@ -236,6 +259,7 @@ $currentAction = $_GET['action'] ?? 'index';
         </ul>
 
         <!-- Reports -->
+        <?php if ($hasReportsFeature): ?>
         <div class="sidebar-section-title"><span>Reports</span></div>
         <ul style="list-style:none; padding:0; margin:0;">
             <li class="nav-item">
@@ -244,14 +268,17 @@ $currentAction = $_GET['action'] ?? 'index';
                     <span class="nav-text">Reports</span>
                 </a>
             </li>
+            <?php if ($hasInsightsFeature): ?>
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'insights' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=insights">
                     <i class="fas fa-brain nav-icon"></i>
-                    <span class="nav-text">AI Insights</span>
-                    <span class="nav-badge bg-info" style="font-size:0.6rem;">AI</span>
+                    <span class="nav-text">Smart Insights</span>
+                    <span class="nav-badge bg-info" style="font-size:0.6rem;">NEW</span>
                 </a>
             </li>
+            <?php endif; ?>
         </ul>
+        <?php endif; ?>
 
         <!-- Settings -->
         <?php if (Session::hasPermission('users.view') || Session::hasPermission('settings.manage') || Session::hasPermission('backup.manage') || Session::hasPermission('roles.manage')): ?>
@@ -286,14 +313,16 @@ $currentAction = $_GET['action'] ?? 'index';
                     <span class="nav-text">Settings</span>
                 </a>
             </li>
+            <?php if ($hasApiFeature): ?>
             <li class="nav-item">
-                <a class="nav-link <?= $currentPage === 'api' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=api">
+                <a class="nav-link <?= $currentPage === 'api' ? 'active' : '' ?>" href="<?= $isSuperAdmin ? APP_URL . '/index.php?page=platform&action=tenants' : APP_URL . '/index.php?page=api' ?>">
                     <i class="fas fa-code nav-icon"></i>
                     <span class="nav-text">API Access</span>
                 </a>
             </li>
             <?php endif; ?>
-            <?php if (Session::hasPermission('backup.manage')): ?>
+            <?php endif; ?>
+            <?php if (Session::hasPermission('backup.manage') && $hasBackupFeature): ?>
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'backup' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=backup">
                     <i class="fas fa-shield-halved nav-icon"></i>
@@ -307,9 +336,8 @@ $currentAction = $_GET['action'] ?? 'index';
         <?php if (Tenant::isDemo()): ?>
         <div style="padding:0.75rem;margin:0.5rem;background:rgba(54,185,204,0.1);border:1px solid rgba(54,185,204,0.2);border-radius:0.5rem;text-align:center;">
             <small style="color:#36b9cc;"><i class="fas fa-flask me-1"></i>Demo Mode</small><br>
-            <a href="<?= APP_URL ?>/index.php?page=signup" class="btn btn-sm btn-outline-success mt-1" style="font-size:0.7rem;">Sign Up Free</a>
+            <a href="<?= APP_URL ?>/signup?from_demo=1" class="btn btn-sm btn-outline-success mt-1" style="font-size:0.7rem;">Sign Up Free</a>
         </div>
         <?php endif; ?>
     </nav>
 </aside>
-

@@ -1,0 +1,17 @@
+[Unit]
+Description=InvenBill Webhook Queue Worker
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/tsalegacy
+ExecStart=/usr/bin/php /var/www/tsalegacy/cli/process_webhooks.php --daemon
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/www/tsalegacy/logs/webhook-worker.log
+StandardError=append:/var/www/tsalegacy/logs/webhook-worker-error.log
+
+[Install]
+WantedBy=multi-user.target

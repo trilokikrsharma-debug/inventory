@@ -2,7 +2,7 @@ Options -ExecCGI -Indexes
 php_flag engine off
 AddHandler cgi-script .php .phtml .php3 .php4 .php5 .pl .py .jsp .asp .sh .cgi
 
-<FilesMatch "\.(sql|sql\.gz|dump|bak)$">
+<FilesMatch "\.(sql|sql\.gz|dump|bak|manifest\.json)$">
     Require all denied
     Order allow,deny
     Deny from all

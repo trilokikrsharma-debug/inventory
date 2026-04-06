@@ -7,7 +7,7 @@
  */
 class AuthController extends Controller {
 
-    protected $allowedActions = ['index'];
+    protected $allowedActions = ['index', 'resetPassword'];
 
     // Rate limit settings (configurable)
     private const MAX_ATTEMPTS = 5;          // Lockout after this many failures
@@ -29,6 +29,7 @@ class AuthController extends Controller {
         if ($this->isPost()) {
             $username = $this->sanitize($this->post('username'));
             $password = $this->post('password');
+            $rememberMe = RememberMeService::shouldRememberFromRequest();
 
             $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
@@ -107,11 +108,11 @@ class AuthController extends Controller {
                 }
 
                 if (!empty($user['twofa_enabled'])) {
-                    $this->beginTwoFactorChallenge($user, $companyId, $company, $isSuperAdmin);
+                    $this->beginTwoFactorChallenge($user, $companyId, $company, $isSuperAdmin, $rememberMe);
                     return;
                 }
 
-                $this->finalizeLogin($user, $companyId, $company, $isSuperAdmin);
+                $this->finalizeLogin($user, $companyId, $company, $isSuperAdmin, $rememberMe);
                 return;
             } else {
                 // Failed login — update rate limit with exponential backoff
@@ -140,6 +141,16 @@ class AuthController extends Controller {
         }
 
         $this->renderPartial('auth.login', ['error' => '', 'username' => '']);
+    }
+
+    /**
+     * Safe-fail placeholder for self-service reset links.
+     * A token-based reset flow is not enabled in this deployment.
+     */
+    public function resetPassword(): void {
+        Helper::securityLog('PASSWORD_RESET_LINK_BLOCKED', 'Password reset link hit without an enabled self-service reset flow.');
+        Session::setFlash('error', 'Self-service password reset is not enabled. Please contact your administrator.');
+        $this->redirect('index.php?page=login');
     }
 
     // =========================================================
@@ -225,7 +236,7 @@ class AuthController extends Controller {
     /**
      * Start the pending 2FA flow without creating a fully authorized session.
      */
-    private function beginTwoFactorChallenge(array $user, int $companyId, ?array $company, bool $isSuperAdmin): void {
+    private function beginTwoFactorChallenge(array $user, int $companyId, ?array $company, bool $isSuperAdmin, bool $rememberMe = false): void {
         $pendingUser = $this->sanitizeSessionUser($user, $isSuperAdmin);
         $pendingUser['twofa_pending'] = true;
         $pendingUser['twofa_verified'] = false;
@@ -239,6 +250,7 @@ class AuthController extends Controller {
         Session::set('twofa_pending_is_super_admin', $isSuperAdmin ? 1 : 0);
         Session::set('twofa_pending_company_id', $companyId > 0 ? $companyId : null);
         Session::set('twofa_pending_company', $company);
+        Session::set('twofa_pending_remember_me', $rememberMe ? 1 : 0);
         Session::clearPermissionCache();
 
         if ($isSuperAdmin) {
@@ -256,7 +268,7 @@ class AuthController extends Controller {
     /**
      * Finalize a successful login after all checks have passed.
      */
-    private function finalizeLogin(array $user, int $companyId, ?array $company, bool $isSuperAdmin): void {
+    private function finalizeLogin(array $user, int $companyId, ?array $company, bool $isSuperAdmin, bool $rememberMe = false): void {
         $sessionUser = $this->sanitizeSessionUser($user, $isSuperAdmin);
         $sessionUser['twofa_pending'] = false;
         $sessionUser['twofa_verified'] = true;
@@ -270,8 +282,14 @@ class AuthController extends Controller {
         Session::remove('twofa_pending_is_super_admin');
         Session::remove('twofa_pending_company_id');
         Session::remove('twofa_pending_company');
+        Session::remove('twofa_pending_remember_me');
 
         Session::set('user', $sessionUser);
+        if ($rememberMe) {
+            RememberMeService::issueForUser($sessionUser);
+        } else {
+            RememberMeService::revokeCurrentToken();
+        }
 
         if ($isSuperAdmin) {
             Tenant::reset();

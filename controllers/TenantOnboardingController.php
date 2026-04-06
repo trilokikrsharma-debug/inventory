@@ -5,6 +5,13 @@
  * Public API endpoint for creating a tenant company + owner user.
  */
 class TenantOnboardingController extends Controller {
+    private const RESERVED_SUBDOMAINS = [
+        'www', 'admin', 'api', 'app', 'mail', 'smtp', 'imap', 'pop', 'cpanel',
+        'webmail', 'ftp', 'sftp', 'ssh', 'root', 'support', 'help', 'blog',
+        'status', 'billing', 'platform', 'dashboard', 'login', 'signup',
+        'demo', 'staging', 'dev', 'test', 'autodiscover', 'm', 'mobile'
+    ];
+
     protected $allowedActions = ['index', 'register'];
 
     public function index() {
@@ -49,9 +56,15 @@ class TenantOnboardingController extends Controller {
             return;
         }
 
-        if (!preg_match('/^[a-z0-9\-]+$/', $subdomain)) {
+        if (!preg_match('/^[a-z0-9][a-z0-9\-]{1,61}[a-z0-9]$/', $subdomain)) {
             http_response_code(400);
-            echo json_encode(['error' => 'Subdomain can only contain lowercase letters, numbers, and dashes.']);
+            echo json_encode(['error' => 'Subdomain must be 3-63 characters and use lowercase letters, numbers, or internal dashes only.']);
+            return;
+        }
+
+        if (in_array($subdomain, self::RESERVED_SUBDOMAINS, true)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'This subdomain is reserved. Please choose another one.']);
             return;
         }
 
@@ -93,15 +106,29 @@ class TenantOnboardingController extends Controller {
 
         $db->beginTransaction();
         try {
+            $starterPlan = $db->query(
+                "SELECT id, slug, name, max_users, max_products
+                 FROM saas_plans
+                 WHERE id = 1
+                 LIMIT 1"
+            )->fetch() ?: [];
+            $starterPlanId = (int)($starterPlan['id'] ?? 1);
+            $starterLegacy = strtolower(trim((string)($starterPlan['slug'] ?? $starterPlan['name'] ?? 'starter')));
+            if ($starterLegacy === '' || !in_array($starterLegacy, ['starter', 'professional', 'enterprise'], true)) {
+                $starterLegacy = 'starter';
+            }
+            $starterMaxUsers = max(1, (int)($starterPlan['max_users'] ?? 3));
+            $starterMaxProducts = max(1, (int)($starterPlan['max_products'] ?? 500));
+
             $db->query(
                 "INSERT INTO companies
                  (name, subdomain, saas_plan_id, subscription_status, trial_ends_at, plan, status, max_users, max_products, slug)
-                 VALUES (?, ?, 1, 'trial', DATE_ADD(NOW(), INTERVAL 14 DAY), 'starter', 'active', 3, 500, ?)",
-                [$companyName, $subdomain, $subdomain]
+                 VALUES (?, ?, ?, 'trial', DATE_ADD(NOW(), INTERVAL 14 DAY), ?, 'active', ?, ?, ?)",
+                [$companyName, $subdomain, $starterPlanId, $starterLegacy, $starterMaxUsers, $starterMaxProducts, $subdomain]
             );
             $tenantId = (int)$db->lastInsertId();
 
-            $roleId = $this->createOrResolveAdminRole($db, $tenantId);
+            $roleId = $this->createOrResolveAdminRole($db, $tenantId, $starterPlan);
 
             $username = $this->generateUniqueUsername($db, $tenantId, $email, $subdomain);
             $passwordHash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
@@ -122,6 +149,13 @@ class TenantOnboardingController extends Controller {
                  VALUES (?, ?, ?, '', '', '', '', 'India', 'Rs', 'INR', 1, 1, 18, 10, 'INV-', 'PUR-', 'PAY-', 'REC-')",
                 [$tenantId, $companyName, $email]
             );
+
+            foreach ($this->defaultUnits() as $unit) {
+                $db->query(
+                    "INSERT INTO units (company_id, name, short_name) VALUES (?, ?, ?)",
+                    [$tenantId, $unit['name'], $unit['short_name']]
+                );
+            }
 
             $referralModel = new Referral();
             $referralModel->ensureCompanyReferralCode($tenantId);
@@ -159,21 +193,27 @@ class TenantOnboardingController extends Controller {
         }
     }
 
-    private function createOrResolveAdminRole(Database $db, int $tenantId): int {
+    private function createOrResolveAdminRole(Database $db, int $tenantId, array $plan): int {
         try {
             $db->query(
                 "INSERT INTO roles (company_id, name, display_name, description, is_super_admin, is_system)
-                 VALUES (?, 'admin', 'Administrator', 'Full tenant-level access', 0, 1)",
-                [$tenantId]
+                 VALUES (?, ?, 'Administrator', 'Full tenant-level access', 0, 1)",
+                [$tenantId, 'tenant_admin_' . $tenantId]
             );
-            return (int)$db->lastInsertId();
+            $roleId = (int)$db->lastInsertId();
+            $this->syncTenantAdminPermissions($db, $roleId, $plan);
+            return $roleId;
         } catch (\Throwable $e) {
             $role = $db->query(
                 "SELECT id
                  FROM roles
-                 WHERE (company_id = ? OR company_id IS NULL)
+                 WHERE company_id = ?
                    AND IFNULL(is_super_admin, 0) = 0
-                   AND name = 'admin'
+                   AND (
+                        LOWER(name) IN ('admin', 'administrator', 'owner')
+                        OR LOWER(name) LIKE 'tenant_admin_%'
+                        OR LOWER(display_name) LIKE '%admin%'
+                   )
                  ORDER BY (company_id = ?) DESC, id ASC
                  LIMIT 1",
                 [$tenantId, $tenantId]
@@ -181,10 +221,32 @@ class TenantOnboardingController extends Controller {
 
             $resolvedId = (int)($role['id'] ?? 0);
             if ($resolvedId > 0) {
+                $this->syncTenantAdminPermissions($db, $resolvedId, $plan);
                 return $resolvedId;
             }
 
             throw new \RuntimeException('No assignable tenant admin role is available.');
+        }
+    }
+
+    private function syncTenantAdminPermissions(Database $db, int $roleId, array $plan): void {
+        $permissionNames = SaaSBillingHelper::tenantAdminPermissionNames($plan);
+        $db->query("DELETE FROM role_permissions WHERE role_id = ?", [$roleId]);
+        if (empty($permissionNames)) {
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($permissionNames), '?'));
+        $permissions = $db->query(
+            "SELECT id FROM permissions WHERE name IN ($placeholders) ORDER BY id ASC",
+            $permissionNames
+        )->fetchAll();
+
+        foreach ($permissions as $permission) {
+            $db->query(
+                "INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)",
+                [$roleId, (int)$permission['id']]
+            );
         }
     }
 
@@ -211,5 +273,35 @@ class TenantOnboardingController extends Controller {
         }
 
         return $candidate;
+    }
+
+    /**
+     * Common starter units seeded for API onboarding tenants.
+     *
+     * @return array<int, array{name: string, short_name: string}>
+     */
+    private function defaultUnits(): array {
+        return [
+            ['name' => 'Pieces', 'short_name' => 'pcs'],
+            ['name' => 'Kilograms', 'short_name' => 'kg'],
+            ['name' => 'Grams', 'short_name' => 'g'],
+            ['name' => 'Meters', 'short_name' => 'mtr'],
+            ['name' => 'Centimeters', 'short_name' => 'cm'],
+            ['name' => 'Millimeters', 'short_name' => 'mm'],
+            ['name' => 'Liters', 'short_name' => 'ltr'],
+            ['name' => 'Milliliters', 'short_name' => 'ml'],
+            ['name' => 'Boxes', 'short_name' => 'box'],
+            ['name' => 'Packets', 'short_name' => 'pkt'],
+            ['name' => 'Packs', 'short_name' => 'pac'],
+            ['name' => 'Bags', 'short_name' => 'bag'],
+            ['name' => 'Bottles', 'short_name' => 'btl'],
+            ['name' => 'Cartons', 'short_name' => 'ctn'],
+            ['name' => 'Dozens', 'short_name' => 'doz'],
+            ['name' => 'Pairs', 'short_name' => 'pair'],
+            ['name' => 'Sets', 'short_name' => 'set'],
+            ['name' => 'Rolls', 'short_name' => 'roll'],
+            ['name' => 'Sheets', 'short_name' => 'sheet'],
+            ['name' => 'Units', 'short_name' => 'unit'],
+        ];
     }
 }

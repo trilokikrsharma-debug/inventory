@@ -393,18 +393,14 @@ class Tenant {
             ],
             'professional' => [
                 'basic_reports', 'invoicing', 'inventory', 'customer_management',
-                'payment_tracking', 'audit_trail', 'export_pdf',
-                'multi_user', 'quotations', 'purchase_orders',
-                'advanced_reports', 'api_access', 'webhooks', 'bulk_import',
-                'backup_restore', 'crm'
+                'payment_tracking', 'audit_trail', 'export_pdf', 'sale_returns',
+                'multi_user', 'quotations', 'advanced_reports'
             ],
             'enterprise' => [
                 'basic_reports', 'invoicing', 'inventory', 'customer_management',
-                'payment_tracking', 'audit_trail', 'export_pdf',
-                'multi_user', 'quotations', 'purchase_orders',
-                'advanced_reports', 'api_access', 'webhooks', 'bulk_import',
-                'backup_restore', 'crm', 'ai_insights', 'multi_warehouse',
-                'custom_fields', 'priority_support', 'hr'
+                'payment_tracking', 'audit_trail', 'export_pdf', 'sale_returns',
+                'multi_user', 'quotations', 'advanced_reports',
+                'backup_restore', 'api'
             ],
         ];
 
@@ -1023,9 +1019,10 @@ class Tenant {
             'custom_fields' => ['custom_fields'],
             'audit_trail' => ['audit_trail'],
             'export_pdf' => ['export_pdf', 'pdf_export'],
-            'multi_warehouse' => ['multi_warehouse'],
+            'multi_warehouse' => ['multi_warehouse', 'warehouse', 'warehouses'],
             'priority_support' => ['priority_support'],
             'hr' => ['hr'],
+            'sale_returns' => ['sale_returns', 'returns', 'sale_return'],
         ];
 
         return $aliases[$feature] ?? [$feature];

@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | <?= Helper::escape(APP_NAME) ?></title>
+    <meta name="robots" content="noindex,nofollow">
+    <link rel="icon" type="image/svg+xml" href="<?= APP_URL ?>/assets/favicon.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="<?= APP_URL ?>/assets/css/style.css" rel="stylesheet">
@@ -41,13 +43,14 @@
             z-index: 1;
         }
         .brand-icon {
-            width: 48px; height: 48px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #6366f1, #06b6d4);
+            width: 220px; height: auto;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.25rem; color: #fff;
             margin: 0 auto 1.5rem;
-            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+        }
+        .brand-icon img {
+            width: 220px;
+            height: auto;
+            display: block;
         }
         .login-card h2 { color: #fff; font-weight: 800; text-align: center; margin-bottom: 0.5rem; font-size: 1.75rem; }
         .login-subtitle { color: #94a3b8; text-align: center; margin-bottom: 2rem; font-size: 0.95rem; }
@@ -95,12 +98,42 @@
         .btn-outline-info:hover { background: rgba(6,182,212,0.1); color: #06b6d4; border-color: rgba(6,182,212,0.5); }
         .text-link { color: #64748b; text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
         .text-link:hover { color: #cbd5e1; }
+        .demo-strip {
+            margin-top: 1.25rem;
+            padding: 0.9rem 1rem;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .demo-strip-title {
+            color: #f8fafc;
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-bottom: 0.45rem;
+        }
+        .demo-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+        }
+        .demo-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: 999px;
+            background: rgba(99,102,241,0.12);
+            border: 1px solid rgba(99,102,241,0.18);
+            color: #c7d2fe;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
 <div class="login-wrapper">
     <div class="login-card animate-fade-in-up">
-        <div class="brand-icon"><i class="fas fa-bolt"></i></div>
+        <div class="brand-icon"><img src="<?= APP_URL ?>/assets/logo-lockup.svg" alt="<?= Helper::escape(APP_NAME) ?>"></div>
         <h2><?= Helper::escape(APP_NAME) ?></h2>
         <p class="login-subtitle">Sign in to your account</p>
 
@@ -160,10 +193,35 @@
                 </div>
             </div>
 
+            <div class="form-check mb-3">
+                <input
+                    class="form-check-input"
+                    type="checkbox"
+                    value="1"
+                    id="rememberMe"
+                    name="remember_me"
+                >
+                <label class="form-check-label" for="rememberMe" style="color:#cbd5e1;font-size:0.85rem;">
+                    Keep me signed in on this device
+                </label>
+            </div>
+
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-sign-in-alt me-2"></i> Sign In
             </button>
         </form>
+
+        <div class="demo-strip">
+            <div class="demo-strip-title">Live demo currently showcases enterprise modules</div>
+            <div class="demo-pills">
+                <span class="demo-pill"><i class="fas fa-file-import"></i>Bulk Import</span>
+                <span class="demo-pill"><i class="fas fa-code"></i>API Access</span>
+                <span class="demo-pill"><i class="fas fa-brain"></i>AI Insights</span>
+                <span class="demo-pill"><i class="fas fa-people-arrows"></i>Custom Fields</span>
+                <span class="demo-pill"><i class="fas fa-warehouse"></i>Multi Warehouse</span>
+                <span class="demo-pill"><i class="fas fa-id-badge"></i>HR Tools</span>
+            </div>
+        </div>
 
         <div class="footer-links">
             <div class="row-flex">

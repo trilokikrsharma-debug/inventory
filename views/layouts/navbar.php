@@ -14,7 +14,9 @@ if (!empty($user['full_name'])) {
         <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
             <i class="fas fa-bars"></i>
         </button>
-        <h1 class="page-title d-none d-md-block"><?= Helper::escape($pageTitle ?? 'Dashboard') ?></h1>
+        <div class="page-title-stack">
+            <h1 class="page-title"><?= Helper::escape($pageTitle ?? 'Dashboard') ?></h1>
+        </div>
     </div>
 
     <div class="navbar-right">

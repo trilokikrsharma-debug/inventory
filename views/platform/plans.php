@@ -1,4 +1,5 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="platform-page-shell">
+<div class="d-flex justify-content-between align-items-center mb-4 page-header">
     <div>
         <h2 class="h4 mb-1"><i class="fas fa-layer-group me-2 text-primary"></i>SaaS Plan Management</h2>
         <p class="text-muted mb-0">Create live test plans (Rs 1 / Rs 2 / Rs 3), offers, and production pricing.</p>
@@ -11,7 +12,7 @@
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table align-middle mb-0">
+            <table class="table align-middle mb-0 platform-table">
                 <thead class="table-light">
                     <tr>
                         <th class="ps-4">Plan</th>
@@ -35,6 +36,7 @@
                         $planPrice = (float)($plan['price'] ?? 0);
                         $planOffer = isset($plan['offer_price']) ? (float)$plan['offer_price'] : null;
                         $maxUsers = (int)($plan['max_users'] ?? 0);
+                        $maxProducts = (int)($plan['max_products'] ?? 0);
                         $enabledFeatureCount = 0;
                         if (!empty($plan['features'])) {
                             $decoded = json_decode((string)$plan['features'], true);
@@ -63,6 +65,7 @@
                             <div class="text-muted small"><?= e($planSlug !== '' ? $planSlug : 'n/a') ?></div>
                             <div class="text-muted small">
                                 Users: <?= $maxUsers > 0 ? $maxUsers : '-' ?> |
+                                Products: <?= $maxProducts > 0 ? number_format($maxProducts) : '-' ?> |
                                 Features: <?= $enabledFeatureCount > 0 ? $enabledFeatureCount : '-' ?>
                             </div>
                         </td>
@@ -129,4 +132,5 @@
             </table>
         </div>
     </div>
+</div>
 </div>

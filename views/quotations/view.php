@@ -5,13 +5,14 @@ $statusColors = ['draft' => 'secondary', 'sent' => 'info', 'converted' => 'succe
 $isTaxEnabled = !isset($company['enable_tax']) || !empty($company['enable_tax']);
 $isGstEnabled = !isset($company['enable_gst']) || !empty($company['enable_gst']);
 ?>
+<div class="detail-page-shell">
 <div class="page-header">
     <nav aria-label="breadcrumb"><ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li>
         <li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=quotations">Quotations</a></li>
         <li class="breadcrumb-item active"><?= Helper::escape($quote['quotation_number']) ?></li>
     </ol></nav>
-    <div class="d-flex gap-2">
+    <div class="detail-page-actions">
         <a href="<?= APP_URL ?>/index.php?page=invoice&type=quotation&id=<?= $quote['id'] ?>" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-invoice me-1"></i>Print Quotation</a>
         <button onclick="window.print()" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i>Print</button>
         <?php if ($quote['status'] !== 'converted' && $quote['status'] !== 'cancelled'): ?>
@@ -57,7 +58,7 @@ $isGstEnabled = !isset($company['enable_gst']) || !empty($company['enable_gst'])
 
 <div class="row g-3">
     <div class="col-lg-8">
-        <div class="card">
+        <div class="card detail-card">
             <div class="card-body p-4">
                 <!-- Header -->
                 <div class="row mb-4">
@@ -90,7 +91,8 @@ $isGstEnabled = !isset($company['enable_gst']) || !empty($company['enable_gst'])
                 </div>
 
                 <!-- Items -->
-                <table class="table">
+                <div class="table-responsive">
+                <table class="table detail-table">
                     <thead class="table-light">
                         <tr><th>#</th><th>Product</th><th class="text-center">Qty</th><th class="text-end">Price</th><th class="text-end">Disc</th><?php if($isTaxEnabled && $isGstEnabled): ?><th class="text-end">Tax</th><?php endif; ?><th class="text-end">Total</th></tr>
                     </thead>
@@ -110,6 +112,7 @@ $isGstEnabled = !isset($company['enable_gst']) || !empty($company['enable_gst'])
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
 
                 <!-- Totals -->
                 <div class="row justify-content-end">
@@ -135,7 +138,7 @@ $isGstEnabled = !isset($company['enable_gst']) || !empty($company['enable_gst'])
     </div>
 
     <div class="col-lg-4">
-        <div class="card">
+        <div class="card detail-card">
             <div class="card-header"><h6>Quick Info</h6></div>
             <div class="card-body">
                 <dl class="row small mb-0">
@@ -149,4 +152,5 @@ $isGstEnabled = !isset($company['enable_gst']) || !empty($company['enable_gst'])
             </div>
         </div>
     </div>
+</div>
 </div>

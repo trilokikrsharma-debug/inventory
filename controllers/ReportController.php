@@ -5,6 +5,8 @@ class ReportController extends Controller {
         'sales',
         'purchases',
         'stock',
+        'warehouse_transfers',
+        'payroll_finance',
         'profit',
         'customer_dues',
         'supplier_dues',
@@ -15,7 +17,34 @@ class ReportController extends Controller {
 
     public function index() {
         $this->requirePermission('reports.view');
-        $this->view('reports.index', ['pageTitle' => 'Reports']);
+        $this->view('reports.index', [
+            'pageTitle' => 'Reports',
+            'hasWarehouseFeature' => $this->warehouseFeatureEnabled(),
+        ]);
+    }
+
+    public function payroll_finance() {
+        $this->requireFeature('hr');
+        $this->requirePermission('reports.view');
+
+        $fromMonth = $this->normalizeMonth((string)$this->get('from_month', date('Y-01')));
+        $toMonth = $this->normalizeMonth((string)$this->get('to_month', date('Y-m')));
+        if (strcmp($fromMonth, $toMonth) > 0) {
+            [$fromMonth, $toMonth] = [$toMonth, $fromMonth];
+        }
+
+        $report = Cache::remember(
+            $this->reportCacheKey('payroll_finance', ['from_month' => $fromMonth, 'to_month' => $toMonth]),
+            $this->reportCacheTtl(),
+            fn() => (new HrPayroll())->financeReport($fromMonth, $toMonth)
+        );
+
+        $this->view('reports.payroll_finance', [
+            'pageTitle' => 'Payroll Finance Report',
+            'report' => $report,
+            'fromMonth' => $fromMonth,
+            'toMonth' => $toMonth,
+        ]);
     }
 
     public function sales() {
@@ -25,6 +54,7 @@ class ReportController extends Controller {
         $toDate = $this->normalizeDate($this->get('to_date', ''), date('Y-m-d'));
         [$fromDate, $toDate] = $this->normalizeDateRange($fromDate, $toDate);
         $customerId = $this->normalizeEntityId($this->get('customer_id', ''));
+        $warehouseId = $this->warehouseFeatureEnabled() ? $this->normalizeEntityId($this->get('warehouse_id', '')) : 0;
         $maxRows = defined('REPORT_MAX_ROWS') ? REPORT_MAX_ROWS : 2000;
 
         $sales = Cache::remember(
@@ -32,10 +62,11 @@ class ReportController extends Controller {
                 'from' => $fromDate,
                 'to' => $toDate,
                 'customer_id' => $customerId,
+                'warehouse_id' => $warehouseId,
                 'max_rows' => $maxRows,
             ]),
             $this->reportCacheTtl(),
-            function () use ($fromDate, $toDate, $customerId, $maxRows) {
+            function () use ($fromDate, $toDate, $customerId, $warehouseId, $maxRows) {
                 return (new SalesModel())->getAllWithCustomer(
                     '',
                     $fromDate,
@@ -43,7 +74,8 @@ class ReportController extends Controller {
                     $customerId > 0 ? $customerId : '',
                     '',
                     1,
-                    $maxRows
+                    $maxRows,
+                    $warehouseId > 0 ? $warehouseId : ''
                 );
             }
         );
@@ -58,9 +90,11 @@ class ReportController extends Controller {
             'pageTitle' => 'Sales Report',
             'sales' => $sales,
             'customers' => $customers,
+            'warehouses' => $this->warehouseOptions(),
             'fromDate' => $fromDate,
             'toDate' => $toDate,
             'customerId' => $customerId,
+            'warehouseId' => $warehouseId,
         ]);
     }
 
@@ -71,6 +105,7 @@ class ReportController extends Controller {
         $toDate = $this->normalizeDate($this->get('to_date', ''), date('Y-m-d'));
         [$fromDate, $toDate] = $this->normalizeDateRange($fromDate, $toDate);
         $supplierId = $this->normalizeEntityId($this->get('supplier_id', ''));
+        $warehouseId = $this->warehouseFeatureEnabled() ? $this->normalizeEntityId($this->get('warehouse_id', '')) : 0;
         $maxRows = defined('REPORT_MAX_ROWS') ? REPORT_MAX_ROWS : 2000;
 
         $purchases = Cache::remember(
@@ -78,10 +113,11 @@ class ReportController extends Controller {
                 'from' => $fromDate,
                 'to' => $toDate,
                 'supplier_id' => $supplierId,
+                'warehouse_id' => $warehouseId,
                 'max_rows' => $maxRows,
             ]),
             $this->reportCacheTtl(),
-            function () use ($fromDate, $toDate, $supplierId, $maxRows) {
+            function () use ($fromDate, $toDate, $supplierId, $warehouseId, $maxRows) {
                 return (new PurchaseModel())->getAllWithSupplier(
                     '',
                     $fromDate,
@@ -89,7 +125,8 @@ class ReportController extends Controller {
                     $supplierId > 0 ? $supplierId : '',
                     '',
                     1,
-                    $maxRows
+                    $maxRows,
+                    $warehouseId > 0 ? $warehouseId : ''
                 );
             }
         );
@@ -104,9 +141,11 @@ class ReportController extends Controller {
             'pageTitle' => 'Purchase Report',
             'purchases' => $purchases,
             'suppliers' => $suppliers,
+            'warehouses' => $this->warehouseOptions(),
             'fromDate' => $fromDate,
             'toDate' => $toDate,
             'supplierId' => $supplierId,
+            'warehouseId' => $warehouseId,
         ]);
     }
 
@@ -116,18 +155,21 @@ class ReportController extends Controller {
         $maxRows = defined('REPORT_MAX_ROWS') ? REPORT_MAX_ROWS : 2000;
         $search = $this->sanitize($this->get('search', ''));
         $categoryId = $this->normalizeEntityId($this->get('category_id', ''));
+        $warehouseId = $this->warehouseFeatureEnabled() ? $this->normalizeEntityId($this->get('warehouse_id', '')) : 0;
 
         $products = Cache::remember(
             $this->reportCacheKey('stock', [
                 'search' => $search,
                 'category_id' => $categoryId,
+                'warehouse_id' => $warehouseId,
                 'max_rows' => $maxRows,
             ]),
             $this->reportCacheTtl(),
-            function () use ($search, $categoryId, $maxRows) {
-                return (new ProductModel())->getAllWithRelations(
+            function () use ($search, $categoryId, $warehouseId, $maxRows) {
+                return (new ProductModel())->getStockReport(
                     $search,
                     $categoryId > 0 ? (string)$categoryId : '',
+                    $warehouseId > 0 ? $warehouseId : null,
                     1,
                     $maxRows
                 );
@@ -140,12 +182,91 @@ class ReportController extends Controller {
             fn() => (new CategoryModel())->allActive()
         );
 
+        $transferSummary = ['total_transfers' => 0, 'pending_transfers' => 0, 'approved_transfers' => 0, 'total_quantity' => 0];
+        $recentTransfers = [];
+        if ($this->warehouseFeatureEnabled()) {
+            $warehouseModel = new WarehouseModel();
+            $transferSummary = Cache::remember(
+                $this->reportCacheKey('stock_transfer_summary'),
+                $this->reportCacheTtl(),
+                fn() => $warehouseModel->transferSummary()
+            );
+            $recentTransfers = Cache::remember(
+                $this->reportCacheKey('stock_recent_transfers'),
+                $this->reportCacheTtl(),
+                fn() => $warehouseModel->recentTransfers(8)
+            );
+        }
+
         $this->view('reports.stock', [
             'pageTitle' => 'Stock Report',
             'products' => $products,
             'categories' => $categories,
+            'warehouses' => $this->warehouseOptions(),
+            'transferSummary' => $transferSummary,
+            'recentTransfers' => $recentTransfers,
             'search' => $search,
             'categoryId' => $categoryId,
+            'warehouseId' => $warehouseId,
+        ]);
+    }
+
+    public function warehouse_transfers() {
+        $this->requirePermission('reports.view');
+        if (!$this->warehouseFeatureEnabled()) {
+            $this->setFlash('error', 'Warehouse transfer reporting requires the multi-warehouse feature.');
+            $this->redirect('index.php?page=reports');
+            return;
+        }
+
+        $fromDate = $this->normalizeDate($this->get('from_date', ''), date('Y-m-01'));
+        $toDate = $this->normalizeDate($this->get('to_date', ''), date('Y-m-d'));
+        [$fromDate, $toDate] = $this->normalizeDateRange($fromDate, $toDate);
+        $status = strtolower(trim((string)$this->get('status', '')));
+        $warehouseId = $this->normalizeEntityId($this->get('warehouse_id', ''));
+        $maxRows = defined('REPORT_MAX_ROWS') ? REPORT_MAX_ROWS : 2000;
+
+        $warehouseModel = new WarehouseModel();
+        $transfers = Cache::remember(
+            $this->reportCacheKey('warehouse_transfers', [
+                'from' => $fromDate,
+                'to' => $toDate,
+                'status' => $status,
+                'warehouse_id' => $warehouseId,
+                'max_rows' => $maxRows,
+            ]),
+            $this->reportCacheTtl(),
+            fn() => $warehouseModel->transferReport($fromDate, $toDate, $status, $warehouseId, $maxRows)
+        );
+
+        $summary = [
+            'total_transfers' => count($transfers),
+            'pending_transfers' => 0,
+            'approved_transfers' => 0,
+            'rejected_transfers' => 0,
+            'total_quantity' => 0.0,
+        ];
+        foreach ($transfers as $transfer) {
+            $summary['total_quantity'] += (float)($transfer['total_quantity'] ?? 0);
+            if (($transfer['status'] ?? '') === 'approved') {
+                $summary['approved_transfers']++;
+            } elseif (($transfer['status'] ?? '') === 'rejected') {
+                $summary['rejected_transfers']++;
+            } else {
+                $summary['pending_transfers']++;
+            }
+        }
+        $summary['total_quantity'] = round((float)$summary['total_quantity'], 3);
+
+        $this->view('reports.warehouse_transfers', [
+            'pageTitle' => 'Warehouse Transfer Report',
+            'transfers' => $transfers,
+            'summary' => $summary,
+            'warehouses' => $this->warehouseOptions(),
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'status' => $status,
+            'warehouseId' => $warehouseId,
         ]);
     }
 
@@ -364,7 +485,7 @@ class ReportController extends Controller {
 
     private function normalizeReportType(string $type): ?string {
         $type = strtolower(trim($type));
-        $allowed = ['sales', 'purchases', 'stock', 'profit', 'customer_dues', 'supplier_dues'];
+        $allowed = ['sales', 'purchases', 'stock', 'warehouse_transfers', 'profit', 'customer_dues', 'supplier_dues', 'payroll_finance'];
         return in_array($type, $allowed, true) ? $type : null;
     }
 
@@ -376,18 +497,56 @@ class ReportController extends Controller {
             [$fromDate, $toDate] = $this->normalizeDateRange($fromDate, $toDate);
             $filters['from_date'] = $fromDate;
             $filters['to_date'] = $toDate;
+        } elseif ($reportType === 'payroll_finance') {
+            $fromMonth = $this->normalizeMonth((string)$this->post('from_month', $this->get('from_month', date('Y-01'))));
+            $toMonth = $this->normalizeMonth((string)$this->post('to_month', $this->get('to_month', date('Y-m'))));
+            if (strcmp($fromMonth, $toMonth) > 0) {
+                [$fromMonth, $toMonth] = [$toMonth, $fromMonth];
+            }
+            $filters['from_month'] = $fromMonth;
+            $filters['to_month'] = $toMonth;
         }
 
         if ($reportType === 'sales') {
             $filters['customer_id'] = $this->normalizeEntityId($this->post('customer_id', $this->get('customer_id', '')));
+            $filters['warehouse_id'] = $this->warehouseFeatureEnabled() ? $this->normalizeEntityId($this->post('warehouse_id', $this->get('warehouse_id', ''))) : 0;
         } elseif ($reportType === 'purchases') {
             $filters['supplier_id'] = $this->normalizeEntityId($this->post('supplier_id', $this->get('supplier_id', '')));
+            $filters['warehouse_id'] = $this->warehouseFeatureEnabled() ? $this->normalizeEntityId($this->post('warehouse_id', $this->get('warehouse_id', ''))) : 0;
         } elseif ($reportType === 'stock') {
             $filters['search'] = $this->sanitize((string)$this->post('search', $this->get('search', '')));
             $filters['category_id'] = $this->normalizeEntityId($this->post('category_id', $this->get('category_id', '')));
+            $filters['warehouse_id'] = $this->warehouseFeatureEnabled() ? $this->normalizeEntityId($this->post('warehouse_id', $this->get('warehouse_id', ''))) : 0;
+        } elseif ($reportType === 'warehouse_transfers') {
+            $fromDate = $this->normalizeDate((string)$this->post('from_date', $this->get('from_date', '')), date('Y-m-01'));
+            $toDate = $this->normalizeDate((string)$this->post('to_date', $this->get('to_date', '')), date('Y-m-d'));
+            [$fromDate, $toDate] = $this->normalizeDateRange($fromDate, $toDate);
+            $filters['from_date'] = $fromDate;
+            $filters['to_date'] = $toDate;
+            $status = strtolower(trim((string)$this->post('status', $this->get('status', ''))));
+            $filters['status'] = in_array($status, ['pending', 'approved', 'rejected'], true) ? $status : '';
+            $filters['warehouse_id'] = $this->warehouseFeatureEnabled() ? $this->normalizeEntityId($this->post('warehouse_id', $this->get('warehouse_id', ''))) : 0;
         }
 
         return $filters;
+    }
+
+    private function warehouseFeatureEnabled(): bool {
+        return !Session::isSuperAdmin()
+            && Tenant::id() !== null
+            && Tenant::canUse('multi_warehouse');
+    }
+
+    private function warehouseOptions(): array {
+        if (!$this->warehouseFeatureEnabled()) {
+            return [];
+        }
+
+        return Cache::remember(
+            $this->reportCacheKey('lookup_warehouses'),
+            $this->reportCacheTtl() * 6,
+            fn() => (new WarehouseModel())->allActiveOrdered()
+        );
     }
 
     private function normalizeDate(string $date, string $default): string {
@@ -414,5 +573,9 @@ class ReportController extends Controller {
     private function normalizeEntityId(mixed $value): int {
         $id = (int)$value;
         return $id > 0 ? $id : 0;
+    }
+
+    private function normalizeMonth(string $value): string {
+        return preg_match('/^\d{4}-\d{2}$/', $value) ? $value : date('Y-m');
     }
 }

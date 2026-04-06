@@ -1,10 +1,14 @@
 <?php $pageTitle = 'New Sale Return'; ?>
+<div class="sales-entry-shell">
 <div class="page-header">
     <nav aria-label="breadcrumb"><ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li>
         <li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=sale_returns">Returns</a></li>
         <li class="breadcrumb-item active">New Return</li>
     </ol></nav>
+    <div class="app-page-actions">
+        <a href="<?= APP_URL ?>/index.php?page=sale_returns" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Back to Returns</a>
+    </div>
 </div>
 
 <form method="POST" id="returnForm">
@@ -12,7 +16,7 @@
     <div class="row g-3">
         <!-- Left: Sale Selection & Items -->
         <div class="col-lg-8">
-            <div class="card mb-3">
+            <div class="card mb-3 sales-entry-card">
                 <div class="card-header"><h6><i class="fas fa-file-invoice me-2"></i>Select Original Sale</h6></div>
                 <div class="card-body">
                     <div class="row g-3">
@@ -40,17 +44,17 @@
             </div>
 
             <!-- Items Table -->
-            <div class="card">
+            <div class="card sales-entry-card">
                 <div class="card-header"><h6><i class="fas fa-list me-2"></i>Return Items</h6></div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table mb-0" id="itemsTable">
+                        <table class="table mb-0 sales-items-table" id="itemsTable">
                             <thead><tr>
                                 <th>Product</th>
-                                <th class="text-center" style="width:100px">Qty</th>
-                                <th class="text-end" style="width:130px">Unit Price</th>
-                                <th class="text-end" style="width:130px">Total</th>
-                                <th style="width:40px"></th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Unit Price</th>
+                                <th class="text-end">Total</th>
+                                <th></th>
                             </tr></thead>
                             <tbody id="itemsBody">
                                 <?php if ($sale && !empty($sale['items'])): foreach ($sale['items'] as $item): ?>
@@ -79,22 +83,23 @@
 
         <!-- Right: Summary -->
         <div class="col-lg-4">
-            <div class="card">
+            <div class="card sales-entry-summary-card">
                 <div class="card-header"><h6>Return Summary</h6></div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Total Return Amount</span>
-                        <span class="fw-bold text-danger fs-5" id="grandTotal"><?= $sale ? Helper::formatCurrency(array_sum(array_column($sale['items'], 'total'))) : '₹ 0.00' ?></span>
+                <div class="card-body sales-entry-summary">
+                    <div class="sales-entry-summary-line">
+                        <span class="sales-entry-summary-label">Total Return Amount</span>
+                        <span class="sales-entry-summary-value text-danger fs-5" id="grandTotal"><?= $sale ? Helper::formatCurrency(array_sum(array_column($sale['items'], 'total'))) : '₹ 0.00' ?></span>
                     </div>
-                    <hr>
                     <div class="alert alert-warning py-2 small">
                         <i class="fas fa-info-circle me-1"></i>
                         Stock will be <strong>restored</strong> and customer balance will be <strong>reduced</strong>.
                     </div>
-                    <button type="submit" class="btn btn-warning w-100 mt-2">
-                        <i class="fas fa-undo me-2"></i>Process Return
-                    </button>
-                    <a href="<?= APP_URL ?>/index.php?page=sale_returns" class="btn btn-outline-secondary w-100 mt-2">Cancel</a>
+                    <div class="app-page-actions">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-undo me-2"></i>Process Return
+                        </button>
+                        <a href="<?= APP_URL ?>/index.php?page=sale_returns" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -124,3 +129,4 @@ function loadSaleItems(saleId) {
     window.location.href = '<?= APP_URL ?>/index.php?page=sale_returns&action=create&sale_id=' + saleId;
 }
 </script>
+</div>

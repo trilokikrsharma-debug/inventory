@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /signup
+Disallow: /dashboard
+Disallow: /platform
+Disallow: /index.php?page=login
+Disallow: /index.php?page=signup
+Disallow: /index.php?page=dashboard
+Disallow: /index.php?page=admin
+Disallow: /index.php?page=platform
+Disallow: /storage/
+Disallow: /logs/
+
+Sitemap: https://tsalegacy.com/sitemap.xml

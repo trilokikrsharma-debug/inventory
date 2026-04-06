@@ -4,6 +4,11 @@
  * Last updated: March 2026
  */
 $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? '', ENT_QUOTES);
+$canonicalUrl = rtrim(APP_URL, '/') . '/refund';
+$iconUrl = rtrim(APP_URL, '/') . '/assets/icon.svg';
+$faviconUrl = rtrim(APP_URL, '/') . '/assets/favicon.svg';
+$logoUrl = rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
+$socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.svg';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -12,7 +17,18 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? '', ENT_QUOTES);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Refund Policy — TSA Legacy</title>
     <meta name="description" content="Refund and Cancellation Policy for TSA Legacy SaaS platform.">
-    <link rel="canonical" href="https://tsalegacy.shop/index.php?page=refund">
+    <meta property="og:title" content="Refund Policy — TSA Legacy">
+    <meta property="og:description" content="Refund and Cancellation Policy for TSA Legacy SaaS platform.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES) ?>">
+    <meta property="og:image" content="<?= htmlspecialchars($socialImageUrl, ENT_QUOTES) ?>">
+    <meta property="og:image:alt" content="TSA Legacy">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Refund Policy — TSA Legacy">
+    <meta name="twitter:description" content="Refund and Cancellation Policy for TSA Legacy SaaS platform.">
+    <meta name="twitter:image" content="<?= htmlspecialchars($socialImageUrl, ENT_QUOTES) ?>">
+    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars($faviconUrl, ENT_QUOTES) ?>">
+    <link rel="canonical" href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES) ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -25,7 +41,7 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? '', ENT_QUOTES);
         nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(20px);background:rgba(2,6,23,.9);border-bottom:1px solid var(--brd);height:64px;display:flex;align-items:center;padding:0 24px}
         .nav-i{max-width:1200px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between}
         .logo{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.15rem;color:var(--w);text-decoration:none}
-        .logo-ic{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--p),var(--ac));display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#fff}
+        .logo img{height:30px;display:block}
         .logo .hl{color:var(--pl)}
         .btn-g{padding:8px 18px;border-radius:8px;font-size:.8rem;font-weight:600;color:var(--tx);border:1px solid var(--brd);text-decoration:none;display:inline-flex;align-items:center;gap:6px}
         .content{max-width:800px;margin:0 auto;padding:100px 24px 60px}
@@ -44,7 +60,7 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? '', ENT_QUOTES);
 </head>
 <body>
 <nav><div class="nav-i">
-    <a href="<?= APP_URL ?>/" class="logo"><div class="logo-ic"><i class="fas fa-bolt"></i></div>TSA<span class="hl">Legacy</span></a>
+    <a href="<?= APP_URL ?>/" class="logo"><img src="<?= htmlspecialchars($logoUrl, ENT_QUOTES) ?>" alt="TSA Legacy"></a>
     <a href="<?= APP_URL ?>/" class="btn-g"><i class="fas fa-arrow-left"></i> Back to Home</a>
 </div></nav>
 
@@ -100,7 +116,7 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? '', ENT_QUOTES);
         <li>Reason for the refund request</li>
         <li>Payment receipt or transaction ID (if available)</li>
     </ul>
-    <p>Send your request to: <strong>hello@tsalegacy.shop</strong></p>
+    <p>Send your request to: <strong>hello@tsalegacy.com</strong></p>
     <p>We will respond within 2 business days and process approved refunds within 5-10 business days.</p>
 
     <h2>7. Payment Processing</h2>
@@ -112,7 +128,7 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? '', ENT_QUOTES);
     <h2>9. Contact Us</h2>
     <p>For any questions regarding refunds or cancellations:</p>
     <ul>
-        <li><strong>Email:</strong> hello@tsalegacy.shop</li>
+        <li><strong>Email:</strong> hello@tsalegacy.com</li>
         <li><strong>Business:</strong> TSA Legacy Ventures (MSME / Udyam Registered)</li>
         <li><strong>Location:</strong> India</li>
     </ul>

@@ -9,6 +9,7 @@ $previewCurrency = (string)($settings['currency_symbol'] ?? 'Rs. ');
 $previewTaxEnabled = !isset($settings['enable_tax']) || !empty($settings['enable_tax']);
 $previewGstEnabled = !isset($settings['enable_gst']) || !empty($settings['enable_gst']);
 $previewShowPaidDue = !isset($settings['show_paid_due_on_invoice']) || !empty($settings['show_paid_due_on_invoice']);
+$previewShowPaymentStatus = !isset($settings['invoice_show_payment_status']) || !empty($settings['invoice_show_payment_status']);
 $previewShowUnit = !empty($settings['show_unit_on_invoice']);
 $previewShowDiscount = !isset($settings['show_discount_on_invoice']) || !empty($settings['show_discount_on_invoice']);
 $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['show_hsn_on_invoice']);
@@ -148,10 +149,29 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                 </div>
             </div>
             <div class="card mb-3">
+                <div class="card-header"><h6><i class="fas fa-signature me-2"></i>Seal & Signature</h6></div>
+                <div class="card-body">
+                    <div class="mb-3 text-center">
+                        <?php if (!empty($settings['invoice_signature_image'])): ?><img src="<?= APP_URL ?>/<?= Helper::escape($settings['invoice_signature_image']) ?>" class="img-fluid mb-2" style="max-height:70px;"><?php endif; ?>
+                        <label class="form-label">Signature Image</label>
+                        <input type="file" name="invoice_signature_image" class="form-control" accept="image/*">
+                        <small class="text-muted">Best results: transparent PNG, landscape signature.</small>
+                    </div>
+                    <div class="text-center">
+                        <?php if (!empty($settings['invoice_seal_image'])): ?><img src="<?= APP_URL ?>/<?= Helper::escape($settings['invoice_seal_image']) ?>" class="img-fluid mb-2" style="max-height:85px;"><?php endif; ?>
+                        <label class="form-label">Seal Image</label>
+                        <input type="file" name="invoice_seal_image" class="form-control" accept="image/*">
+                        <small class="text-muted">Best results: square PNG with transparent background.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-3">
                 <div class="card-header"><h6><i class="fas fa-coins me-2"></i>Currency</h6></div>
                 <div class="card-body">
                     <div class="mb-3"><label class="form-label">Currency Symbol</label><input type="text" name="currency_symbol" class="form-control" value="<?= Helper::escape($settings['currency_symbol'] ?? '₹') ?>"></div>
                     <div class="mb-3"><label class="form-label">Currency Code</label><input type="text" name="currency_code" class="form-control" value="<?= Helper::escape($settings['currency_code'] ?? 'INR') ?>"></div>
+                    <div class="mb-3"><label class="form-label">Date Format</label><input type="text" name="date_format" class="form-control" value="<?= Helper::escape($settings['date_format'] ?? 'd-m-Y') ?>" placeholder="e.g. d-m-Y"></div>
+                    <div class="mb-3"><label class="form-label">Timezone</label><input type="text" name="timezone" class="form-control" value="<?= Helper::escape($settings['timezone'] ?? 'Asia/Kolkata') ?>" placeholder="e.g. Asia/Kolkata"></div>
                     <div class="mb-3"><label class="form-label">Low Stock Threshold</label><input type="number" name="low_stock_threshold" class="form-control" value="<?= $settings['low_stock_threshold'] ?? 10 ?>"></div>
                 </div>
             </div>
@@ -299,6 +319,12 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                                    placeholder="e.g. Purchase Bill, Purchase Order">
                             <small class="text-muted">This title appears at the top of purchase invoices</small>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Invoice Subtitle</label>
+                            <input type="text" name="invoice_subtitle" class="form-control" 
+                                   value="<?= Helper::escape($settings['invoice_subtitle'] ?? '') ?>"
+                                   placeholder="Optional subtitle below the invoice title">
+                        </div>
                     </div>
 
                     <hr class="section-divider">
@@ -310,12 +336,58 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                                    value="<?= Helper::escape($settings['invoice_signature_label'] ?? 'Authorised Signatory') ?>"
                                    placeholder="e.g. Authorised Signatory, For Company Name">
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Notes Label</label>
+                            <input type="text" name="invoice_notes_label" class="form-control" 
+                                   value="<?= Helper::escape($settings['invoice_notes_label'] ?? 'Notes') ?>"
+                                   placeholder="e.g. Notes, Remarks">
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="card mb-3">
                 <div class="card-header"><h6><i class="fas fa-eye me-2"></i>Invoice Display Options</h6></div>
                 <div class="card-body">
+                    <div class="toggle-card">
+                        <div class="toggle-info">
+                            <h6><i class="fas fa-image me-2" style="color: #4e73df;"></i>Show Logo on Invoice</h6>
+                            <p>Displays the uploaded company logo on invoices and quotations.</p>
+                        </div>
+                        <div class="form-check form-switch form-switch-lg">
+                            <input class="form-check-input" type="checkbox" name="invoice_show_logo" value="1"
+                                   <?= (!isset($settings['invoice_show_logo']) || !empty($settings['invoice_show_logo'])) ? 'checked' : '' ?>>
+                        </div>
+                    </div>
+                    <div class="toggle-card">
+                        <div class="toggle-info">
+                            <h6><i class="fas fa-signature me-2" style="color: #6f42c1;"></i>Show Signature on Invoice</h6>
+                            <p>Displays the uploaded signature image in the invoice sign area.</p>
+                        </div>
+                        <div class="form-check form-switch form-switch-lg">
+                            <input class="form-check-input" type="checkbox" name="invoice_show_signature" value="1"
+                                   <?= (!isset($settings['invoice_show_signature']) || !empty($settings['invoice_show_signature'])) ? 'checked' : '' ?>>
+                        </div>
+                    </div>
+                    <div class="toggle-card">
+                        <div class="toggle-info">
+                            <h6><i class="fas fa-stamp me-2" style="color: #dc3545;"></i>Show Seal on Invoice</h6>
+                            <p>Displays the uploaded seal image in the invoice sign area.</p>
+                        </div>
+                        <div class="form-check form-switch form-switch-lg">
+                            <input class="form-check-input" type="checkbox" name="invoice_show_seal" value="1"
+                                   <?= (!isset($settings['invoice_show_seal']) || !empty($settings['invoice_show_seal'])) ? 'checked' : '' ?>>
+                        </div>
+                    </div>
+                    <div class="toggle-card">
+                        <div class="toggle-info">
+                            <h6><i class="fas fa-receipt me-2" style="color: #17a2b8;"></i>Show Payment Status Badge</h6>
+                            <p>Shows paid, unpaid, partial, or returned status in the invoice header.</p>
+                        </div>
+                        <div class="form-check form-switch form-switch-lg">
+                            <input class="form-check-input" type="checkbox" id="showPaymentStatusSwitch" name="invoice_show_payment_status" value="1"
+                                   <?= $previewShowPaymentStatus ? 'checked' : '' ?>>
+                        </div>
+                    </div>
                     <div class="toggle-card">
                         <div class="toggle-info">
                             <h6><i class="fas fa-money-check-dollar me-2" style="color: #28a745;"></i>Show Paid / Due on Invoice</h6>
@@ -398,8 +470,11 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                                 <div id="previewTitle" style="font-weight:700; font-size:0.75rem; color:#4e73df; text-transform:uppercase;">
                                     <?= Helper::escape($settings['invoice_title'] ?? 'Tax Invoice') ?>
                                 </div>
+                                <div id="previewSubtitle" style="font-size:0.68rem; color:#6c757d; margin-top:2px; display: <?= !empty($settings['invoice_subtitle']) ? 'block' : 'none' ?>;">
+                                    <?= Helper::escape($settings['invoice_subtitle'] ?? '') ?>
+                                </div>
                                 <div style="font-size:0.7rem; color:#888;">INV-00001</div>
-                                <div id="previewStatusWrap" style="margin-top:4px; display: <?= $previewShowPaidDue ? 'block' : 'none' ?>;">
+                                <div id="previewStatusWrap" style="margin-top:4px; display: <?= $previewShowPaymentStatus ? 'block' : 'none' ?>;">
                                     <span style="display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.65rem; font-weight:700; background:#f8d7da; color:#721c24;">UNPAID</span>
                                 </div>
                             </div>
@@ -569,8 +644,16 @@ function toggleGstFields() {
 // Live preview updates
 function updatePreview() {
     const title = document.querySelector('input[name="invoice_title"]');
+    const subtitle = document.querySelector('input[name="invoice_subtitle"]');
     const sig = document.querySelector('input[name="invoice_signature_label"]');
     if (title) document.getElementById('previewTitle').textContent = title.value || 'Invoice';
+    if (subtitle) {
+        const subtitleNode = document.getElementById('previewSubtitle');
+        if (subtitleNode) {
+            subtitleNode.textContent = subtitle.value || '';
+            subtitleNode.style.display = subtitle.value ? 'block' : 'none';
+        }
+    }
     if (sig) document.getElementById('previewSignature').textContent = sig.value || 'Authorised Signatory';
 }
 
@@ -578,12 +661,14 @@ function updatePreviewLayout() {
     const gstSwitch = document.getElementById('enableGstSwitch');
     const taxSwitch = document.getElementById('enableTaxSwitch');
     const showPaidDueSwitch = document.getElementById('showPaidDueSwitch');
+    const showPaymentStatusSwitch = document.getElementById('showPaymentStatusSwitch');
     const showUnitSwitch = document.getElementById('showUnitSwitch');
     const showDiscountSwitch = document.getElementById('showDiscountSwitch');
     const showHsnSwitch = document.getElementById('showHsnSwitch');
     const gstEnabled = !!(gstSwitch && gstSwitch.checked);
     const taxEnabled = !!(taxSwitch && taxSwitch.checked);
     const showPaidDue = !!(showPaidDueSwitch && showPaidDueSwitch.checked);
+    const showPaymentStatus = !!(showPaymentStatusSwitch && showPaymentStatusSwitch.checked);
     const showUnit = !!(showUnitSwitch && showUnitSwitch.checked);
     const showDiscount = !!(showDiscountSwitch && showDiscountSwitch.checked);
     const showHsn = !!(showHsnSwitch && showHsnSwitch.checked);
@@ -610,7 +695,7 @@ function updatePreviewLayout() {
     taxCells.forEach(c => c.style.display = showTaxColumns ? '' : 'none');
     if (qtyCell) qtyCell.textContent = showUnit ? '2 Pcs' : '2';
     if (paidDueRow) paidDueRow.style.display = showPaidDue ? 'block' : 'none';
-    if (statusWrap) statusWrap.style.display = showPaidDue ? 'block' : 'none';
+    if (statusWrap) statusWrap.style.display = showPaymentStatus ? 'block' : 'none';
     if (taxSummaryRow) taxSummaryRow.style.display = showTaxColumns ? 'block' : 'none';
 }
 
@@ -618,17 +703,21 @@ function updatePreviewLayout() {
 document.addEventListener('DOMContentLoaded', function() {
     const titleField = document.querySelector('input[name="invoice_title"]');
     const sigField = document.querySelector('input[name="invoice_signature_label"]');
+    const subtitleField = document.querySelector('input[name="invoice_subtitle"]');
     const taxSwitch = document.getElementById('enableTaxSwitch');
     const gstSwitch = document.getElementById('enableGstSwitch');
     const showPaidDueSwitch = document.getElementById('showPaidDueSwitch');
+    const showPaymentStatusSwitch = document.getElementById('showPaymentStatusSwitch');
     const showUnitSwitch = document.getElementById('showUnitSwitch');
     const showDiscountSwitch = document.getElementById('showDiscountSwitch');
     const showHsnSwitch = document.getElementById('showHsnSwitch');
     if (titleField) titleField.addEventListener('input', updatePreview);
+    if (subtitleField) subtitleField.addEventListener('input', updatePreview);
     if (sigField) sigField.addEventListener('input', updatePreview);
     if (taxSwitch) taxSwitch.addEventListener('change', toggleTaxFields);
     if (gstSwitch) gstSwitch.addEventListener('change', toggleGstFields);
     if (showPaidDueSwitch) showPaidDueSwitch.addEventListener('change', updatePreviewLayout);
+    if (showPaymentStatusSwitch) showPaymentStatusSwitch.addEventListener('change', updatePreviewLayout);
     if (showUnitSwitch) showUnitSwitch.addEventListener('change', updatePreviewLayout);
     if (showDiscountSwitch) showDiscountSwitch.addEventListener('change', updatePreviewLayout);
     if (showHsnSwitch) showHsnSwitch.addEventListener('change', updatePreviewLayout);

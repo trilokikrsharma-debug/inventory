@@ -14,6 +14,13 @@ class SalesModel extends Model {
      */
     private static $productColumnMap = null;
 
+    public function activeWarehouses(): array {
+        if (Tenant::id() === null || !Tenant::canUse('multi_warehouse')) {
+            return [];
+        }
+        return (new WarehouseModel())->allActiveOrdered();
+    }
+
     /**
      * Keep dashboard and report caches coherent after sales mutations.
      */
@@ -26,7 +33,7 @@ class SalesModel extends Model {
     /**
      * Get all sales with customer info (tenant-scoped)
      */
-    public function getAllWithCustomer($search = '', $fromDate = '', $toDate = '', $customerId = '', $status = '', $page = 1, $perPage = RECORDS_PER_PAGE) {
+    public function getAllWithCustomer($search = '', $fromDate = '', $toDate = '', $customerId = '', $status = '', $page = 1, $perPage = RECORDS_PER_PAGE, $warehouseId = '') {
         $offset = ($page - 1) * $perPage;
         $params = [];
         $where = ["s.deleted_at IS NULL"];
@@ -46,6 +53,7 @@ class SalesModel extends Model {
         if ($toDate) { $where[] = "s.sale_date <= ?"; $params[] = $toDate; }
         if ($customerId) { $where[] = "s.customer_id = ?"; $params[] = $customerId; }
         if ($status) { $where[] = "s.payment_status = ?"; $params[] = $status; }
+        if ($warehouseId) { $where[] = "s.warehouse_id = ?"; $params[] = $warehouseId; }
 
         $whereClause = implode(' AND ', $where);
 
@@ -61,6 +69,7 @@ class SalesModel extends Model {
                 s.id,
                 s.invoice_number,
                 s.customer_id,
+                s.warehouse_id,
                 s.sale_date,
                 s.subtotal,
                 s.discount_amount,
@@ -71,9 +80,11 @@ class SalesModel extends Model {
                 s.payment_status,
                 s.status,
                 s.created_at,
-                c.name as customer_name
+                c.name as customer_name,
+                w.name as warehouse_name
              FROM {$this->table} s
              {$customerJoin}
+             LEFT JOIN warehouses w ON s.warehouse_id = w.id
              WHERE {$whereClause}
              ORDER BY s.id DESC
              LIMIT {$perPage} OFFSET {$offset}",
@@ -105,6 +116,7 @@ class SalesModel extends Model {
                 s.id,
                 s.invoice_number,
                 s.customer_id,
+                s.warehouse_id,
                 s.sale_date,
                 s.reference_number,
                 s.subtotal,
@@ -131,9 +143,11 @@ class SalesModel extends Model {
                 c.state as customer_state,
                 c.tax_number as customer_tax,
                 c.tax_number as customer_tax_number,
+                w.name as warehouse_name,
                 u.full_name as created_by_name
              FROM {$this->table} s
              LEFT JOIN customers c ON s.customer_id = c.id
+             LEFT JOIN warehouses w ON s.warehouse_id = w.id
              LEFT JOIN users u ON s.created_by = u.id
              WHERE " . implode(' AND ', $where),
             $params
@@ -148,6 +162,7 @@ class SalesModel extends Model {
                     si.id,
                     si.sale_id,
                     si.product_id,
+                    si.warehouse_id,
                     si.quantity,
                     si.unit_price,
                     si.discount,
@@ -180,16 +195,17 @@ class SalesModel extends Model {
             $saleData['created_by'] = $userId;
             $saleId = $this->create($saleData);
             $companyId = Tenant::id() ?? 1;
+            $warehouseId = isset($saleData['warehouse_id']) ? (int)$saleData['warehouse_id'] : null;
 
             $productModel = new ProductModel();
             foreach ($items as $item) {
                 $db->query(
-                    "INSERT INTO sale_items (company_id, sale_id, product_id, quantity, unit_price, discount, tax_rate, tax_amount, subtotal, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    [$companyId, $saleId, $item['product_id'], $item['quantity'], $item['unit_price'], $item['discount'], $item['tax_rate'], $item['tax_amount'], $item['subtotal'], $item['total']]
+                    "INSERT INTO sale_items (company_id, sale_id, product_id, warehouse_id, quantity, unit_price, discount, tax_rate, tax_amount, subtotal, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [$companyId, $saleId, $item['product_id'], $warehouseId, $item['quantity'], $item['unit_price'], $item['discount'], $item['tax_rate'], $item['tax_amount'], $item['subtotal'], $item['total']]
                 );
 
                 // Decrease stock (negative quantity)
-                $productModel->updateStock($item['product_id'], -$item['quantity'], 'sale', $saleId, $userId, 'Sale #' . $saleData['invoice_number']);
+                $productModel->updateStock($item['product_id'], -$item['quantity'], 'sale', $saleId, $userId, 'Sale #' . $saleData['invoice_number'], $warehouseId);
             }
 
             // Distribute any unapplied advance payments to this new sale
@@ -224,13 +240,15 @@ class SalesModel extends Model {
             $customerModel = new CustomerModel();
             $invoiceNum    = $old['invoice_number'];
             $companyId     = Tenant::id() ?? 1;
+            $warehouseId   = isset($saleData['warehouse_id']) ? (int)$saleData['warehouse_id'] : null;
 
             // 1. Restore stock from old items
             foreach ($old['items'] as $item) {
                 $productModel->updateStock(
                     $item['product_id'], +$item['quantity'],
                     'sale_edit_reverse', $id, $userId,
-                    'Edit Reversal: Sale #' . $invoiceNum
+                    'Edit Reversal: Sale #' . $invoiceNum,
+                    !empty($item['warehouse_id']) ? (int)$item['warehouse_id'] : null
                 );
             }
 
@@ -241,15 +259,16 @@ class SalesModel extends Model {
             // 3. Insert new items + deduct new stock
             foreach ($items as $item) {
                 $db->query(
-                    "INSERT INTO sale_items (company_id, sale_id, product_id, quantity, unit_price, discount, tax_rate, tax_amount, subtotal, total)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    [$companyId, $id, $item['product_id'], $item['quantity'], $item['unit_price'],
+                    "INSERT INTO sale_items (company_id, sale_id, product_id, warehouse_id, quantity, unit_price, discount, tax_rate, tax_amount, subtotal, total)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [$companyId, $id, $item['product_id'], $warehouseId, $item['quantity'], $item['unit_price'],
                      $item['discount'], $item['tax_rate'], $item['tax_amount'], $item['subtotal'], $item['total']]
                 );
                 $productModel->updateStock(
                     $item['product_id'], -$item['quantity'],
                     'sale_edit', $id, $userId,
-                    'Edited Sale #' . $invoiceNum
+                    'Edited Sale #' . $invoiceNum,
+                    $warehouseId
                 );
             }
 
@@ -291,7 +310,8 @@ class SalesModel extends Model {
                 $productModel->updateStock(
                     $item['product_id'], +$item['quantity'],
                     'sale_cancel', $id, $userId,
-                    'Sale Cancelled #' . $sale['invoice_number']
+                    'Sale Cancelled #' . $sale['invoice_number'],
+                    !empty($item['warehouse_id']) ? (int)$item['warehouse_id'] : null
                 );
             }
 

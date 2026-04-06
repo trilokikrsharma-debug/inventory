@@ -502,7 +502,7 @@ class TenantSubscription extends Model {
 
             // Ensure this plan becomes current company plan + keep legacy fields aligned.
             $planMeta = $db->query(
-                "SELECT id, name, slug, max_users FROM saas_plans WHERE id = ? LIMIT 1",
+                "SELECT id, name, slug, max_users, max_products FROM saas_plans WHERE id = ? LIMIT 1",
                 [(int)$sub['plan_id']]
             )->fetch() ?: [];
             $legacyPlanAlias = $this->legacyPlanAliasFromPlan($planMeta);
@@ -527,6 +527,14 @@ class TenantSubscription extends Model {
                 if ($planMaxUsers > 0) {
                     $companySet[] = "max_users = ?";
                     $companyParams[] = $planMaxUsers;
+                }
+            }
+
+            if ($this->companyHasColumn('max_products')) {
+                $planMaxProducts = (int)($planMeta['max_products'] ?? 0);
+                if ($planMaxProducts > 0) {
+                    $companySet[] = "max_products = ?";
+                    $companyParams[] = $planMaxProducts;
                 }
             }
 

@@ -85,6 +85,9 @@ class DemoLoginController extends Controller {
             $user['is_super_admin'] = false;
 
             session_regenerate_id(true);
+            CSRF::rotateToken();
+            Session::initFingerprint();
+            Session::clearPermissionCache();
             Session::set('user', $user);
             Tenant::set($companyId, $company);
 

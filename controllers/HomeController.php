@@ -24,7 +24,9 @@ class HomeController extends Controller {
         $plans = [];
         try {
             $plans = (new SaaSPlan())->listForCheckout();
-        } catch (\Throwable $e) { }
+        } catch (\Throwable $e) {
+            Logger::error('Failed to load homepage plans', ['error' => $e->getMessage()]);
+        }
 
         $this->renderPartial('public.home', [
             'plans' => $plans
