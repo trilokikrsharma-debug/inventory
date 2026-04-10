@@ -8,7 +8,7 @@ $canonicalUrl = rtrim(APP_URL, '/') . '/refund';
 $iconUrl = rtrim(APP_URL, '/') . '/assets/icon.svg';
 $faviconUrl = rtrim(APP_URL, '/') . '/assets/favicon.svg';
 $logoUrl = rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
-$socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.svg';
+$socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.png';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -116,7 +116,7 @@ $socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.svg';
         <li>Reason for the refund request</li>
         <li>Payment receipt or transaction ID (if available)</li>
     </ul>
-    <p>Send your request to: <strong>hello@tsalegacy.com</strong></p>
+    <p>Send your request to: <strong>triloki@tsalegacy.com</strong></p>
     <p>We will respond within 2 business days and process approved refunds within 5-10 business days.</p>
 
     <h2>7. Payment Processing</h2>
@@ -128,7 +128,7 @@ $socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.svg';
     <h2>9. Contact Us</h2>
     <p>For any questions regarding refunds or cancellations:</p>
     <ul>
-        <li><strong>Email:</strong> hello@tsalegacy.com</li>
+        <li><strong>Email:</strong> triloki@tsalegacy.com</li>
         <li><strong>Business:</strong> TSA Legacy Ventures (MSME / Udyam Registered)</li>
         <li><strong>Location:</strong> India</li>
     </ul>

@@ -8,7 +8,7 @@ $canonicalUrl = rtrim(APP_URL, '/') . '/privacy';
 $iconUrl = rtrim(APP_URL, '/') . '/assets/icon.svg';
 $faviconUrl = rtrim(APP_URL, '/') . '/assets/favicon.svg';
 $logoUrl = rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
-$socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.svg';
+$socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.png';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -128,7 +128,7 @@ $socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.svg';
     <h2>11. Contact Us</h2>
     <p>If you have questions about this Privacy Policy:</p>
     <ul>
-        <li><strong>Email:</strong> hello@tsalegacy.com</li>
+        <li><strong>Email:</strong> triloki@tsalegacy.com</li>
         <li><strong>Business:</strong> TSA Legacy Ventures (MSME / Udyam Registered)</li>
         <li><strong>Location:</strong> India</li>
     </ul>

@@ -3,7 +3,8 @@ $homeUrl = rtrim(APP_URL, '/') . '/';
 $iconUrl = rtrim(APP_URL, '/') . '/assets/icon.svg';
 $faviconUrl = rtrim(APP_URL, '/') . '/assets/favicon.svg';
 $logoUrl = rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
-$socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.svg';
+$socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.png';
+$_nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? $cspNonce ?? '', ENT_QUOTES);
 $seoLandingLinks = [
     ['href' => APP_URL . '/gst-billing-software', 'title' => 'GST Billing Software', 'description' => 'Focused page for GST invoices, receipts, quotations and faster billing workflows.'],
     ['href' => APP_URL . '/inventory-management-software', 'title' => 'Inventory Management Software', 'description' => 'Focused page for stock tracking, purchases, product catalog control and low-stock visibility.'],
@@ -56,7 +57,7 @@ $faqSchema = [
     <meta name="twitter:image" content="<?= htmlspecialchars($socialImageUrl, ENT_QUOTES) ?>">
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars($faviconUrl, ENT_QUOTES) ?>">
     <link rel="canonical" href="<?= htmlspecialchars($homeUrl, ENT_QUOTES) ?>">
-    <script type="application/ld+json" nonce="<?= htmlspecialchars($cspNonce ?? '', ENT_QUOTES) ?>">
+    <script type="application/ld+json" nonce="<?= $_nonce ?>">
         <?= json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'SoftwareApplication',
@@ -79,194 +80,19 @@ $faqSchema = [
             ],
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
     </script>
-    <script type="application/ld+json" nonce="<?= htmlspecialchars($cspNonce ?? '', ENT_QUOTES) ?>">
+    <script type="application/ld+json" nonce="<?= $_nonce ?>">
         <?= json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'FAQPage',
             'mainEntity' => $faqSchema,
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
     </script>
-    <script nonce="<?= htmlspecialchars($cspNonce ?? '', ENT_QUOTES) ?>">document.documentElement.classList.remove('no-js');</script>
+    <script nonce="<?= $_nonce ?>">document.documentElement.classList.remove('no-js');</script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <style>
-        :root{--p:#2563eb;--pd:#1d4ed8;--pl:#93c5fd;--ac:#60a5fa;--ac2:#38bdf8;--d:#06101b;--d2:#0f1f32;--d3:#1b3148;--card:rgba(255,255,255,.055);--brd:rgba(148,163,184,.16);--tx:#e6edf7;--mt:#b7c4d6;--w:#fff}
-        *{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
-        body{font-family:'Inter',system-ui,sans-serif;background:var(--d);color:var(--tx);overflow-x:hidden;-webkit-font-smoothing:antialiased}
-        a{text-decoration:none;color:inherit}
-        .mx{max-width:1200px;margin:0 auto;padding:0 24px}
-        .mx-sm{max-width:960px;margin:0 auto;padding:0 24px}
-        .mx-xs{max-width:720px;margin:0 auto;padding:0 24px}
-
-        /* NAV */
-        nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(20px);background:rgba(6,16,27,.9);border-bottom:1px solid var(--brd);height:64px;display:flex;align-items:center;padding:0 20px;transition:background .3s}
-        .nav-i{max-width:1200px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between}
-        .logo{display:flex;align-items:center;color:var(--w)}
-        .logo img{height:34px;display:block}
-        .nav-l{display:flex;gap:32px;align-items:center}
-        .nav-l a{color:var(--mt);font-size:.88rem;font-weight:600;transition:color .2s}
-        .nav-l a:hover{color:var(--w)}
-        .nav-c{display:flex;gap:10px;align-items:center}
-        .btn-g,.btn-p{min-height:48px;padding:11px 18px;border-radius:12px;font-size:.92rem;font-weight:700;transition:all .22s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
-        .btn-g{color:var(--w);border:1px solid rgba(147,197,253,.28);background:rgba(15,31,50,.84);box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}
-        .btn-g:hover{background:rgba(24,45,70,.94);border-color:rgba(147,197,253,.48);color:var(--w)}
-        .btn-p{color:#fff;background:linear-gradient(135deg,var(--pd),var(--p));box-shadow:0 10px 24px rgba(37,99,235,.34);border:1px solid rgba(147,197,253,.24);cursor:pointer}
-        .btn-p:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(37,99,235,.42)}
-        .btn-lg{padding:15px 24px;border-radius:14px;font-size:1rem}
-        .hamburger{display:none;background:none;border:none;color:var(--w);font-size:1.2rem;cursor:pointer}
-        .mob-menu{display:none}
-
-        /* HERO */
-        .hero{min-height:min(88svh,820px);display:flex;align-items:center;padding:84px 20px 34px;position:relative;overflow:hidden;text-align:center}
-        .hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(37,99,235,.24),transparent),radial-gradient(ellipse 50% 40% at 80% 50%,rgba(96,165,250,.14),transparent)}
-        .hero-grid{position:absolute;inset:0;opacity:.03;background-image:linear-gradient(var(--w) 1px,transparent 1px),linear-gradient(90deg,var(--w) 1px,transparent 1px);background-size:48px 48px}
-        .hero-c{max-width:880px;margin:0 auto;position:relative;z-index:1}
-        .badge{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid rgba(147,197,253,.24);background:rgba(147,197,253,.08);font-size:.76rem;font-weight:700;color:var(--pl);margin-bottom:18px;letter-spacing:.03em}
-        .badge .dot{width:6px;height:6px;border-radius:50%;background:var(--ac2);animation:pulse 2s infinite}
-        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.5)}}
-        .hero h1{font-size:clamp(2.15rem,6vw,4rem);font-weight:900;line-height:1.03;letter-spacing:-.035em;color:var(--w);margin-bottom:14px}
-        .gt{background:linear-gradient(135deg,var(--pl),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-        .hero p{font-size:1.02rem;color:var(--mt);max-width:700px;margin:0 auto 26px;line-height:1.72}
-        .hero-btns{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:26px}
-        .hero-proof{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:0 0 24px}
-        .hero-proof span{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--brd);font-size:.79rem;color:var(--tx);font-weight:600}
-        .hero-proof i,.badge i,.sec-tag i{width:1em;text-align:center}
-        .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;max-width:760px;margin:0 auto}
-        .stats > div{padding:14px 10px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid var(--brd)}
-        .stat-n{font-size:1.2rem;font-weight:900}
-        .stat-l{font-size:.72rem;color:var(--mt);font-weight:600;margin-top:4px}
-
-        /* TRUST BAR */
-        .trust{border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);padding:28px 24px;text-align:center}
-        .trust p{font-size:.7rem;color:rgba(148,163,184,.6);text-transform:uppercase;letter-spacing:.15em;font-weight:600;margin-bottom:18px}
-        .trust-logos{display:flex;justify-content:center;align-items:center;gap:40px;flex-wrap:wrap;opacity:.35}
-        .trust-logos span{font-size:1.1rem;font-weight:900;color:var(--mt)}
-
-        /* SECTIONS */
-        .sec{padding:84px 20px}
-        .sec-alt{background:linear-gradient(180deg,rgba(15,23,42,.5) 0%,var(--d) 100%)}
-        .sec-hd{text-align:center;margin-bottom:42px}
-        .sec-tag{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--pl);margin-bottom:12px}
-        .sec-t{font-size:clamp(1.75rem,4vw,2.5rem);font-weight:900;color:var(--w);line-height:1.16;letter-spacing:-.025em;margin-bottom:12px}
-        .sec-s{font-size:.98rem;color:var(--mt);max-width:620px;margin:0 auto;line-height:1.74}
-
-        /* CARDS GRID */
-        .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-        .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
-        .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:40px;align-items:center}
-        .card{background:var(--card);border:1px solid var(--brd);border-radius:20px;padding:24px;transition:all .3s;position:relative;overflow:hidden}
-        .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--p),transparent);opacity:0;transition:opacity .3s}
-        .card:hover{transform:translateY(-4px);border-color:rgba(99,102,241,.3);box-shadow:0 0 40px rgba(99,102,241,.08)}
-        .card:hover::before{opacity:1}
-        .card-ic{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.08rem;margin-bottom:16px;flex-shrink:0}
-        .card h3{font-size:1.04rem;font-weight:800;color:var(--w);margin-bottom:10px;line-height:1.35}
-        .card p{font-size:.92rem;color:var(--mt);line-height:1.72}
-
-        /* STEPS */
-        .step{text-align:center;padding:28px 20px}
-        .step-n{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--ac));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;color:#fff;margin:0 auto 14px}
-
-        /* ABOUT */
-        .founder-card{background:var(--card);border:1px solid var(--brd);border-radius:24px;padding:30px;position:relative;overflow:hidden}
-        .founder-card .corner{position:absolute;top:0;right:0;width:100px;height:100px;background:linear-gradient(135deg,rgba(99,102,241,.15),transparent);border-radius:0 0 0 100%}
-        .av{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--p),var(--ac));display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;font-weight:900;margin-bottom:16px}
-        .tag{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;font-size:.7rem;font-weight:700;margin-right:6px;margin-bottom:6px}
-        .tag-g{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:#34d399}
-        .tag-b{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);color:var(--pl)}
-        .tag-c{background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);color:#22d3ee}
-
-        /* TESTIMONIALS */
-        .t-card{background:var(--card);border:1px solid var(--brd);border-radius:20px;padding:24px}
-        .stars{color:#f59e0b;font-size:.7rem;margin-bottom:8px}
-        .t-text{font-size:.875rem;color:var(--tx);line-height:1.7;margin-bottom:20px;font-style:italic}
-        .t-auth{display:flex;align-items:center;gap:12px}
-        .t-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--ac));display:flex;align-items:center;justify-content:center;color:#fff;font-size:.7rem;font-weight:700}
-        .t-name{font-weight:600;font-size:.85rem;color:var(--w)}
-        .t-role{font-size:.7rem;color:var(--mt)}
-
-        /* PRICING */
-        .p-card{background:var(--card);border:1px solid var(--brd);border-radius:22px;padding:28px;transition:all .3s;position:relative}
-        .p-card:hover{transform:translateY(-4px);box-shadow:0 0 40px rgba(99,102,241,.08)}
-        .p-card.pop{border-color:rgba(96,165,250,.34);background:linear-gradient(180deg,rgba(37,99,235,.14) 0%,rgba(6,16,27,1) 100%)}
-        .pop-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--p),var(--ac));color:#fff;padding:6px 16px;border-radius:999px;font-size:.68rem;font-weight:800;white-space:nowrap}
-        .p-name{font-size:.75rem;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.08em}
-        .p-price{font-size:2.8rem;font-weight:900;color:var(--w);line-height:1;margin:12px 0 4px}
-        .p-price sub{font-size:.9rem;font-weight:400;color:var(--mt)}
-        .p-desc{font-size:.88rem;color:var(--mt);margin-bottom:18px;line-height:1.7}
-        .p-feat{list-style:none;margin-bottom:24px}
-        .p-feat li{display:flex;align-items:center;gap:8px;font-size:.82rem;padding:5px 0;color:var(--tx)}
-        .p-feat .ck{color:var(--ac2);font-size:.7rem}
-        .btn-plan{display:block;text-align:center;padding:10px;border-radius:10px;font-weight:700;font-size:.85rem;transition:all .2s}
-        .seo-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
-        .seo-link{display:block;padding:22px;border-radius:22px;background:var(--card);border:1px solid var(--brd);transition:transform .2s,border-color .2s,box-shadow .2s}
-        .seo-link:hover{transform:translateY(-3px);border-color:rgba(99,102,241,.32);box-shadow:0 18px 40px rgba(2,6,23,.24)}
-        .seo-link h3{color:var(--w);font-size:1rem;margin-bottom:10px}
-        .seo-link p{color:var(--mt);font-size:.92rem;line-height:1.72}
-        .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-        .faq-card{padding:22px;border-radius:22px;background:var(--card);border:1px solid var(--brd)}
-        .faq-card h3{color:var(--w);font-size:1.02rem;margin-bottom:10px;line-height:1.42}
-        .faq-card p{color:var(--mt);font-size:.94rem;line-height:1.78}
-
-        /* CTA */
-        .cta-box{background:var(--card);border:1px solid rgba(96,165,250,.18);border-radius:28px;padding:42px 28px;text-align:center;position:relative;overflow:hidden}
-        .cta-box .bg{position:absolute;inset:0;background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(96,165,250,.06))}
-        .cta-form{display:flex;gap:10px;max-width:420px;margin:0 auto 12px}
-        .cta-input{flex:1;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid var(--brd);color:var(--w);font-size:.92rem;font-family:inherit;outline:none}
-        .cta-input:focus{border-color:rgba(96,165,250,.46)}
-
-        /* FOOTER */
-        footer{border-top:1px solid var(--brd);padding:42px 20px 28px}
-        .ft-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:32px}
-        .ft-title{font-weight:600;font-size:.85rem;color:var(--w);margin-bottom:12px}
-        .ft-links{display:flex;flex-direction:column;gap:8px}
-        .ft-links a{color:var(--mt);font-size:.78rem;transition:color .2s}
-        .ft-links a:hover{color:var(--w)}
-        .ft-bar{border-top:1px solid var(--brd);padding-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-        .ft-copy{color:rgba(148,163,184,.5);font-size:.72rem}
-
-        /* REVEAL ANIMATION */
-        .rv{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease}
-        .rv.vis{opacity:1;transform:translateY(0)}
-        .no-js .rv,.rv-fallback .rv{opacity:1!important;transform:none!important}
-
-        /* RESPONSIVE */
-        @media(max-width:1024px){.grid-3{grid-template-columns:repeat(2,1fr)}.grid-4{grid-template-columns:repeat(2,1fr)}.ft-grid{grid-template-columns:repeat(2,1fr)}.seo-links{grid-template-columns:1fr}.faq-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:768px){
-            .nav-l,.nav-c{display:none}
-            .hamburger{display:block}
-            .mob-menu.open{display:flex;flex-direction:column;position:fixed;top:64px;left:0;right:0;background:rgba(2,6,23,.98);backdrop-filter:blur(20px);border-bottom:1px solid var(--brd);padding:16px 24px;z-index:99;gap:4px}
-            .mob-menu a{padding:10px 0;color:var(--tx);font-weight:500;border-bottom:1px solid var(--brd);font-size:.9rem}
-            .grid-3,.grid-4{grid-template-columns:1fr}
-            .grid-2{grid-template-columns:1fr}
-            .hero{min-height:auto;padding:82px 16px 26px}
-            .logo img{height:30px}
-            .badge{margin-bottom:14px}
-            .hero h1{font-size:2rem}
-            .hero p{font-size:.96rem;margin-bottom:20px}
-            .hero-btns{margin-bottom:18px}
-            .hero-proof{gap:8px;margin-bottom:18px}
-            .hero-proof span{font-size:.74rem;padding:8px 10px}
-            .stats{gap:10px}
-            .cta-form{flex-direction:column}
-            .ft-grid{grid-template-columns:1fr 1fr}
-            .p-card.pop{transform:none}
-        }
-        @media(max-width:480px){
-            nav{padding:0 14px}
-            .hero{padding:78px 14px 22px}
-            .logo img{height:28px}
-            .hero h1{font-size:1.86rem}
-            .hero-proof span:nth-child(n+3){display:none}
-            .btn-g,.btn-p,.btn-lg{width:100%}
-            .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-            .sec{padding:64px 14px}
-            .sec-hd{margin-bottom:32px}
-            .sec-t{font-size:1.7rem}
-            .ft-grid{grid-template-columns:1fr}
-        }
-    </style>
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/public.css">
 </head>
 <body>
 
@@ -412,7 +238,7 @@ $faqSchema = [
 </section>
 
 <!-- TESTIMONIALS -->
-<section class="sec">
+<section class="sec" id="use-cases">
     <div class="mx-sm">
         <div class="sec-hd rv"><div class="sec-tag"><i class="fas fa-heart"></i> Common Use Cases</div><h2 class="sec-t">Built for daily business operations</h2></div>
         <div class="grid-3">
@@ -588,27 +414,9 @@ $faqSchema = [
     </div>
 </section>
 
-<!-- FOOTER -->
-<footer>
-    <div class="mx">
-        <div class="ft-grid">
-            <div>
-                <a href="<?= APP_URL ?>/" class="logo" style="margin-bottom:10px"><img src="<?= htmlspecialchars($logoUrl, ENT_QUOTES) ?>" alt="TSA Legacy" style="height:32px"></a>
-                <p style="color:var(--mt);font-size:.78rem;line-height:1.6;margin:10px 0">Cloud-native business management platform built for Indian SMEs.</p>
-                <p style="color:var(--mt);font-size:.72rem"><i class="fas fa-map-marker-alt" style="margin-right:4px"></i> India-based Startup</p>
-            </div>
-            <div><div class="ft-title">Product</div><div class="ft-links"><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="<?= APP_URL ?>/blog">Guides</a><a href="<?= APP_URL ?>/demo">Live Demo</a><a href="<?= APP_URL ?>/signup">Sign Up</a></div></div>
-            <div><div class="ft-title">Company</div><div class="ft-links"><a href="#about">About Us</a><a href="<?= APP_URL ?>/privacy">Privacy Policy</a><a href="<?= APP_URL ?>/terms">Terms of Service</a><a href="<?= APP_URL ?>/refund">Refund Policy</a></div></div>
-            <div><div class="ft-title">Contact</div><div class="ft-links"><a href="mailto:hello@tsalegacy.com"><i class="fas fa-envelope" style="margin-right:4px"></i>hello@tsalegacy.com</a><span style="color:var(--mt);font-size:.78rem"><i class="fas fa-building" style="margin-right:4px"></i>TSA Legacy Ventures</span><span style="color:var(--mt);font-size:.78rem"><i class="fas fa-certificate" style="margin-right:4px"></i>MSME / Udyam Registered</span><span style="color:var(--mt);font-size:.78rem"><i class="fas fa-flag" style="margin-right:4px"></i>Made with ❤️ in India</span></div></div>
-        </div>
-        <div class="ft-bar">
-            <p class="ft-copy">© 2025–<?= date('Y') ?> TSA Legacy Ventures. All rights reserved.</p>
-            <div style="display:flex;align-items:center;gap:8px"><span class="ft-copy">Powered by</span><span style="color:var(--mt);font-size:.75rem;font-weight:600"><i class="fab fa-google" style="margin-right:3px"></i>Google Cloud</span></div>
-        </div>
-    </div>
-</footer>
+<?php include __DIR__ . '/_partials/footer.php'; ?>
 
-<script nonce="<?= htmlspecialchars($GLOBALS['csp_nonce'] ?? '', ENT_QUOTES) ?>">
+<script nonce="<?= $_nonce ?>">
 document.getElementById('hamburger').addEventListener('click',function(){document.getElementById('mobMenu').classList.toggle('open')});
 function clM(){document.getElementById('mobMenu').classList.remove('open')}
 var revEls=document.querySelectorAll('.rv');

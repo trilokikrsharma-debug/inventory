@@ -20,7 +20,11 @@ class SeoController extends Controller {
                     'Generate PDF invoices, quotations, receipts and sale returns from one place.',
                     'Track due payments, customer balances and invoice history without spreadsheets.',
                 ],
-                'useCases' => ['Retail billing counters', 'Service businesses', 'Wholesale invoice teams'],
+                'useCases' => [
+                    ['t' => 'Retail billing counters', 'd' => 'Quick GST invoicing for walk-in and repeat customers, with product search, due tracking, and receipt printing at the point of sale.'],
+                    ['t' => 'Service businesses', 'd' => 'Generate professional GST invoices for service deliveries, track client payments, and maintain clean billing records for compliance.'],
+                    ['t' => 'Wholesale invoice teams', 'd' => 'Handle bulk invoice generation, manage large customer lists with outstanding balances, and produce PDF invoices for distribution.'],
+                ],
                 'faq' => [
                     ['q' => 'Is TSA Legacy suitable for GST billing in India?', 'a' => 'Yes. The platform supports GST invoice creation, PDF output, payment tracking, customer records, and daily billing workflows for Indian businesses.'],
                     ['q' => 'Can I use it for multi-user billing operations?', 'a' => 'Yes. Plans support multiple users, role-based access, and shared billing operations for growing teams.'],
@@ -38,7 +42,11 @@ class SeoController extends Controller {
                     'Connect purchases, sales, returns and billing with inventory records.',
                     'Reduce stock errors with shared visibility for owners and staff.',
                 ],
-                'useCases' => ['Retail stores', 'Wholesale stock rooms', 'Trading and distribution teams'],
+                'useCases' => [
+                    ['t' => 'Retail stores', 'd' => 'Manage product catalogs, track stock after each sale, and get low-stock alerts so shelves stay stocked and customers stay served.'],
+                    ['t' => 'Wholesale stock rooms', 'd' => 'Monitor bulk stock movement across purchases and sales, reconcile supplier deliveries, and maintain accurate warehouse-level visibility.'],
+                    ['t' => 'Trading and distribution teams', 'd' => 'Coordinate stock flow between suppliers and buyers, track purchase-to-sale cycles, and reduce errors from manual stock counting.'],
+                ],
                 'faq' => [
                     ['q' => 'Who should use this inventory management software?', 'a' => 'It is designed for Indian retailers, wholesalers, trading firms, and service-led businesses that need stock visibility with billing and reporting.'],
                     ['q' => 'Can I manage products and suppliers together?', 'a' => 'Yes. Products, suppliers, purchases, payments, and stock updates live in one shared workflow.'],
@@ -56,7 +64,11 @@ class SeoController extends Controller {
                     'Run sales, purchases, customer dues and product tracking in one dashboard.',
                     'Start with low monthly pricing and upgrade only when the business grows.',
                 ],
-                'useCases' => ['Kirana and retail shops', 'Owner-led SMEs', 'Fast-growing local businesses'],
+                'useCases' => [
+                    ['t' => 'Kirana and retail shops', 'd' => 'Fast invoicing at the counter, customer due tracking for regulars, and simple product lookup without complex training or setup.'],
+                    ['t' => 'Owner-led SMEs', 'd' => 'One dashboard for billing, inventory, reports, and customer records so the owner has full visibility without depending on separate tools.'],
+                    ['t' => 'Fast-growing local businesses', 'd' => 'Start with basic billing and scale into multi-user access, advanced reports, and operational controls as the team and product catalog grow.'],
+                ],
                 'faq' => [
                     ['q' => 'Why is TSA Legacy a good fit for small businesses?', 'a' => 'It combines billing, inventory, reports, customer tracking, and team access in one affordable monthly platform for Indian SMEs.'],
                     ['q' => 'Can a small business start without a big setup?', 'a' => 'Yes. The system is self-serve, cloud-based, and designed for quick onboarding without a separate IT team.'],

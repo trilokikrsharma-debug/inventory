@@ -13,6 +13,7 @@ class BlogController extends Controller {
             $items[] = [
                 'slug' => $slug,
                 'title' => $article['title'],
+                'heading' => $article['heading'] ?? $article['title'],
                 'description' => $article['description'],
                 'url' => $baseUrl . '/blog/' . $slug,
             ];
