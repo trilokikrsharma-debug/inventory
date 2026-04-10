@@ -1,37 +1,191 @@
 <?php
+require_once __DIR__ . '/_partials/brand.php';
+
+$assets = tsa_brand_assets();
 $homeUrl = rtrim(APP_URL, '/') . '/';
-$iconUrl = rtrim(APP_URL, '/') . '/assets/icon.svg';
-$faviconUrl = rtrim(APP_URL, '/') . '/assets/favicon.svg';
-$logoUrl = rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
-$socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.svg';
-$seoLandingLinks = [
-    ['href' => APP_URL . '/gst-billing-software', 'title' => 'GST Billing Software', 'description' => 'Focused page for GST invoices, receipts, quotations and faster billing workflows.'],
-    ['href' => APP_URL . '/inventory-management-software', 'title' => 'Inventory Management Software', 'description' => 'Focused page for stock tracking, purchases, product catalog control and low-stock visibility.'],
-    ['href' => APP_URL . '/billing-software-for-small-business', 'title' => 'Billing Software for Small Business', 'description' => 'Focused page for owner-led teams that need billing, inventory and reporting in one place.'],
+$faviconUrl = $assets['favicon'];
+$socialImageUrl = $assets['og'];
+$nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? ($cspNonce ?? ''), ENT_QUOTES);
+
+$trustBadges = [
+    ['icon' => 'fa-certificate', 'label' => 'Udyam Registered'],
+    ['icon' => 'fa-file-invoice', 'label' => 'GST-ready workflows'],
+    ['icon' => 'fa-cloud-arrow-up', 'label' => 'Cloud-based system'],
+    ['icon' => 'fa-user-shield', 'label' => 'Role-based access'],
 ];
+
+$heroHighlights = [
+    ['value' => 'Live operations', 'text' => 'Billing, stock, and reporting stay in one connected workspace.'],
+    ['value' => 'Team-ready control', 'text' => 'Owners and staff work inside role-based flows built for daily use.'],
+];
+
+$overviewCards = [
+    ['icon' => 'fa-file-invoice-dollar', 'title' => 'Billing', 'text' => 'Create GST invoices, quotations, and payment-linked records from one operational workflow.'],
+    ['icon' => 'fa-boxes-stacked', 'title' => 'Inventory', 'text' => 'Track products, stock movement, low-stock visibility, and category structure inside one workspace.'],
+    ['icon' => 'fa-users', 'title' => 'Customers', 'text' => 'Keep billing history, dues, and repeat-customer records connected to day-to-day activity.'],
+    ['icon' => 'fa-truck-field', 'title' => 'Suppliers', 'text' => 'Manage supplier records, purchase entries, and payable visibility without scattered follow-up.'],
+    ['icon' => 'fa-chart-column', 'title' => 'Reports', 'text' => 'Review revenue, balances, stock, and operational summaries with cleaner owner visibility.'],
+];
+
+$productScreens = [
+    [
+        'label' => 'Billing screen',
+        'title' => 'Invoices, dues, and recent activity in one billing view',
+        'text' => 'The billing workflow keeps invoice activity, customer follow-up, and payment status visible without switching between tools.',
+        'theme' => 'billing',
+    ],
+    [
+        'label' => 'Inventory screen',
+        'title' => 'Catalog control with live stock signals',
+        'text' => 'Products, SKU details, category structure, and low-stock visibility stay accessible in one operational list.',
+        'theme' => 'inventory',
+    ],
+    [
+        'label' => 'Reports screen',
+        'title' => 'Reports organized around daily business review',
+        'text' => 'Sales, purchases, stock, dues, and finance visibility are grouped into one reporting layer for owners and managers.',
+        'theme' => 'reports',
+    ],
+];
+
+$steps = [
+    ['step' => '01', 'title' => 'Create workspace', 'text' => 'Set up your business account and open your first cloud workspace in a few minutes.'],
+    ['step' => '02', 'title' => 'Add products and customers', 'text' => 'Bring your catalog, customer records, and daily operating data into one place.'],
+    ['step' => '03', 'title' => 'Start billing and tracking', 'text' => 'Run invoices, monitor stock, and follow payments from the same system.'],
+];
+
+$featureGroups = [
+    [
+        'hero' => true,
+        'icon' => 'fa-file-invoice-dollar',
+        'kicker' => 'Core Workflow',
+        'title' => 'Billing & Sales Control',
+        'text' => 'Create GST-ready invoices, track payments, manage customer dues, and handle daily sales — all from one billing view without switching tools.',
+        'usecase' => 'Track daily billing and cash flow at the counter.',
+        'bullets' => [
+            'GST invoices, quotations, and sale returns',
+            'Payment tracking with paid / due status per customer',
+            'Print-ready PDF invoices for every transaction',
+            'Daily, weekly, and monthly sales summaries',
+        ],
+    ],
+    [
+        'hero' => true,
+        'icon' => 'fa-boxes-stacked',
+        'kicker' => 'Core Workflow',
+        'title' => 'Inventory & Stock Management',
+        'text' => 'Know exact stock levels before selling, get low-stock alerts, and track product movement between purchases and sales — so nothing runs out unnoticed.',
+        'usecase' => 'Know exact stock levels before selling.',
+        'bullets' => [
+            'Real-time stock count per product and category',
+            'Low-stock alerts before items run out',
+            'Purchase-to-stock pipeline tracking',
+            'Product catalog with SKU, price, and tax setup',
+        ],
+    ],
+    [
+        'hero' => false,
+        'icon' => 'fa-users',
+        'title' => 'Customer & Supplier Tracking',
+        'text' => 'See full billing history and outstanding amounts for every customer. Track supplier purchases and payable balances in one place.',
+        'usecase' => 'See dues from customers and payments to suppliers.',
+        'bullets' => [
+            'Customer-wise invoice and payment history',
+            'Outstanding dues and follow-up visibility',
+            'Supplier purchase entries and payable tracking',
+        ],
+    ],
+    [
+        'hero' => false,
+        'icon' => 'fa-chart-column',
+        'title' => 'Reports & Business Insights',
+        'text' => 'Review sales performance, stock levels, customer dues, and purchase activity from one reporting dashboard built for daily business review.',
+        'usecase' => 'Review today\'s numbers before closing the day.',
+        'bullets' => [
+            'Sales, purchase, and profit reports',
+            'Customer and supplier outstanding summaries',
+            'Stock valuation and movement reports',
+        ],
+    ],
+    [
+        'hero' => false,
+        'icon' => 'fa-users-gear',
+        'title' => 'Multi-User & Role Access',
+        'text' => 'Give your billing staff, store manager, and accountant separate logins with role-based permissions — owners see everything, staff sees what they need.',
+        'usecase' => 'Staff bills at the counter. Owner reviews from anywhere.',
+        'bullets' => [
+            'Owner, manager, and staff role controls',
+            'Activity logs for audit and accountability',
+            'Secure sessions with device-aware access',
+        ],
+    ],
+    [
+        'hero' => false,
+        'icon' => 'fa-cloud',
+        'title' => 'Cloud Workspace',
+        'text' => 'Access your billing, inventory, and reports from any device — counter desktop, laptop at home, or phone on the go. No local installation needed.',
+        'usecase' => 'Run your business from counter, office, or remotely.',
+        'bullets' => [
+            'Access from any browser on any device',
+            'No software installation or local backups needed',
+            'Data stays secure and always accessible',
+        ],
+    ],
+];
+
+$useCases = [
+    ['icon' => 'fa-store', 'title' => 'Retail shop', 'text' => 'Fast billing, repeat customers, product lookup, and owner visibility for day-to-day counter operations.'],
+    ['icon' => 'fa-truck-ramp-box', 'title' => 'Distributor', 'text' => 'Handle larger catalogs, supplier coordination, purchase flow, and stock movement with better control.'],
+    ['icon' => 'fa-screwdriver-wrench', 'title' => 'Service business', 'text' => 'Track customer records, billing activity, and operational follow-up from one workspace.'],
+];
+
+$growthSignals = [
+    ['icon' => 'fa-compass-drafting', 'title' => 'Designed for Indian SMEs', 'text' => 'Created around the billing, stock, and follow-up patterns that smaller Indian businesses run every day.'],
+    ['icon' => 'fa-briefcase', 'title' => 'Used in real business workflows', 'text' => 'The product presentation mirrors active billing desks, inventory handling, and owner review routines.'],
+    ['icon' => 'fa-calendar-check', 'title' => 'Built for daily operations', 'text' => 'It is structured for repeated use throughout the day, not for occasional back-office reporting only.'],
+];
+
+$trustExamples = [
+    ['title' => 'Retail shops managing daily billing', 'text' => 'Used where teams need faster invoice entry, payment status tracking, and repeat-customer visibility through the day.'],
+    ['title' => 'Distributors tracking stock and dues', 'text' => 'Used for larger catalogs, low-stock follow-up, supplier coordination, and customer outstanding balances.'],
+    ['title' => 'Service businesses keeping records organized', 'text' => 'Used where customer history, billing activity, and follow-up need to stay in one clean operating system.'],
+];
+
+$microTestimonials = [
+    ['quote' => 'Helps keep invoices and stock in one place so daily follow-up is easier.'],
+    ['quote' => 'The billing and dues view is clearer than managing everything in separate files.'],
+    ['quote' => 'Useful when the owner wants one system for sales, stock, and reporting.'],
+];
+
+$securityCards = [
+    ['icon' => 'fa-user-lock', 'title' => 'Role-based access', 'text' => 'Give owners, managers, and staff the access they need without exposing everything to everyone.'],
+    ['icon' => 'fa-clock-rotate-left', 'title' => 'Audit-friendly history', 'text' => 'Operational records stay easier to review when workflows run inside one system.'],
+    ['icon' => 'fa-server', 'title' => 'Cloud deployment', 'text' => 'Use the platform from connected locations instead of relying on one local machine or disconnected files.'],
+];
+
 $faqSchema = [
     [
         '@type' => 'Question',
         'name' => 'What is TSA Legacy used for?',
         'acceptedAnswer' => [
             '@type' => 'Answer',
-            'text' => 'TSA Legacy is used for GST billing, inventory management, customer and supplier tracking, reporting, and multi-user business operations for Indian SMEs.',
+            'text' => 'TSA Legacy helps Indian businesses manage GST billing, inventory, customer records, supplier workflows, and operational reporting in one cloud system.',
         ],
     ],
     [
         '@type' => 'Question',
-        'name' => 'Is TSA Legacy good for small businesses in India?',
+        'name' => 'Who is TSA Legacy designed for?',
         'acceptedAnswer' => [
             '@type' => 'Answer',
-            'text' => 'Yes. It is designed for Indian small businesses that need affordable monthly billing and inventory software with cloud access and self-serve onboarding.',
+            'text' => 'It is designed for Indian retail, distribution, trading, and service-led businesses that want clearer control over daily operations.',
         ],
     ],
     [
         '@type' => 'Question',
-        'name' => 'Does TSA Legacy include both billing and inventory management?',
+        'name' => 'Does TSA Legacy provide instant demo access?',
         'acceptedAnswer' => [
             '@type' => 'Answer',
-            'text' => 'Yes. The platform combines GST billing, inventory management, customer records, supplier workflows, reports, and operational controls in one SaaS product.',
+            'text' => 'Yes. Instant demo access opens a sample workspace so you can review the product flow before creating your own account.',
         ],
     ],
 ];
@@ -41,22 +195,27 @@ $faqSchema = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GST Billing & Inventory Management Software for Indian SMEs | TSA Legacy</title>
-    <meta name="description" content="TSA Legacy is GST billing and inventory management software for Indian SMEs. Manage invoices, products, stock, customers, suppliers and reports from one cloud platform.">
-    <meta property="og:title" content="GST Billing & Inventory Management Software for Indian SMEs | TSA Legacy">
-    <meta property="og:description" content="Cloud-native GST billing, inventory management and business software for Indian small businesses.">
+    <title>GST Billing & Inventory Management Software for Indian Businesses | TSA Legacy</title>
+    <meta name="description" content="TSA Legacy brings GST billing, inventory, customers, suppliers, and reports into one cloud-based business system for Indian SMEs.">
+    <meta property="og:title" content="GST Billing & Inventory Management Software for Indian Businesses | TSA Legacy">
+    <meta property="og:description" content="Run billing, inventory, and daily business operations from one structured cloud system.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?= htmlspecialchars($homeUrl, ENT_QUOTES) ?>">
     <meta property="og:image" content="<?= htmlspecialchars($socialImageUrl, ENT_QUOTES) ?>">
     <meta property="og:image:alt" content="TSA Legacy">
     <meta property="og:site_name" content="TSA Legacy">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="GST Billing & Inventory Management Software for Indian SMEs | TSA Legacy">
-    <meta name="twitter:description" content="Cloud-native GST billing, inventory management and business software for Indian small businesses.">
+    <meta name="twitter:title" content="GST Billing & Inventory Management Software for Indian Businesses | TSA Legacy">
+    <meta name="twitter:description" content="Run billing, inventory, and daily business operations from one structured cloud system.">
     <meta name="twitter:image" content="<?= htmlspecialchars($socialImageUrl, ENT_QUOTES) ?>">
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars($faviconUrl, ENT_QUOTES) ?>">
     <link rel="canonical" href="<?= htmlspecialchars($homeUrl, ENT_QUOTES) ?>">
-    <script type="application/ld+json" nonce="<?= htmlspecialchars($cspNonce ?? '', ENT_QUOTES) ?>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?= htmlspecialchars($assets['brand_css'], ENT_QUOTES) ?>">
+    <script type="application/ld+json" nonce="<?= $nonce ?>">
         <?= json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'SoftwareApplication',
@@ -64,561 +223,892 @@ $faqSchema = [
             'applicationCategory' => 'BusinessApplication',
             'operatingSystem' => 'Web',
             'url' => $homeUrl,
-            'description' => 'Cloud-native GST billing, inventory management, CRM and analytics software for Indian SMEs.',
-            'offers' => [
-                '@type' => 'AggregateOffer',
-                'priceCurrency' => 'INR',
-                'lowPrice' => '99',
-                'highPrice' => '4999',
-                'offerCount' => '4',
-            ],
+            'description' => 'Cloud-based GST billing, inventory management, customer tracking and operational reporting software for Indian businesses.',
             'publisher' => [
                 '@type' => 'Organization',
                 'name' => 'TSA Legacy Ventures',
                 'url' => $homeUrl,
             ],
-        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
-    </script>
-    <script type="application/ld+json" nonce="<?= htmlspecialchars($cspNonce ?? '', ENT_QUOTES) ?>">
-        <?= json_encode([
-            '@context' => 'https://schema.org',
-            '@type' => 'FAQPage',
             'mainEntity' => $faqSchema,
-        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) ?>
     </script>
-    <script nonce="<?= htmlspecialchars($cspNonce ?? '', ENT_QUOTES) ?>">document.documentElement.classList.remove('no-js');</script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <style>
-        :root{--p:#2563eb;--pd:#1d4ed8;--pl:#93c5fd;--ac:#60a5fa;--ac2:#38bdf8;--d:#06101b;--d2:#0f1f32;--d3:#1b3148;--card:rgba(255,255,255,.055);--brd:rgba(148,163,184,.16);--tx:#e6edf7;--mt:#b7c4d6;--w:#fff}
-        *{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
-        body{font-family:'Inter',system-ui,sans-serif;background:var(--d);color:var(--tx);overflow-x:hidden;-webkit-font-smoothing:antialiased}
-        a{text-decoration:none;color:inherit}
-        .mx{max-width:1200px;margin:0 auto;padding:0 24px}
-        .mx-sm{max-width:960px;margin:0 auto;padding:0 24px}
-        .mx-xs{max-width:720px;margin:0 auto;padding:0 24px}
-
-        /* NAV */
-        nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(20px);background:rgba(6,16,27,.9);border-bottom:1px solid var(--brd);height:64px;display:flex;align-items:center;padding:0 20px;transition:background .3s}
-        .nav-i{max-width:1200px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between}
-        .logo{display:flex;align-items:center;color:var(--w)}
-        .logo img{height:34px;display:block}
-        .nav-l{display:flex;gap:32px;align-items:center}
-        .nav-l a{color:var(--mt);font-size:.88rem;font-weight:600;transition:color .2s}
-        .nav-l a:hover{color:var(--w)}
-        .nav-c{display:flex;gap:10px;align-items:center}
-        .btn-g,.btn-p{min-height:48px;padding:11px 18px;border-radius:12px;font-size:.92rem;font-weight:700;transition:all .22s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
-        .btn-g{color:var(--w);border:1px solid rgba(147,197,253,.28);background:rgba(15,31,50,.84);box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}
-        .btn-g:hover{background:rgba(24,45,70,.94);border-color:rgba(147,197,253,.48);color:var(--w)}
-        .btn-p{color:#fff;background:linear-gradient(135deg,var(--pd),var(--p));box-shadow:0 10px 24px rgba(37,99,235,.34);border:1px solid rgba(147,197,253,.24);cursor:pointer}
-        .btn-p:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(37,99,235,.42)}
-        .btn-lg{padding:15px 24px;border-radius:14px;font-size:1rem}
-        .hamburger{display:none;background:none;border:none;color:var(--w);font-size:1.2rem;cursor:pointer}
-        .mob-menu{display:none}
-
-        /* HERO */
-        .hero{min-height:min(88svh,820px);display:flex;align-items:center;padding:84px 20px 34px;position:relative;overflow:hidden;text-align:center}
-        .hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(37,99,235,.24),transparent),radial-gradient(ellipse 50% 40% at 80% 50%,rgba(96,165,250,.14),transparent)}
-        .hero-grid{position:absolute;inset:0;opacity:.03;background-image:linear-gradient(var(--w) 1px,transparent 1px),linear-gradient(90deg,var(--w) 1px,transparent 1px);background-size:48px 48px}
-        .hero-c{max-width:880px;margin:0 auto;position:relative;z-index:1}
-        .badge{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1px solid rgba(147,197,253,.24);background:rgba(147,197,253,.08);font-size:.76rem;font-weight:700;color:var(--pl);margin-bottom:18px;letter-spacing:.03em}
-        .badge .dot{width:6px;height:6px;border-radius:50%;background:var(--ac2);animation:pulse 2s infinite}
-        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.5)}}
-        .hero h1{font-size:clamp(2.15rem,6vw,4rem);font-weight:900;line-height:1.03;letter-spacing:-.035em;color:var(--w);margin-bottom:14px}
-        .gt{background:linear-gradient(135deg,var(--pl),var(--ac));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-        .hero p{font-size:1.02rem;color:var(--mt);max-width:700px;margin:0 auto 26px;line-height:1.72}
-        .hero-btns{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:26px}
-        .hero-proof{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:0 0 24px}
-        .hero-proof span{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--brd);font-size:.79rem;color:var(--tx);font-weight:600}
-        .hero-proof i,.badge i,.sec-tag i{width:1em;text-align:center}
-        .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;max-width:760px;margin:0 auto}
-        .stats > div{padding:14px 10px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid var(--brd)}
-        .stat-n{font-size:1.2rem;font-weight:900}
-        .stat-l{font-size:.72rem;color:var(--mt);font-weight:600;margin-top:4px}
-
-        /* TRUST BAR */
-        .trust{border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);padding:28px 24px;text-align:center}
-        .trust p{font-size:.7rem;color:rgba(148,163,184,.6);text-transform:uppercase;letter-spacing:.15em;font-weight:600;margin-bottom:18px}
-        .trust-logos{display:flex;justify-content:center;align-items:center;gap:40px;flex-wrap:wrap;opacity:.35}
-        .trust-logos span{font-size:1.1rem;font-weight:900;color:var(--mt)}
-
-        /* SECTIONS */
-        .sec{padding:84px 20px}
-        .sec-alt{background:linear-gradient(180deg,rgba(15,23,42,.5) 0%,var(--d) 100%)}
-        .sec-hd{text-align:center;margin-bottom:42px}
-        .sec-tag{display:inline-flex;align-items:center;gap:6px;font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--pl);margin-bottom:12px}
-        .sec-t{font-size:clamp(1.75rem,4vw,2.5rem);font-weight:900;color:var(--w);line-height:1.16;letter-spacing:-.025em;margin-bottom:12px}
-        .sec-s{font-size:.98rem;color:var(--mt);max-width:620px;margin:0 auto;line-height:1.74}
-
-        /* CARDS GRID */
-        .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-        .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
-        .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:40px;align-items:center}
-        .card{background:var(--card);border:1px solid var(--brd);border-radius:20px;padding:24px;transition:all .3s;position:relative;overflow:hidden}
-        .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--p),transparent);opacity:0;transition:opacity .3s}
-        .card:hover{transform:translateY(-4px);border-color:rgba(99,102,241,.3);box-shadow:0 0 40px rgba(99,102,241,.08)}
-        .card:hover::before{opacity:1}
-        .card-ic{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.08rem;margin-bottom:16px;flex-shrink:0}
-        .card h3{font-size:1.04rem;font-weight:800;color:var(--w);margin-bottom:10px;line-height:1.35}
-        .card p{font-size:.92rem;color:var(--mt);line-height:1.72}
-
-        /* STEPS */
-        .step{text-align:center;padding:28px 20px}
-        .step-n{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--ac));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;color:#fff;margin:0 auto 14px}
-
-        /* ABOUT */
-        .founder-card{background:var(--card);border:1px solid var(--brd);border-radius:24px;padding:30px;position:relative;overflow:hidden}
-        .founder-card .corner{position:absolute;top:0;right:0;width:100px;height:100px;background:linear-gradient(135deg,rgba(99,102,241,.15),transparent);border-radius:0 0 0 100%}
-        .av{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--p),var(--ac));display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;font-weight:900;margin-bottom:16px}
-        .tag{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;font-size:.7rem;font-weight:700;margin-right:6px;margin-bottom:6px}
-        .tag-g{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:#34d399}
-        .tag-b{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);color:var(--pl)}
-        .tag-c{background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);color:#22d3ee}
-
-        /* TESTIMONIALS */
-        .t-card{background:var(--card);border:1px solid var(--brd);border-radius:20px;padding:24px}
-        .stars{color:#f59e0b;font-size:.7rem;margin-bottom:8px}
-        .t-text{font-size:.875rem;color:var(--tx);line-height:1.7;margin-bottom:20px;font-style:italic}
-        .t-auth{display:flex;align-items:center;gap:12px}
-        .t-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--p),var(--ac));display:flex;align-items:center;justify-content:center;color:#fff;font-size:.7rem;font-weight:700}
-        .t-name{font-weight:600;font-size:.85rem;color:var(--w)}
-        .t-role{font-size:.7rem;color:var(--mt)}
-
-        /* PRICING */
-        .p-card{background:var(--card);border:1px solid var(--brd);border-radius:22px;padding:28px;transition:all .3s;position:relative}
-        .p-card:hover{transform:translateY(-4px);box-shadow:0 0 40px rgba(99,102,241,.08)}
-        .p-card.pop{border-color:rgba(96,165,250,.34);background:linear-gradient(180deg,rgba(37,99,235,.14) 0%,rgba(6,16,27,1) 100%)}
-        .pop-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--p),var(--ac));color:#fff;padding:6px 16px;border-radius:999px;font-size:.68rem;font-weight:800;white-space:nowrap}
-        .p-name{font-size:.75rem;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.08em}
-        .p-price{font-size:2.8rem;font-weight:900;color:var(--w);line-height:1;margin:12px 0 4px}
-        .p-price sub{font-size:.9rem;font-weight:400;color:var(--mt)}
-        .p-desc{font-size:.88rem;color:var(--mt);margin-bottom:18px;line-height:1.7}
-        .p-feat{list-style:none;margin-bottom:24px}
-        .p-feat li{display:flex;align-items:center;gap:8px;font-size:.82rem;padding:5px 0;color:var(--tx)}
-        .p-feat .ck{color:var(--ac2);font-size:.7rem}
-        .btn-plan{display:block;text-align:center;padding:10px;border-radius:10px;font-weight:700;font-size:.85rem;transition:all .2s}
-        .seo-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
-        .seo-link{display:block;padding:22px;border-radius:22px;background:var(--card);border:1px solid var(--brd);transition:transform .2s,border-color .2s,box-shadow .2s}
-        .seo-link:hover{transform:translateY(-3px);border-color:rgba(99,102,241,.32);box-shadow:0 18px 40px rgba(2,6,23,.24)}
-        .seo-link h3{color:var(--w);font-size:1rem;margin-bottom:10px}
-        .seo-link p{color:var(--mt);font-size:.92rem;line-height:1.72}
-        .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-        .faq-card{padding:22px;border-radius:22px;background:var(--card);border:1px solid var(--brd)}
-        .faq-card h3{color:var(--w);font-size:1.02rem;margin-bottom:10px;line-height:1.42}
-        .faq-card p{color:var(--mt);font-size:.94rem;line-height:1.78}
-
-        /* CTA */
-        .cta-box{background:var(--card);border:1px solid rgba(96,165,250,.18);border-radius:28px;padding:42px 28px;text-align:center;position:relative;overflow:hidden}
-        .cta-box .bg{position:absolute;inset:0;background:linear-gradient(135deg,rgba(37,99,235,.1),rgba(96,165,250,.06))}
-        .cta-form{display:flex;gap:10px;max-width:420px;margin:0 auto 12px}
-        .cta-input{flex:1;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid var(--brd);color:var(--w);font-size:.92rem;font-family:inherit;outline:none}
-        .cta-input:focus{border-color:rgba(96,165,250,.46)}
-
-        /* FOOTER */
-        footer{border-top:1px solid var(--brd);padding:42px 20px 28px}
-        .ft-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:32px}
-        .ft-title{font-weight:600;font-size:.85rem;color:var(--w);margin-bottom:12px}
-        .ft-links{display:flex;flex-direction:column;gap:8px}
-        .ft-links a{color:var(--mt);font-size:.78rem;transition:color .2s}
-        .ft-links a:hover{color:var(--w)}
-        .ft-bar{border-top:1px solid var(--brd);padding-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-        .ft-copy{color:rgba(148,163,184,.5);font-size:.72rem}
-
-        /* REVEAL ANIMATION */
-        .rv{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease}
-        .rv.vis{opacity:1;transform:translateY(0)}
-        .no-js .rv,.rv-fallback .rv{opacity:1!important;transform:none!important}
-
-        /* RESPONSIVE */
-        @media(max-width:1024px){.grid-3{grid-template-columns:repeat(2,1fr)}.grid-4{grid-template-columns:repeat(2,1fr)}.ft-grid{grid-template-columns:repeat(2,1fr)}.seo-links{grid-template-columns:1fr}.faq-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
-        @media(max-width:768px){
-            .nav-l,.nav-c{display:none}
-            .hamburger{display:block}
-            .mob-menu.open{display:flex;flex-direction:column;position:fixed;top:64px;left:0;right:0;background:rgba(2,6,23,.98);backdrop-filter:blur(20px);border-bottom:1px solid var(--brd);padding:16px 24px;z-index:99;gap:4px}
-            .mob-menu a{padding:10px 0;color:var(--tx);font-weight:500;border-bottom:1px solid var(--brd);font-size:.9rem}
-            .grid-3,.grid-4{grid-template-columns:1fr}
-            .grid-2{grid-template-columns:1fr}
-            .hero{min-height:auto;padding:82px 16px 26px}
-            .logo img{height:30px}
-            .badge{margin-bottom:14px}
-            .hero h1{font-size:2rem}
-            .hero p{font-size:.96rem;margin-bottom:20px}
-            .hero-btns{margin-bottom:18px}
-            .hero-proof{gap:8px;margin-bottom:18px}
-            .hero-proof span{font-size:.74rem;padding:8px 10px}
-            .stats{gap:10px}
-            .cta-form{flex-direction:column}
-            .ft-grid{grid-template-columns:1fr 1fr}
-            .p-card.pop{transform:none}
+        .tsa-home-hero{padding:56px 0 32px}
+        .tsa-home-hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center}
+        .tsa-home-hero-copy{position:relative;z-index:1}
+        .tsa-home-hero-copy::before{
+            content:"";position:absolute;left:-48px;top:-34px;width:280px;height:280px;border-radius:50%;
+            background:radial-gradient(circle, rgba(22,56,95,.16), rgba(22,56,95,0) 72%);filter:blur(4px);z-index:-1;pointer-events:none
         }
-        @media(max-width:480px){
-            nav{padding:0 14px}
-            .hero{padding:78px 14px 22px}
-            .logo img{height:28px}
-            .hero h1{font-size:1.86rem}
-            .hero-proof span:nth-child(n+3){display:none}
-            .btn-g,.btn-p,.btn-lg{width:100%}
-            .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-            .sec{padding:64px 14px}
-            .sec-hd{margin-bottom:32px}
-            .sec-t{font-size:1.7rem}
-            .ft-grid{grid-template-columns:1fr}
+        .tsa-home-hero h1{margin:18px 0 14px;font-size:clamp(2.7rem,6vw,5rem);line-height:.95;letter-spacing:-.05em;color:var(--tsa-ink)}
+        .tsa-home-hero h1{animation:tsaHeroRise .7s ease both}
+        .tsa-home-hero h1 .tsa-serif{display:block;font-family:"Instrument Serif",serif;font-weight:400;font-style:italic;color:var(--tsa-accent)}
+        .tsa-home-hero p{max-width:700px;font-size:1.05rem;line-height:1.85;color:var(--tsa-muted)}
+        .tsa-home-note{margin-top:14px;font-size:.84rem;color:var(--tsa-muted)}
+        .tsa-home-trustline{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+        .tsa-home-trustline span{
+            display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:999px;
+            border:1px solid rgba(20,33,58,.08);background:rgba(255,255,255,.76);font-size:.78rem;font-weight:800;color:var(--tsa-ink)
+        }
+        .tsa-home-hero-actions{display:flex;flex-wrap:wrap;gap:14px;margin-top:22px}
+        .tsa-home-cta-primary{position:relative;box-shadow:0 24px 56px rgba(16,38,63,.28), 0 0 0 1px rgba(255,255,255,.18) inset}
+        .tsa-home-cta-primary::after{
+            content:"";position:absolute;inset:auto 18px -10px 18px;height:18px;border-radius:999px;
+            background:radial-gradient(circle, rgba(22,56,95,.34), rgba(22,56,95,0) 72%);filter:blur(10px);z-index:-1
+        }
+        .tsa-home-proof-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:22px}
+        .tsa-home-proof-chip{
+            padding:16px 18px;border-radius:20px;border:1px solid rgba(20,33,58,.08);background:rgba(255,255,255,.78);
+            box-shadow:0 20px 44px rgba(20,33,58,.08)
+        }
+        .tsa-home-proof-chip strong{display:block;font-size:.94rem;color:var(--tsa-ink);margin-bottom:6px}
+        .tsa-home-proof-chip span{display:block;font-size:.82rem;line-height:1.65;color:var(--tsa-muted)}
+        .tsa-home-trustbar{padding:20px 0 0}
+        .tsa-home-badges{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+        .tsa-home-badge{display:flex;align-items:center;gap:12px;padding:16px 18px;border-radius:18px;border:1px solid var(--tsa-line);background:rgba(255,255,255,.82);box-shadow:var(--tsa-shadow-soft)}
+        .tsa-home-badge i{color:var(--tsa-primary)}
+        .tsa-home-badge span{font-size:.86rem;font-weight:800;color:var(--tsa-ink)}
+        .tsa-home-preview{
+            display:flex;flex-direction:column;gap:24px;
+            position:relative;padding:36px;border-radius:32px;max-width:580px;margin:0 auto;z-index:1;background:
+                radial-gradient(circle at top right, rgba(22,56,95,.22), transparent 30%),
+                radial-gradient(circle at bottom left, rgba(154,119,66,.18), transparent 24%),
+                linear-gradient(160deg,#ffffff 0%, #f8f4ec 58%, #edf2f8 100%);
+            border:1px solid rgba(20,33,58,.08);box-shadow:0 34px 90px rgba(20,33,58,.16)
+        }
+        .tsa-home-preview::before{
+            content:"";position:absolute;inset:10px -8px auto auto;width:200px;height:200px;border-radius:999px;
+            background:radial-gradient(circle, rgba(22,56,95,.22), transparent 72%);filter:blur(10px);pointer-events:none
+        }
+        .tsa-home-preview::after{
+            content:"";position:absolute;left:12px;bottom:6px;width:180px;height:180px;border-radius:999px;
+            background:radial-gradient(circle, rgba(154,119,66,.20), transparent 72%);filter:blur(14px);pointer-events:none
+        }
+        .tsa-home-window{
+            order:2;overflow:hidden;border-radius:24px;border:1px solid rgba(20,33,58,.08);background:#fff;
+            transform:perspective(2000px) rotateY(-4deg) rotateX(2deg) translateY(0);transform-origin:center;box-shadow:0 36px 88px rgba(20,33,58,.22);
+            animation:tsaFloatPanel 6.8s ease-in-out infinite
+        }
+        .tsa-home-window-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(20,33,58,.08);background:#fffdf8}
+        .tsa-home-dots{display:flex;gap:7px}
+        .tsa-home-dots span{width:10px;height:10px;border-radius:50%;background:#d7dde5}
+        .tsa-home-dots span:nth-child(1){background:#fca5a5}
+        .tsa-home-dots span:nth-child(2){background:#fcd34d}
+        .tsa-home-dots span:nth-child(3){background:#86efac}
+        .tsa-home-window-label{font-size:.76rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--tsa-muted)}
+        .tsa-home-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--tsa-primary-soft);font-size:.77rem;font-weight:800;color:var(--tsa-primary)}
+        .tsa-home-window-body{display:grid;grid-template-columns:88px minmax(0,1fr);gap:16px;padding:18px;background:linear-gradient(180deg,#fff 0%, #fbfaf7 100%)}
+        .tsa-home-sidebar{padding:14px 12px;border-radius:18px;background:#13233c;color:#d9e5f5}
+        .tsa-home-sidebar-brand{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.08);margin-bottom:16px}
+        .tsa-home-sidebar-list{display:grid;gap:10px}
+        .tsa-home-sidebar-item{display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:12px;font-size:.74rem;font-weight:800;color:#d9e5f5}
+        .tsa-home-sidebar-item.is-active{background:rgba(255,255,255,.10)}
+        .tsa-home-main{display:grid;gap:14px}
+        .tsa-home-headbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .tsa-home-headbar h3{margin:0;font-size:1rem;color:var(--tsa-ink)}
+        .tsa-home-headbar small{display:block;font-size:.78rem;color:var(--tsa-muted)}
+        .tsa-home-userpill{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:999px;background:#f5f8fb;border:1px solid rgba(20,33,58,.08);font-size:.76rem;font-weight:800;color:var(--tsa-ink)}
+        .tsa-home-main-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:14px}
+        .tsa-home-panel{padding:18px;border-radius:20px;border:1px solid rgba(20,33,58,.08);background:#fff;box-shadow:var(--tsa-shadow-soft)}
+        .tsa-home-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+        .tsa-home-metric{padding:14px;border-radius:16px;background:#edf2f7;border:1px solid rgba(22,56,95,.10)}
+        .tsa-home-metric strong{display:block;font-size:1.08rem;line-height:1;color:var(--tsa-ink);margin-bottom:6px}
+        .tsa-home-metric span{display:block;font-size:.76rem;color:var(--tsa-muted)}
+        .tsa-home-table{display:grid;gap:10px;margin-top:12px}
+        .tsa-home-table-row{display:grid;grid-template-columns:1.2fr .9fr .7fr;gap:10px;padding:11px 12px;border-radius:14px;background:#fbfcfd;border:1px solid rgba(20,33,58,.06);font-size:.78rem;color:var(--tsa-muted-strong)}
+        .tsa-home-table-row strong{color:var(--tsa-ink)}
+        .tsa-home-chart{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));align-items:end;gap:10px;height:170px;padding-top:12px}
+        .tsa-home-bar{display:flex;align-items:flex-end;justify-content:center;height:100%}
+        .tsa-home-bar span{display:block;width:100%;border-radius:14px 14px 6px 6px;background:linear-gradient(180deg,#315882 0%, #16385f 100%);box-shadow:inset 0 -10px 18px rgba(255,255,255,.12)}
+        .tsa-home-preview-card{
+            position:static;padding:20px;border-radius:20px;border:1px solid rgba(20,33,58,.08);
+            background:rgba(255,255,255,.9);backdrop-filter:blur(12px);box-shadow:0 14px 44px rgba(20,33,58,.10);
+        }
+        .tsa-home-preview-card strong{display:block;font-size:.9rem;color:var(--tsa-ink);margin-bottom:6px}
+        .tsa-home-preview-card span{display:block;font-size:.8rem;line-height:1.55;color:var(--tsa-muted)}
+        .tsa-home-preview-card.is-billing{order:1;max-width:none}
+        .tsa-home-preview-card.is-stock{order:3;max-width:none}
+        .tsa-home-preview-card .metric{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;margin-top:12px;border-radius:999px;background:var(--tsa-primary-soft);font-size:.76rem;font-weight:800;color:var(--tsa-primary);white-space:nowrap}
+        .tsa-home-table-mini{display:grid;gap:10px;margin-top:12px}
+        .tsa-home-mini-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid rgba(20,33,58,.08);font-size:.8rem;color:var(--tsa-muted-strong)}
+        .tsa-home-mini-row:last-child{border-bottom:none}
+        .tsa-home-mini-row strong{color:var(--tsa-ink)}
+        .tsa-home-preview-signals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}
+        .tsa-home-signal{padding:14px;border-radius:18px;border:1px solid rgba(20,33,58,.08);background:rgba(255,255,255,.82)}
+        .tsa-home-signal strong{display:block;font-size:.95rem;color:var(--tsa-ink);margin-bottom:4px}
+        .tsa-home-signal span{display:block;font-size:.8rem;line-height:1.6;color:var(--tsa-muted)}
+        .tsa-home-overview-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px}
+        .tsa-home-screen-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+        .tsa-home-screen-card{padding:18px}
+        .tsa-home-screen-label{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--tsa-primary-soft);font-size:.74rem;font-weight:800;color:var(--tsa-primary);margin-bottom:14px}
+        .tsa-home-shot{
+            padding:12px;border-radius:20px;background:linear-gradient(180deg,#fff 0%, #f8fafb 100%);border:1px solid rgba(20,33,58,.08);
+            box-shadow:0 24px 52px rgba(20,33,58,.10);margin-bottom:14px
+        }
+        .tsa-home-shot-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(20,33,58,.08);margin-bottom:12px}
+        .tsa-home-shot-title{font-size:.8rem;font-weight:800;color:var(--tsa-ink)}
+        .tsa-home-shot-sub{font-size:.72rem;color:var(--tsa-muted)}
+        .tsa-home-shot-body{display:grid;gap:10px}
+        .tsa-home-shot-billing{display:grid;grid-template-columns:1fr;gap:12px}
+        .tsa-home-shot-panel{padding:12px;border-radius:14px;background:#fff;border:1px solid rgba(20,33,58,.08)}
+        .tsa-home-shot-panel h4{margin:0 0 10px;font-size:.8rem;color:var(--tsa-ink)}
+        .tsa-home-shot-band{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:14px;background:#edf2f7;border:1px solid rgba(22,56,95,.08);font-size:.73rem;color:var(--tsa-muted-strong)}
+        .tsa-home-shot-band strong{color:var(--tsa-ink)}
+        .tsa-home-shot-table{display:grid;gap:6px}
+        .tsa-home-shot-table-head,.tsa-home-shot-table-row{
+            display:grid;gap:8px;padding:9px 10px;border-radius:12px;font-size:.72rem
+        }
+        .tsa-home-shot-table-head{
+            background:#f4f7fb;border:1px solid rgba(20,33,58,.06);font-weight:800;color:var(--tsa-ink)
+        }
+        .tsa-home-shot-table-row{
+            background:#fff;border:1px solid rgba(20,33,58,.08);color:var(--tsa-muted-strong)
+        }
+        .tsa-home-shot-table-row strong{color:var(--tsa-ink)}
+        .tsa-home-shot-billing-table .tsa-home-shot-table-head,
+        .tsa-home-shot-billing-table .tsa-home-shot-table-row{grid-template-columns:1.2fr 1fr 1fr .8fr}
+        .tsa-home-shot-inventory-table .tsa-home-shot-table-head,
+        .tsa-home-shot-inventory-table .tsa-home-shot-table-row{grid-template-columns:1.2fr .8fr .8fr .7fr}
+        .tsa-home-shot-status{
+            display:inline-flex;align-items:center;justify-content:center;padding:4px 8px;border-radius:999px;
+            background:var(--tsa-primary-soft);font-size:.67rem;font-weight:800;color:var(--tsa-primary)
+        }
+        .tsa-home-shot-status.is-due{background:#f4ead8;color:#8a6731}
+        .tsa-home-shot-list{display:grid;gap:8px}
+        .tsa-home-shot-list span{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.74rem;color:var(--tsa-muted-strong)}
+        .tsa-home-shot-list strong{color:var(--tsa-ink)}
+        .tsa-home-shot-inventory{display:grid;gap:8px}
+        .tsa-home-stock-row{display:grid;grid-template-columns:1.1fr .6fr .6fr;gap:8px;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid rgba(20,33,58,.08);font-size:.74rem;color:var(--tsa-muted-strong)}
+        .tsa-home-stock-row strong{color:var(--tsa-ink)}
+        .tsa-home-stock-row .ok{color:#16385f;font-weight:800}
+        .tsa-home-stock-row .low{color:#9a7742;font-weight:800}
+        .tsa-home-shot-reports{display:grid;grid-template-columns:1.1fr .9fr;gap:10px}
+        .tsa-home-report-chart{padding:14px;border-radius:14px;background:#fff;border:1px solid rgba(20,33,58,.08)}
+        .tsa-home-report-chart-bars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:end;gap:8px;height:120px;margin-top:14px}
+        .tsa-home-report-chart-bars span{display:block;border-radius:12px 12px 5px 5px;background:linear-gradient(180deg,#6f8eb0 0%, #16385f 100%)}
+        .tsa-home-report-stack{display:grid;gap:10px}
+        .tsa-home-report-tile{padding:14px;border-radius:14px;background:#fff;border:1px solid rgba(20,33,58,.08)}
+        .tsa-home-report-tile strong{display:block;font-size:.8rem;color:var(--tsa-ink);margin-bottom:4px}
+        .tsa-home-report-tile span{display:block;font-size:.72rem;line-height:1.55;color:var(--tsa-muted)}
+        .tsa-home-growth-shell{
+            position:relative;overflow:hidden;padding:34px;border-radius:32px;border:1px solid rgba(20,33,58,.08);
+            background:
+                radial-gradient(circle at top left, rgba(22,56,95,.14), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(154,119,66,.14), transparent 22%),
+                linear-gradient(160deg, rgba(255,255,255,.92) 0%, rgba(247,242,234,.96) 100%);
+            box-shadow:0 30px 72px rgba(20,33,58,.10)
+        }
+        .tsa-home-growth-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:26px}
+        .tsa-home-growth-meta{display:flex;flex-wrap:wrap;gap:10px}
+        .tsa-home-growth-pill{
+            display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.8);
+            border:1px solid rgba(20,33,58,.08);font-size:.78rem;font-weight:800;color:var(--tsa-ink)
+        }
+        .tsa-home-growth-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+        .tsa-home-proof-panel{padding:26px}
+        .tsa-home-proof-panel h3{margin:0 0 10px;font-size:1.08rem;color:var(--tsa-ink)}
+        .tsa-home-proof-panel p{margin:0;color:var(--tsa-muted);font-size:.95rem;line-height:1.8}
+        .tsa-home-proof-listing{display:grid;gap:14px;margin-top:18px}
+        .tsa-home-proof-row{
+            display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:start;padding:16px 0;border-top:1px solid rgba(20,33,58,.08)
+        }
+        .tsa-home-proof-row:first-child{border-top:none;padding-top:0}
+        .tsa-home-proof-row .tsa-icon-chip{margin-bottom:0}
+        .tsa-home-testimonial-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+        .tsa-home-testimonial-card{padding:22px}
+        .tsa-home-testimonial-card blockquote{
+            margin:0;color:var(--tsa-ink);font-size:.96rem;line-height:1.8;font-weight:600
+        }
+        .tsa-home-testimonial-card small{
+            display:block;margin-top:14px;color:var(--tsa-muted);font-size:.78rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase
+        }
+        .tsa-home-snapshot-grid{display:grid;grid-template-columns:1.15fr .85fr .85fr;gap:18px}
+        .tsa-home-snapshot-card{padding:22px}
+        .tsa-home-snapshot-card h3{margin:0 0 8px;font-size:1.02rem;color:var(--tsa-ink)}
+        .tsa-home-snapshot-card p{margin:0 0 14px;color:var(--tsa-muted);font-size:.9rem;line-height:1.75}
+        .tsa-home-output-sheet{
+            padding:14px;border-radius:18px;background:linear-gradient(180deg,#fff 0%, #f8fafc 100%);border:1px solid rgba(20,33,58,.08);box-shadow:0 18px 40px rgba(20,33,58,.08)
+        }
+        .tsa-home-output-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid rgba(20,33,58,.08)}
+        .tsa-home-output-header strong{font-size:.8rem;color:var(--tsa-ink)}
+        .tsa-home-output-header span{font-size:.72rem;color:var(--tsa-muted)}
+        .tsa-home-invoice-lines{display:grid;gap:8px}
+        .tsa-home-invoice-line,.tsa-home-stock-mini-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.75rem;color:var(--tsa-muted-strong)}
+        .tsa-home-invoice-total{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:10px;margin-top:10px;border-top:1px solid rgba(20,33,58,.08);font-weight:800;color:var(--tsa-ink)}
+        .tsa-home-report-mini-bars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;gap:8px;height:110px;margin:14px 0 10px}
+        .tsa-home-report-mini-bars span{display:block;border-radius:12px 12px 5px 5px;background:linear-gradient(180deg,#94abc5 0%, #16385f 100%)}
+        .tsa-home-report-mini-list{display:grid;gap:8px}
+        .tsa-home-report-mini-list div{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.75rem;color:var(--tsa-muted-strong)}
+        .tsa-home-report-mini-list strong,.tsa-home-stock-mini-row strong{color:var(--tsa-ink)}
+        @keyframes tsaHeroRise{
+            from{opacity:0;transform:translateY(10px)}
+            to{opacity:1;transform:translateY(0)}
+        }
+        @keyframes tsaFloatPanel{
+            0%,100%{transform:perspective(2000px) rotateY(-6deg) rotateX(3deg) translateY(0)}
+            50%{transform:perspective(2000px) rotateY(-4deg) rotateX(2deg) translateY(-4px)}
+        }
+        .tsa-home-step{padding:26px;border-radius:24px;border:1px solid var(--tsa-line);background:linear-gradient(180deg,#fff 0%, #f7f2ea 100%);box-shadow:var(--tsa-shadow-soft)}
+        .tsa-home-step-index{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:16px;background:rgba(22,56,95,.10);color:var(--tsa-primary);font-size:.9rem;font-weight:800;letter-spacing:.08em;margin-bottom:16px}
+        .tsa-home-step h3{margin:0 0 10px;font-size:1.05rem;color:var(--tsa-ink)}
+        .tsa-home-step p{margin:0;color:var(--tsa-muted);font-size:.94rem;line-height:1.8}
+        .tsa-home-use-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+        .tsa-home-use-card{padding:24px}
+        .tsa-home-use-card h3{margin:0 0 10px;font-size:1.08rem;color:var(--tsa-ink)}
+        .tsa-home-use-card p{margin:0;color:var(--tsa-muted);font-size:.94rem;line-height:1.8}
+        .tsa-home-demo-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:stretch}
+        .tsa-home-demo-list{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:10px}
+        .tsa-home-demo-list li{display:flex;align-items:flex-start;gap:10px;color:var(--tsa-ink);font-size:.9rem}
+        .tsa-home-demo-list i{color:var(--tsa-primary);margin-top:4px}
+        .tsa-home-demo-preview{padding:18px}
+        .tsa-home-demo-preview .tsa-home-shot{margin-bottom:0}
+        .tsa-home-pricing-preview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+        .tsa-home-price-card{padding:24px}
+        .tsa-home-price-card h3{margin:0 0 10px;font-size:1.05rem;color:var(--tsa-ink)}
+        .tsa-home-price-card p{margin:0 0 14px;color:var(--tsa-muted);font-size:.93rem;line-height:1.75}
+        .tsa-home-price-value{display:block;font-size:2.2rem;line-height:1;color:var(--tsa-ink);font-weight:800;letter-spacing:-.05em;margin-bottom:8px}
+        .tsa-home-price-value small{font-size:.9rem;color:var(--tsa-muted);font-weight:700}
+        .tsa-home-price-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+        .tsa-home-price-list li{display:flex;align-items:flex-start;gap:10px;font-size:.88rem;color:var(--tsa-ink)}
+        .tsa-home-price-list i{color:var(--tsa-primary);margin-top:4px}
+        /* Feature groups — hero + secondary */
+        .tsa-feat-hero-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+        .tsa-feat-hero-card{
+            position:relative;overflow:hidden;padding:32px;border-radius:28px;
+            border:1px solid rgba(20,33,58,.10);box-shadow:0 24px 56px rgba(20,33,58,.10);
+            background:linear-gradient(168deg,#ffffff 0%,#f8f5ee 56%,#edf2f8 100%);
+            transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease
+        }
+        .tsa-feat-hero-card::before{
+            content:"";position:absolute;top:-40px;right:-40px;width:220px;height:220px;border-radius:50%;
+            background:radial-gradient(circle,rgba(22,56,95,.10),transparent 70%);pointer-events:none
+        }
+        .tsa-feat-hero-card:hover{transform:translateY(-4px);border-color:rgba(22,56,95,.18);box-shadow:0 28px 64px rgba(20,33,58,.14)}
+        .tsa-feat-hero-card .tsa-icon-chip{width:52px;height:52px;border-radius:18px;font-size:1.15rem;margin-bottom:18px;background:rgba(22,56,95,.12)}
+        .tsa-feat-hero-card h3{font-size:1.35rem;letter-spacing:-.03em;margin:0 0 12px;color:var(--tsa-ink)}
+        .tsa-feat-hero-card>p{color:var(--tsa-muted);font-size:.96rem;line-height:1.8;margin:0 0 18px}
+        .tsa-feat-usecase{
+            display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;
+            background:var(--tsa-primary-soft);font-size:.78rem;font-weight:800;color:var(--tsa-primary);margin-bottom:18px
+        }
+        .tsa-feat-bullets{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+        .tsa-feat-bullets li{display:flex;align-items:flex-start;gap:10px;font-size:.9rem;color:var(--tsa-ink);font-weight:500}
+        .tsa-feat-bullets i{color:var(--tsa-primary);margin-top:3px;font-size:.85em}
+        .tsa-feat-sec-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-top:22px}
+        .tsa-feat-sec-card{
+            padding:26px;border-radius:24px;
+            border:1px solid var(--tsa-line);background:rgba(255,255,255,.82);box-shadow:var(--tsa-shadow-soft);
+            transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease
+        }
+        .tsa-feat-sec-card::after{
+            content:"";position:absolute;inset:0 auto auto 0;width:100%;height:1px;
+            background:linear-gradient(90deg,rgba(255,255,255,.78),rgba(255,255,255,0));pointer-events:none
+        }
+        .tsa-feat-sec-card:hover{transform:translateY(-4px);border-color:rgba(22,56,95,.18);box-shadow:0 26px 54px rgba(20,33,58,.12)}
+        .tsa-feat-sec-card .tsa-icon-chip{margin-bottom:14px}
+        .tsa-feat-sec-card h3{font-size:1.05rem;letter-spacing:-.02em;margin:0 0 8px;color:var(--tsa-ink)}
+        .tsa-feat-sec-card>p{color:var(--tsa-muted);font-size:.9rem;line-height:1.75;margin:0 0 14px}
+        .tsa-feat-sec-usecase{font-size:.8rem;color:var(--tsa-accent);font-weight:700;font-style:italic;margin:0 0 14px;display:flex;align-items:center;gap:6px}
+        .tsa-feat-sec-usecase i{font-size:.72rem}
+        .tsa-feat-sec-bullets{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+        .tsa-feat-sec-bullets li{display:flex;align-items:flex-start;gap:8px;font-size:.84rem;color:var(--tsa-muted-strong)}
+        .tsa-feat-sec-bullets i{color:var(--tsa-primary);margin-top:3px;font-size:.7em}
+        @media (max-width:1240px){
+            .tsa-home-use-grid,.tsa-home-screen-grid,.tsa-home-snapshot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+            .tsa-home-shot-billing{grid-template-columns:1fr}
+            .tsa-feat-sec-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        }
+        @media (max-width:1100px){
+            .tsa-home-hero-grid,.tsa-home-demo-grid,.tsa-home-window-body,.tsa-home-main-grid,.tsa-home-growth-grid,.tsa-home-shot-reports{grid-template-columns:1fr}
+            .tsa-home-badges,.tsa-home-overview-grid,.tsa-home-pricing-preview,.tsa-home-preview-signals,.tsa-home-proof-list,.tsa-home-testimonial-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+            .tsa-feat-hero-grid{grid-template-columns:1fr}
+        }
+        @media (max-width:820px){
+            .tsa-home-use-grid,.tsa-home-screen-grid,.tsa-home-snapshot-grid{grid-template-columns:1fr}
+            .tsa-home-badges,.tsa-home-overview-grid,.tsa-home-pricing-preview,.tsa-home-preview-signals,.tsa-home-metrics,.tsa-home-proof-list,.tsa-home-testimonial-grid{grid-template-columns:1fr}
+            .tsa-home-window{transform:none}
+            .tsa-feat-sec-grid{grid-template-columns:1fr}
         }
     </style>
 </head>
-<body>
+<body class="tsa-public">
+<?php tsa_render_public_nav([
+    'active_href' => APP_URL . '/',
+    'links' => [
+        ['href' => APP_URL . '/', 'label' => 'Home'],
+        ['href' => APP_URL . '/pricing', 'label' => 'Pricing'],
+        ['href' => APP_URL . '/blog', 'label' => 'Guides'],
+    ],
+    'secondary_label' => 'Instant Demo Access',
+    'secondary_href' => APP_URL . '/demo',
+    'primary_label' => 'Start Free Trial',
+    'primary_href' => APP_URL . '/signup',
+]); ?>
 
-<!-- NAV -->
-<nav id="mainNav">
-    <div class="nav-i">
-        <a href="<?= APP_URL ?>/" class="logo"><img src="<?= htmlspecialchars($logoUrl, ENT_QUOTES) ?>" alt="TSA Legacy"></a>
-        <div class="nav-l">
-            <a href="#features">Features</a>
-            <a href="#pricing">Pricing</a>
-            <a href="#about">About</a>
-            <a href="#tech">Technology</a>
-        </div>
-        <div class="nav-c">
-            <a href="<?= APP_URL ?>/login" class="btn-g">Sign In</a>
-            <a href="<?= APP_URL ?>/signup" class="btn-p">Start Free Trial</a>
-        </div>
-        <button class="hamburger" id="hamburger" aria-label="Menu"><i class="fas fa-bars"></i></button>
-    </div>
-</nav>
-<div class="mob-menu" id="mobMenu">
-    <a href="#features" onclick="clM()">Features</a>
-    <a href="#pricing" onclick="clM()">Pricing</a>
-    <a href="#about" onclick="clM()">About</a>
-    <a href="#tech" onclick="clM()">Technology</a>
-    <a href="<?= APP_URL ?>/login">Sign In</a>
-    <a href="<?= APP_URL ?>/signup" style="color:var(--pl);font-weight:700">Start Free Trial →</a>
-</div>
+<main class="tsa-page">
+    <div class="tsa-container">
+        <section class="tsa-home-hero">
+            <div class="tsa-home-hero-grid">
+                <div class="tsa-home-hero-copy">
+                    <div class="tsa-eyebrow"><span class="dot"></span>Secure Business Operations Software</div>
+                    <h1 style="font-size: clamp(2.8rem, 6vw, 4.5rem); letter-spacing: -0.04em;">Take back control of your business. <br><span class="tsa-serif" style="color: var(--tsa-primary); margin-top: 8px;">Run operations from one structured system.</span></h1>
+                    <p style="font-size: 1.15rem; max-width: 650px; margin-top: 18px;">TSA Legacy brings your GST billing, inventory tracking, customer histories, and supplier pipelines into a single, reliable cloud workspace. Built exclusively for Indian SMEs to stop tool friction.</p>
+                    <div class="tsa-home-hero-actions">
+                        <a href="<?= APP_URL ?>/signup" class="tsa-btn tsa-btn-primary tsa-home-cta-primary">Start Free Trial</a>
+                        <a href="<?= APP_URL ?>/demo" class="tsa-btn tsa-btn-secondary">Instant Demo Access</a>
+                    </div>
+                    <div class="tsa-home-note">No credit card required. Setup is fast, and instant demo access opens a sample workspace before signup.</div>
+                    <div class="tsa-home-trustline">
+                        <span><i class="fas fa-briefcase"></i> Built for real business workflows</span>
+                        <span><i class="fas fa-calendar-day"></i> Designed for Indian SMEs</span>
+                        <span><i class="fas fa-check-double"></i> Simple, structured, reliable</span>
+                    </div>
+                    <div class="tsa-home-proof-list">
+                        <?php foreach ($heroHighlights as $item): ?>
+                            <div class="tsa-home-proof-chip">
+                                <strong><?= htmlspecialchars($item['value']) ?></strong>
+                                <span><?= htmlspecialchars($item['text']) ?></span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
 
-<!-- HERO -->
-<section class="hero">
-    <div class="hero-bg"></div><div class="hero-grid"></div>
-    <div class="hero-c">
-        <div class="badge"><span class="dot"></span>MSME Registered • India</div>
-        <h1>All-in-One<br><span class="gt">Business OS</span><br>for Indian SMEs</h1>
-        <p>Automate billing, manage inventory, track customers & suppliers, and get real-time analytics from one cloud-native software product built for Indian SMEs.</p>
-        <div class="hero-btns">
-            <a href="<?= APP_URL ?>/signup" class="btn-p btn-lg"><i class="fas fa-rocket"></i> Start Free Trial</a>
-            <a href="<?= APP_URL ?>/demo" class="btn-g btn-lg"><i class="fas fa-play-circle"></i> Try Live Demo</a>
-        </div>
-        <div class="hero-proof">
-            <span><i class="fas fa-code"></i>API-ready integrations</span>
-            <span><i class="fas fa-file-import"></i>Bulk import workflows</span>
-            <span><i class="fas fa-id-badge"></i>HR-ready operations</span>
-            <span><i class="fas fa-brain"></i>AI-led insight surfaces</span>
-        </div>
-        <div class="stats">
-            <div><div class="stat-n gt">GST</div><div class="stat-l">Billing Ready</div></div>
-            <div><div class="stat-n gt">Cloud</div><div class="stat-l">Access Anywhere</div></div>
-            <div><div class="stat-n gt">Role</div><div class="stat-l">Multi User Control</div></div>
-            <div><div class="stat-n gt">Demo</div><div class="stat-l">Try Before Signup</div></div>
-        </div>
-    </div>
-</section>
-
-<!-- TRUST BAR -->
-<div class="trust">
-        <p>Designed for GST billing, inventory management and daily business workflows across India</p>
-    <div class="trust-logos">
-        <span>Retail</span><span>Wholesale</span><span>Distribution</span><span>Services</span><span>Trading</span>
-    </div>
-</div>
-
-<!-- FEATURES -->
-<section class="sec" id="features">
-    <div class="mx">
-        <div class="sec-hd rv"><div class="sec-tag"><i class="fas fa-star"></i> Product Suite</div><h2 class="sec-t">Everything to run your<br>billing and inventory efficiently</h2><p class="sec-s">Six powerful modules purpose-built for Indian SMEs that need GST billing software, inventory management and cleaner daily operations.</p></div>
-        <div class="grid-3">
-            <?php
-            $features = [
-                ['i'=>'fa-file-invoice-dollar','bg'=>'rgba(99,102,241,.12)','c'=>'#818cf8','t'=>'GST Billing & Invoicing','d'=>'Professional GST-compliant invoices. Auto CGST/SGST/IGST calculation, PDF generation, print support, and quotation management.'],
-                ['i'=>'fa-boxes-stacked','bg'=>'rgba(6,182,212,.12)','c'=>'#22d3ee','t'=>'Inventory Management','d'=>'Real-time stock tracking with low-stock alerts, SKU management, category & brand organization, and product analytics.'],
-                ['i'=>'fa-chart-line','bg'=>'rgba(16,185,129,.12)','c'=>'#34d399','t'=>'Sales & Purchase Tracking','d'=>'End-to-end order lifecycle. Supplier & customer ledgers, payment history, outstanding balances.'],
-                ['i'=>'fa-users','bg'=>'rgba(245,158,11,.12)','c'=>'#fbbf24','t'=>'Customer & Supplier CRM','d'=>'Complete profiles with transaction history, dues tracking, payment management and balance recalculation.'],
-                ['i'=>'fa-chart-pie','bg'=>'rgba(239,68,68,.12)','c'=>'#f87171','t'=>'Reports, AI Insights & Audit','d'=>'Revenue dashboards, P&L, stock valuation, smart insight summaries, and audit trails for stronger operational visibility.'],
-                ['i'=>'fa-building','bg'=>'rgba(139,92,246,.12)','c'=>'#a78bfa','t'=>'Enterprise Controls & Integrations','d'=>'Bulk import, API access, backup workflows, HR tools, and tenant-safe controls for scale-ready operations.'],
-            ];
-            foreach($features as $i=>$f): ?>
-            <div class="card rv" style="transition-delay:<?= $i*60 ?>ms">
-                <div class="card-ic" style="background:<?= $f['bg'] ?>;color:<?= $f['c'] ?>"><i class="fas <?= $f['i'] ?>"></i></div>
-                <h3><?= $f['t'] ?></h3><p><?= $f['d'] ?></p>
+                <aside class="tsa-home-preview">
+                    <div class="tsa-home-preview-card is-billing">
+                        <strong>Billing system</strong>
+                        <span>Invoice status, collections, and GST-ready records sit inside the same workflow.</span>
+                        <div class="metric"><i class="fas fa-bolt"></i> 7 payments logged today</div>
+                    </div>
+                    <div class="tsa-home-preview-card is-stock">
+                        <strong>Inventory control</strong>
+                        <span>Low-stock signals and product movement are visible before they become owner problems.</span>
+                        <div class="metric"><i class="fas fa-boxes-stacked"></i> 12 alerts active</div>
+                    </div>
+                    <div class="tsa-home-window">
+                        <div class="tsa-home-window-top">
+                            <div class="tsa-home-dots"><span></span><span></span><span></span></div>
+                            <div class="tsa-home-window-label">Sample Dashboard</div>
+                            <div class="tsa-home-pill"><i class="fas fa-shield-halved"></i> GST-ready</div>
+                        </div>
+                        <div class="tsa-home-window-body">
+                            <div class="tsa-home-sidebar">
+                                <div class="tsa-home-sidebar-brand"><i class="fas fa-chart-pie"></i></div>
+                                <div class="tsa-home-sidebar-list">
+                                    <div class="tsa-home-sidebar-item is-active"><i class="fas fa-grid-2"></i><span>Dashboard</span></div>
+                                    <div class="tsa-home-sidebar-item"><i class="fas fa-file-invoice"></i><span>Sales</span></div>
+                                    <div class="tsa-home-sidebar-item"><i class="fas fa-boxes-stacked"></i><span>Products</span></div>
+                                    <div class="tsa-home-sidebar-item"><i class="fas fa-chart-line"></i><span>Reports</span></div>
+                                </div>
+                            </div>
+                            <div class="tsa-home-main">
+                                <div class="tsa-home-headbar">
+                                    <div>
+                                        <h3>Business dashboard</h3>
+                                        <small>Daily billing, stock, dues, and reporting visibility</small>
+                                    </div>
+                                    <div class="tsa-home-userpill"><i class="fas fa-circle-check"></i> Workspace active</div>
+                                </div>
+                                <div class="tsa-home-metrics">
+                                    <div class="tsa-home-metric"><strong>Rs 84,200</strong><span>Today's sales</span></div>
+                                    <div class="tsa-home-metric"><strong>Rs 18,450</strong><span>Customer dues</span></div>
+                                    <div class="tsa-home-metric"><strong>12 items</strong><span>Low-stock alerts</span></div>
+                                </div>
+                                <div class="tsa-home-main-grid">
+                                    <div class="tsa-home-panel">
+                                        <h3>Recent invoices</h3>
+                                        <div class="tsa-home-table">
+                                            <div class="tsa-home-table-row"><strong>INV-2031</strong><span>Om Traders</span><span>Paid</span></div>
+                                            <div class="tsa-home-table-row"><strong>INV-2030</strong><span>Nila Stores</span><span>Due</span></div>
+                                            <div class="tsa-home-table-row"><strong>INV-2029</strong><span>Patel Electricals</span><span>Paid</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="tsa-home-panel">
+                                        <h3>Sales vs purchase</h3>
+                                        <div class="tsa-home-chart">
+                                            <div class="tsa-home-bar"><span style="height:58%"></span></div>
+                                            <div class="tsa-home-bar"><span style="height:74%"></span></div>
+                                            <div class="tsa-home-bar"><span style="height:67%"></span></div>
+                                            <div class="tsa-home-bar"><span style="height:88%"></span></div>
+                                            <div class="tsa-home-bar"><span style="height:80%"></span></div>
+                                            <div class="tsa-home-bar"><span style="height:96%"></span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tsa-home-panel">
+                                    <h3>Operational alerts</h3>
+                                    <div class="tsa-home-table-mini">
+                                        <div class="tsa-home-mini-row"><span>Low stock</span><strong>Engine Oil 1L</strong></div>
+                                        <div class="tsa-home-mini-row"><span>Supplier due</span><strong>Rs 42,300</strong></div>
+                                        <div class="tsa-home-mini-row"><span>Pending quotations</span><strong>4 open</strong></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tsa-home-preview-signals">
+                        <div class="tsa-home-signal"><strong>Counter-ready</strong><span>Fast workflows for daily billing desks.</span></div>
+                        <div class="tsa-home-signal"><strong>Cloud-based</strong><span>Use across devices and business locations.</span></div>
+                        <div class="tsa-home-signal"><strong>Operational</strong><span>Billing, stock, and records stay connected.</span></div>
+                    </div>
+                </aside>
             </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</section>
+        </section>
 
-<!-- HOW IT WORKS -->
-<section class="sec sec-alt">
-    <div class="mx-sm">
-        <div class="sec-hd rv"><div class="sec-tag" style="color:var(--ac)"><i class="fas fa-map"></i> Getting Started</div><h2 class="sec-t">Up and running in 3 minutes</h2><p class="sec-s">No complex setup. No IT team. Just sign up and start billing.</p></div>
-        <div class="grid-4">
-            <?php $steps=[['1','Create Account','Sign up free in 30 seconds. Business name + email — done.'],['2','Load Your Data','Add items manually or import products, customers, and suppliers in bulk.'],['3','Run Operations','Create GST invoices, manage purchases, track dues, and coordinate your team.'],['4','Scale with Control','Use reports, API access, AI insights, and HR tools as operations mature.']];
-            foreach($steps as $i=>$s): ?>
-            <div class="card step rv" style="transition-delay:<?= $i*80 ?>ms">
-                <div class="step-n"><?= $s[0] ?></div><h3><?= $s[1] ?></h3><p><?= $s[2] ?></p>
+        <section class="tsa-home-trustbar">
+            <div class="tsa-home-badges">
+                <?php foreach ($trustBadges as $badge): ?>
+                    <div class="tsa-home-badge">
+                        <i class="fas <?= htmlspecialchars($badge['icon']) ?>"></i>
+                        <span><?= htmlspecialchars($badge['label']) ?></span>
+                    </div>
+                <?php endforeach; ?>
             </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</section>
+        </section>
 
-<!-- ABOUT / FOUNDER -->
-<section class="sec" id="about">
-    <div class="mx-sm">
-        <div class="grid-2">
-            <div class="rv">
-                <div class="sec-tag"><i class="fas fa-heart"></i> Our Story</div>
-                <h2 class="sec-t" style="text-align:left">Building India's Next<br><span class="gt">Business OS</span></h2>
-                <p style="color:var(--mt);line-height:1.7;margin-bottom:14px">TSA Legacy Ventures started with a simple observation — millions of Indian small businesses still manage billing and inventory on paper or expensive tools that do not fit local workflows.</p>
-                <p style="color:var(--mt);line-height:1.7;margin-bottom:14px">This is a product-led technology startup, not a services business. We are building a multi-tenant SaaS platform for Indian SMEs with cloud-native architecture, self-serve onboarding, and low-cost monthly plans.</p>
-                <p style="color:var(--mt);line-height:1.7;margin-bottom:20px">Our vision: <strong style="color:var(--w)">Empower 1 million Indian businesses</strong> with affordable, world-class software infrastructure.</p>
-                <div><span class="tag tag-g"><i class="fas fa-check-circle"></i> MSME Registered</span><span class="tag tag-b"><i class="fas fa-check-circle"></i> Udyam Verified</span><span class="tag tag-c"><i class="fas fa-check-circle"></i> India-based Startup</span></div>
+        <section class="tsa-section">
+            <div class="tsa-section-head">
+                <div class="tsa-section-kicker">Product Overview</div>
+                <h2>How your daily operations fit into one system</h2>
+                <p>Each part of the workflow stays connected, so teams can bill, track stock, manage records, and review activity without switching between disconnected tools.</p>
             </div>
-            <div class="founder-card rv" style="transition-delay:150ms">
-                <div class="corner"></div>
-                <div style="position:relative;z-index:1">
-                    <div class="av">TK</div>
-                    <h3 style="color:var(--w);font-size:1.15rem;margin-bottom:2px">Triloki Kumar Sharma</h3>
-                    <p style="color:var(--pl);font-size:.8rem;font-weight:600;margin-bottom:14px">Founder & Developer, TSA Legacy Ventures</p>
-                    <blockquote style="color:var(--mt);font-size:.85rem;line-height:1.7;font-style:italic;border-left:2px solid rgba(99,102,241,.3);padding-left:14px;margin-bottom:18px">"I believe every Indian business — from a kirana shop to a growing enterprise — deserves world-class software. TSA Legacy is being built as a scalable product company from India, with cloud infrastructure and pricing designed for real adoption."</blockquote>
-                    <div style="display:flex;gap:24px;font-size:.8rem"><div><strong style="color:var(--w)">2025</strong><br><span style="font-size:.65rem;color:var(--mt)">Founded</span></div><div><strong style="color:var(--w)">India</strong><br><span style="font-size:.65rem;color:var(--mt)">HQ</span></div><div><strong style="color:var(--w)">SaaS</strong><br><span style="font-size:.65rem;color:var(--mt)">Model</span></div></div>
+            <div class="tsa-home-overview-grid">
+                <?php foreach ($overviewCards as $card): ?>
+                    <article class="tsa-card">
+                        <div class="tsa-icon-chip"><i class="fas <?= htmlspecialchars($card['icon']) ?>"></i></div>
+                        <h3><?= htmlspecialchars($card['title']) ?></h3>
+                        <p><?= htmlspecialchars($card['text']) ?></p>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <section class="tsa-section" style="padding-top:0">
+            <div class="tsa-section-head">
+                <div class="tsa-section-kicker">Inside The System</div>
+                <h2>See how operations look inside the system</h2>
+                <p>The interface is designed around practical working screens: billing flow, inventory control, and reporting visibility.</p>
+            </div>
+            <div class="tsa-home-screen-grid">
+                <?php foreach ($productScreens as $screen): ?>
+                    <article class="tsa-card tsa-home-screen-card">
+                        <div class="tsa-home-screen-label"><i class="fas fa-desktop"></i><?= htmlspecialchars($screen['label']) ?></div>
+                        <div class="tsa-home-shot">
+                            <div class="tsa-home-shot-top">
+                                <div>
+                                    <div class="tsa-home-shot-title"><?= htmlspecialchars($screen['title']) ?></div>
+                                    <div class="tsa-home-shot-sub">Realistic workspace view</div>
+                                </div>
+                                <div class="tsa-home-dots"><span></span><span></span><span></span></div>
+                            </div>
+                            <div class="tsa-home-shot-body">
+                                <?php if ($screen['theme'] === 'billing'): ?>
+                                    <div class="tsa-home-shot-billing">
+                                        <div class="tsa-home-shot-panel">
+                                            <h4>Sales list</h4>
+                                            <div class="tsa-home-shot-band"><strong>Filters</strong><span>Invoice · Customer · Date</span></div>
+                                            <div class="tsa-home-shot-table tsa-home-shot-billing-table">
+                                                <div class="tsa-home-shot-table-head"><span>Invoice</span><span>Customer</span><span>Total</span><span>Status</span></div>
+                                                <div class="tsa-home-shot-table-row"><strong>INV-2031</strong><span>Om Traders</span><span>Rs 12,450</span><span class="tsa-home-shot-status">Paid</span></div>
+                                                <div class="tsa-home-shot-table-row"><strong>INV-2030</strong><span>Nila Stores</span><span>Rs 4,820</span><span class="tsa-home-shot-status is-due">Due</span></div>
+                                                <div class="tsa-home-shot-table-row"><strong>INV-2029</strong><span>Patel Electricals</span><span>Rs 9,640</span><span class="tsa-home-shot-status">Paid</span></div>
+                                            </div>
+                                        </div>
+                                        <div class="tsa-home-shot-panel">
+                                            <h4>Payment summary</h4>
+                                            <div class="tsa-home-shot-band"><strong>Collections</strong><span>Paid and due totals</span></div>
+                                            <div class="tsa-home-shot-list">
+                                                <span><strong>Total</strong><span>Rs 84,200</span></span>
+                                                <span><strong>Paid</strong><span>Rs 46,000</span></span>
+                                                <span><strong>Due</strong><span>Rs 38,200</span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php elseif ($screen['theme'] === 'inventory'): ?>
+                                    <div class="tsa-home-shot-inventory">
+                                        <div class="tsa-home-shot-band"><strong>Product list</strong><span>Search · Category · Stock status</span></div>
+                                        <div class="tsa-home-shot-table tsa-home-shot-inventory-table">
+                                            <div class="tsa-home-shot-table-head"><span>Product</span><span>SKU</span><span>Category</span><span>Stock</span></div>
+                                            <div class="tsa-home-shot-table-row"><strong>Brake Pad Set</strong><span>BP-204</span><span>Brakes</span><span class="ok">128 pcs</span></div>
+                                            <div class="tsa-home-shot-table-row"><strong>Engine Oil 1L</strong><span>EO-1L</span><span>Lubricants</span><span class="low">9 pcs</span></div>
+                                            <div class="tsa-home-shot-table-row"><strong>Battery Cable</strong><span>BC-111</span><span>Electrical</span><span class="ok">64 pcs</span></div>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="tsa-home-shot-reports">
+                                        <div class="tsa-home-report-chart">
+                                            <strong>Reports dashboard</strong>
+                                            <span class="tsa-home-shot-sub">Sales, profit, dues, and stock review</span>
+                                            <div class="tsa-home-report-chart-bars">
+                                                <span style="height:52%"></span>
+                                                <span style="height:70%"></span>
+                                                <span style="height:62%"></span>
+                                                <span style="height:84%"></span>
+                                                <span style="height:96%"></span>
+                                            </div>
+                                        </div>
+                                        <div class="tsa-home-report-stack">
+                                            <div class="tsa-home-report-tile"><strong>Sales Report</strong><span>View all sales with date and customer filters.</span></div>
+                                            <div class="tsa-home-report-tile"><strong>Stock Report</strong><span>Current stock levels and exceptions by product.</span></div>
+                                            <div class="tsa-home-report-tile"><strong>Customer Dues</strong><span>Outstanding amounts ready for follow-up.</span></div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <p><?= htmlspecialchars($screen['text']) ?></p>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <section class="tsa-section tsa-section-alt">
+            <div class="tsa-home-growth-shell">
+                <div class="tsa-home-growth-head">
+                <div class="tsa-section-head" style="margin-bottom:0">
+                        <div class="tsa-section-kicker">Used in real business environments</div>
+                        <h2>Built to look credible because it is built for real work</h2>
+                        <p>TSA Legacy is built for businesses that need a dependable operating system with practical billing, inventory, and reporting workflows they can use every day.</p>
+                    </div>
+                    <div class="tsa-home-growth-meta">
+                        <div class="tsa-home-growth-pill"><i class="fas fa-circle-check"></i> Designed for Indian SMEs</div>
+                        <div class="tsa-home-growth-pill"><i class="fas fa-briefcase"></i> Used in real business workflows</div>
+                        <div class="tsa-home-growth-pill"><i class="fas fa-gears"></i> Built for daily operations</div>
+                    </div>
+                </div>
+                <div class="tsa-home-growth-grid">
+                    <div class="tsa-card tsa-home-proof-panel">
+                        <h3>Operational trust signals</h3>
+                        <p>The homepage now shows the product as a working business system: specific screens, live-looking data states, and use cases tied to how businesses actually run.</p>
+                        <div class="tsa-home-proof-listing">
+                            <?php foreach ($growthSignals as $item): ?>
+                                <div class="tsa-home-proof-row">
+                                    <div class="tsa-icon-chip"><i class="fas <?= htmlspecialchars($item['icon']) ?>"></i></div>
+                                    <div>
+                                        <h3><?= htmlspecialchars($item['title']) ?></h3>
+                                        <p><?= htmlspecialchars($item['text']) ?></p>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <div class="tsa-home-use-grid">
+                        <?php foreach ($trustExamples as $index => $item): ?>
+                            <article class="tsa-card tsa-home-use-card">
+                                <div class="tsa-icon-chip"><i class="fas <?= htmlspecialchars($useCases[$index]['icon']) ?>"></i></div>
+                                <h3><?= htmlspecialchars($item['title']) ?></h3>
+                                <p><?= htmlspecialchars($item['text']) ?></p>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-</section>
+        </section>
 
-<!-- TECH -->
-<section class="sec sec-alt" id="tech">
-    <div class="mx">
-        <div class="sec-hd rv"><div class="sec-tag" style="color:var(--ac)"><i class="fas fa-shield-halved"></i> Technology</div><h2 class="sec-t">Enterprise-grade architecture.<br>Startup-friendly pricing.</h2><p class="sec-s">Built as a cloud-native technology startup on modern infrastructure designed to scale from early MVP traction to large multi-tenant usage.</p></div>
-        <div class="grid-3">
-            <?php $tech=[['fa-cloud','Google Cloud Native','Built on Google Cloud infrastructure to support MVP launch, production workloads, and future scaling.'],['fa-lock','Enterprise Security','CSRF, RBAC, 2FA, encrypted sessions, rate limiting, audit logging.'],['fa-database','Multi-Tenant Isolation','True per-tenant data isolation with zero data leakage.'],['fa-bolt','Self-Serve SaaS','Online signup, plan-based billing, and low-touch onboarding for independent business adoption.'],['fa-code-branch','Modern Stack','PHP 8.2, MySQL 8.0, Nginx, Redis — battle-tested technologies.'],['fa-expand','Scale to 1M+ Users','Horizontal scaling, stateless architecture for multi-region expansion.']];
-            foreach($tech as $i=>$t): ?>
-            <div class="card rv" style="transition-delay:<?= $i*60 ?>ms">
-                <div class="card-ic" style="background:rgba(6,182,212,.1);color:#22d3ee"><i class="fas <?= $t[0] ?>"></i></div>
-                <h3><?= $t[1] ?></h3><p style="font-size:.8rem"><?= $t[2] ?></p>
+        <section class="tsa-section" style="padding-top:0">
+            <div class="tsa-section-head">
+                <div class="tsa-section-kicker">Working Feedback</div>
+                <h2>Short signals of product trust</h2>
+                <p>Small teams do not need exaggerated claims. They need to feel that the system is useful in billing, stock handling, and daily review.</p>
             </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</section>
-
-<!-- TESTIMONIALS -->
-<section class="sec">
-    <div class="mx-sm">
-        <div class="sec-hd rv"><div class="sec-tag"><i class="fas fa-heart"></i> Common Use Cases</div><h2 class="sec-t">Built for daily business operations</h2></div>
-        <div class="grid-3">
-            <?php $test=[['Fast GST billing, product lookup, and due tracking for counter sales and repeat customers.','Retail Teams','Billing Counters','RT'],['Shared inventory visibility, supplier balance tracking, and cleaner purchase workflows for stock-heavy operations.','Wholesale Teams','Stock Operations','WT'],['Multi-user access, reports, and returns handling for businesses moving from paper or spreadsheets.','Growing SMEs','Owner-led Teams','SM']];
-            foreach($test as $i=>$t): ?>
-            <div class="t-card rv" style="transition-delay:<?= $i*80 ?>ms">
-                <div class="stars"><i class="fas fa-check-circle"></i> Use Case</div>
-                <p class="t-text"><?= htmlspecialchars($t[0]) ?></p>
-                <div class="t-auth"><div class="t-av"><?= $t[3] ?></div><div><div class="t-name"><?= $t[1] ?></div><div class="t-role"><?= $t[2] ?></div></div></div>
+            <div class="tsa-home-testimonial-grid">
+                <?php foreach ($microTestimonials as $item): ?>
+                    <article class="tsa-card tsa-home-testimonial-card">
+                        <blockquote>“<?= htmlspecialchars($item['quote']) ?>”</blockquote>
+                        <small>Early product feedback</small>
+                    </article>
+                <?php endforeach; ?>
             </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</section>
+        </section>
 
-<!-- SEO LANDING LINKS -->
-<section class="sec sec-alt">
-    <div class="mx">
-        <div class="sec-hd rv"><div class="sec-tag" style="color:var(--ac)"><i class="fas fa-magnifying-glass"></i> Popular Searches</div><h2 class="sec-t">Explore the software by<br>business need</h2><p class="sec-s">These focused pages explain how TSA Legacy fits common search intent around GST billing, inventory management, and small business software.</p></div>
-        <div class="seo-links">
-            <?php foreach ($seoLandingLinks as $index => $landing): ?>
-            <a href="<?= htmlspecialchars($landing['href']) ?>" class="seo-link rv" style="transition-delay:<?= $index * 80 ?>ms">
-                <h3><?= htmlspecialchars($landing['title']) ?></h3>
-                <p><?= htmlspecialchars($landing['description']) ?></p>
-            </a>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</section>
+        <section class="tsa-section" style="padding-top:0">
+            <div class="tsa-section-head">
+                <div class="tsa-section-kicker">Example System Output</div>
+                <h2>Outputs the team can actually use</h2>
+                <p>A business system earns trust when its invoice records, stock views, and reports look ready for real work, not just for a homepage illustration.</p>
+            </div>
+            <div class="tsa-home-snapshot-grid">
+                <article class="tsa-card tsa-home-snapshot-card">
+                    <h3>Sample invoice</h3>
+                    <p>Structured around invoice number, party name, line items, and balance summary.</p>
+                    <div class="tsa-home-output-sheet">
+                        <div class="tsa-home-output-header">
+                            <strong>Invoice INV-2031</strong>
+                            <span>Om Traders · 08 Apr 2026</span>
+                        </div>
+                        <div class="tsa-home-invoice-lines">
+                            <div class="tsa-home-invoice-line"><span>Brake Pad Set x 4</span><strong>Rs 8,400</strong></div>
+                            <div class="tsa-home-invoice-line"><span>Engine Oil 1L x 6</span><strong>Rs 3,600</strong></div>
+                            <div class="tsa-home-invoice-line"><span>GST</span><strong>Rs 450</strong></div>
+                        </div>
+                        <div class="tsa-home-invoice-total"><span>Grand total</span><strong>Rs 12,450</strong></div>
+                    </div>
+                </article>
+                <article class="tsa-card tsa-home-snapshot-card">
+                    <h3>Sample report</h3>
+                    <p>Organized for quick monthly review without losing operating detail.</p>
+                    <div class="tsa-home-output-sheet">
+                        <div class="tsa-home-output-header">
+                            <strong>Sales Report</strong>
+                            <span>Monthly view</span>
+                        </div>
+                        <div class="tsa-home-report-mini-bars">
+                            <span style="height:46%"></span>
+                            <span style="height:68%"></span>
+                            <span style="height:72%"></span>
+                            <span style="height:94%"></span>
+                        </div>
+                        <div class="tsa-home-report-mini-list">
+                            <div><span>Total sales</span><strong>Rs 4.82L</strong></div>
+                            <div><span>Open dues</span><strong>Rs 38,200</strong></div>
+                        </div>
+                    </div>
+                </article>
+                <article class="tsa-card tsa-home-snapshot-card">
+                    <h3>Sample stock table</h3>
+                    <p>Clear product status for day-to-day stock review and follow-up.</p>
+                    <div class="tsa-home-output-sheet">
+                        <div class="tsa-home-output-header">
+                            <strong>Stock Report</strong>
+                            <span>Current levels</span>
+                        </div>
+                        <div class="tsa-home-report-mini-list">
+                            <div class="tsa-home-stock-mini-row"><span>Brake Pad Set</span><strong>128 pcs</strong></div>
+                            <div class="tsa-home-stock-mini-row"><span>Engine Oil 1L</span><strong>9 pcs</strong></div>
+                            <div class="tsa-home-stock-mini-row"><span>Battery Cable</span><strong>64 pcs</strong></div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
 
-<!-- PRICING -->
-<section class="sec sec-alt" id="pricing">
-    <div class="mx-sm">
-        <div class="sec-hd rv"><div class="sec-tag"><i class="fas fa-tag"></i> Simple Pricing</div><h2 class="sec-t">Launch pricing that stays easy.<br>Built for Indian businesses.</h2><p class="sec-s">Start small, keep costs low, and upgrade only when your team or catalog grows. All plans include GST billing.</p></div>
-        <div class="grid-3">
-            <?php
-            $plans = $plans ?? [];
-            if (!empty($plans)): 
-                $delay = 0;
-                foreach ($plans as $plan): 
-                    $isFeatured = !empty($plan['is_featured']);
-                    $price = SaaSBillingHelper::effectivePlanPrice($plan);
-                    $billing = strtolower($plan['billing_type'] ?? 'monthly');
-                    $features = SaaSBillingHelper::extractPlanFeatures($plan, 5, 0);
-                    $featuresList = $features['enabled'];
-                    $limits = SaaSBillingHelper::planLimitsSummary($plan);
-            ?>
-            <div class="p-card <?= $isFeatured ? 'pop' : '' ?> rv" style="transition-delay:<?= $delay ?>ms">
-                <?php if ($isFeatured): ?><div class="pop-badge">⚡ MOST POPULAR</div><?php endif; ?>
-                <div class="p-name" <?= $isFeatured ? 'style="color:var(--pl)"' : '' ?>><?= htmlspecialchars($plan['name']) ?></div>
-                <div class="p-price">₹<?= number_format($price) ?><sub>/<?= $billing ?></sub></div>
-                <p class="p-desc"><?= htmlspecialchars($plan['description'] ?? 'For growing businesses') ?></p>
-                <p class="p-desc" style="margin-top:-4px"><?= htmlspecialchars($limits['users_label']) ?> • <?= htmlspecialchars($limits['products_label']) ?></p>
-                <ul class="p-feat">
-                    <?php foreach ($featuresList as $feat): ?>
-                    <li><span class="ck"><i class="fas fa-check-circle"></i></span><?= htmlspecialchars($feat) ?></li>
+        <section class="tsa-section tsa-section-alt">
+            <div class="tsa-section-head">
+                <div class="tsa-section-kicker">How It Works</div>
+                <h2>Get from setup to live operations in three clear steps</h2>
+                <p>The first workflow should feel simple: create the workspace, load the business data, and start running billing and tracking from one place.</p>
+            </div>
+            <div class="tsa-grid-3">
+                <?php foreach ($steps as $step): ?>
+                    <article class="tsa-home-step">
+                        <div class="tsa-home-step-index"><?= htmlspecialchars($step['step']) ?></div>
+                        <h3><?= htmlspecialchars($step['title']) ?></h3>
+                        <p><?= htmlspecialchars($step['text']) ?></p>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <section class="tsa-section">
+            <div class="tsa-section-head">
+                <div class="tsa-section-kicker">What You Can Do</div>
+                <h2>Every tool your business runs on, inside one system</h2>
+                <p>Built around the daily workflows Indian SMEs actually use — billing customers, managing stock, tracking dues, and reviewing performance — not abstract feature labels.</p>
+            </div>
+
+            <div class="tsa-feat-hero-grid">
+                <?php foreach ($featureGroups as $fg): ?>
+                    <?php if (!empty($fg['hero'])): ?>
+                        <article class="tsa-feat-hero-card">
+                            <div class="tsa-icon-chip"><i class="fas <?= htmlspecialchars($fg['icon']) ?>"></i></div>
+                            <h3><?= htmlspecialchars($fg['title']) ?></h3>
+                            <p><?= htmlspecialchars($fg['text']) ?></p>
+                            <div class="tsa-feat-usecase"><i class="fas fa-bolt"></i><?= htmlspecialchars($fg['usecase']) ?></div>
+                            <ul class="tsa-feat-bullets">
+                                <?php foreach ($fg['bullets'] as $bullet): ?>
+                                    <li><i class="fas fa-check"></i><span><?= htmlspecialchars($bullet) ?></span></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </article>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="tsa-feat-sec-grid">
+                <?php foreach ($featureGroups as $fg): ?>
+                    <?php if (empty($fg['hero'])): ?>
+                        <article class="tsa-feat-sec-card">
+                            <div class="tsa-icon-chip"><i class="fas <?= htmlspecialchars($fg['icon']) ?>"></i></div>
+                            <h3><?= htmlspecialchars($fg['title']) ?></h3>
+                            <p><?= htmlspecialchars($fg['text']) ?></p>
+                            <div class="tsa-feat-sec-usecase"><i class="fas fa-quote-left"></i><?= htmlspecialchars($fg['usecase']) ?></div>
+                            <ul class="tsa-feat-sec-bullets">
+                                <?php foreach ($fg['bullets'] as $bullet): ?>
+                                    <li><i class="fas fa-check"></i><span><?= htmlspecialchars($bullet) ?></span></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </article>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <section class="tsa-section" id="about">
+            <div style="padding: 40px; background: #fbfaf7; border: 1px solid rgba(20,33,58,.08); border-radius: 20px; box-shadow: var(--tsa-shadow-soft);">
+                <div style="max-width: 800px; margin: 0 auto; text-align: center;">
+                    <h2 style="font-size: 2.2rem; color: var(--tsa-ink); margin-bottom: 24px; font-weight: 800; letter-spacing: -0.03em;">Built by TSA Legacy Ventures</h2>
+                    <p style="font-size: 1.1rem; color: var(--tsa-ink); line-height: 1.8; margin-bottom: 16px; font-weight: 600;">
+                        We didn't build this to be just another software product. We built it because real businesses were struggling to find a system that actually worked for them.
+                    </p>
+                    <p style="font-size: 1rem; color: var(--tsa-muted); line-height: 1.8; margin-bottom: 16px;">
+                        Hi, I'm <strong>Triloki</strong>, founder of TSA Legacy Ventures. When looking at how Indian SMEs operate, I realized most teams were forced to buy three different tools—or rely on clunky, bloated legacy software—just to run their daily billing and inventory.
+                    </p>
+                    <p style="font-size: 1rem; color: var(--tsa-muted); line-height: 1.8;">
+                        TSA Legacy was created to solve that specific problem. Our mission is direct: provide a <strong>simple, structured, reliable</strong> cloud workspace where growing businesses can take back control of their workflows without the friction. We're a real team, building reliable tools for real work.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="tsa-section" style="padding-top: 0;">
+            <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 30px; align-items: center; border: 1px solid rgba(20,33,58,.08); border-radius: 20px; padding: 40px; background: #fff; box-shadow: var(--tsa-shadow-soft);">
+                <div>
+                    <h3 style="font-size: 1.8rem; font-weight: 800; color: var(--tsa-ink); margin-bottom: 12px; letter-spacing: -0.03em;">Support &amp; Onboarding</h3>
+                    <p style="color: var(--tsa-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px;">Software is only as good as the team supporting it. We don't leave you alone after signup.</p>
+                    <ul style="list-style: none; padding: 0; margin: 0; display: grid; gap: 14px;">
+                        <li style="display: flex; align-items: center; gap: 12px; font-size: 0.95rem; font-weight: 600; color: var(--tsa-ink);">
+                            <i class="fas fa-check-circle" style="color: var(--tsa-primary); font-size: 1.1rem;"></i> Direct email support within 24 hours
+                        </li>
+                        <li style="display: flex; align-items: center; gap: 12px; font-size: 0.95rem; font-weight: 600; color: var(--tsa-ink);">
+                            <i class="fas fa-check-circle" style="color: var(--tsa-primary); font-size: 1.1rem;"></i> Guided onboarding help &amp; data setup
+                        </li>
+                        <li style="display: flex; align-items: center; gap: 12px; font-size: 0.95rem; font-weight: 600; color: var(--tsa-ink);">
+                            <i class="fas fa-check-circle" style="color: var(--tsa-primary); font-size: 1.1rem;"></i> Human-written documentation &amp; operational guides
+                        </li>
+                    </ul>
+                </div>
+                <div style="background: #f4f7fb; padding: 30px; border-radius: 16px; text-align: center; border: 1px solid rgba(22,56,95,.06);">
+                    <p style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tsa-muted); margin-bottom: 12px;">Speak directly with our team</p>
+                    <a href="mailto:support@tsalegacy.com" style="display: inline-block; font-size: 1.35rem; font-weight: 800; color: var(--tsa-primary); text-decoration: none; padding: 12px 20px; background: #fff; border-radius: 12px; border: 1px solid rgba(20,33,58,.08); box-shadow: 0 10px 20px rgba(22,56,95,.06);">support@tsalegacy.com</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="tsa-section">
+            <div class="tsa-home-demo-grid">
+                <div>
+                    <div class="tsa-section-head" style="margin-bottom:22px">
+                        <div class="tsa-section-kicker">Product Preview</div>
+                        <h2>See how the product works before you start</h2>
+                        <p>Instant demo access signs you into a sample workspace so you can review the product flow, navigation, and business structure before creating your own account.</p>
+                    </div>
+                    <ul class="tsa-home-demo-list">
+                        <li><i class="fas fa-check"></i><span>Open a sample workspace immediately</span></li>
+                        <li><i class="fas fa-check"></i><span>Review billing, inventory, and reporting flow</span></li>
+                        <li><i class="fas fa-check"></i><span>Understand how teams work inside one system</span></li>
+                    </ul>
+                    <div class="tsa-hero-actions">
+                        <a href="<?= APP_URL ?>/demo" class="tsa-btn tsa-btn-primary">Instant Demo Access</a>
+                    </div>
+                </div>
+                <aside class="tsa-card tsa-home-demo-preview">
+                    <div class="tsa-home-screen-label"><i class="fas fa-laptop-code"></i>Sample workspace preview</div>
+                    <div class="tsa-home-shot">
+                        <div class="tsa-home-shot-top">
+                            <div>
+                                <div class="tsa-home-shot-title">Demo workspace</div>
+                                <div class="tsa-home-shot-sub">Sidebar, dashboard, and sample records</div>
+                            </div>
+                            <div class="tsa-home-dots"><span></span><span></span><span></span></div>
+                        </div>
+                        <div class="tsa-home-shot-body">
+                            <div class="tsa-home-shot-billing">
+                                <div class="tsa-home-shot-panel">
+                                    <h4>Navigation</h4>
+                                    <div class="tsa-home-shot-list">
+                                        <span><strong>Dashboard</strong><span>Overview</span></span>
+                                        <span><strong>Sales</strong><span>Billing flow</span></span>
+                                        <span><strong>Reports</strong><span>Review layer</span></span>
+                                    </div>
+                                </div>
+                                <div class="tsa-home-shot-panel">
+                                    <h4>Sample data</h4>
+                                    <div class="tsa-home-shot-list">
+                                        <span><strong>Invoices</strong><span>Available</span></span>
+                                        <span><strong>Products</strong><span>Catalog loaded</span></span>
+                                        <span><strong>Reports</strong><span>Ready to review</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <section class="tsa-section tsa-section-alt">
+            <div class="tsa-section-head">
+                <div class="tsa-section-kicker">Pricing Preview</div>
+                <h2>Choose the right starting tier, then grow from there</h2>
+                <p>Pricing should feel clear and operationally sensible. The preview below gives buyers a quick read before they move into full plan detail.</p>
+            </div>
+            <?php if (!empty($plans ?? [])): ?>
+                <div class="tsa-home-pricing-preview">
+                    <?php foreach (array_slice($plans, 0, 3) as $plan): ?>
+                        <?php
+                        $effectivePrice = SaaSBillingHelper::effectivePlanPrice($plan);
+                        $limits = SaaSBillingHelper::planLimitsSummary($plan);
+                        $billing = strtolower((string)($plan['billing_type'] ?? 'monthly'));
+                        $featuresPreview = array_slice(SaaSBillingHelper::extractPlanFeatures($plan, 4, 0)['enabled'], 0, 4);
+                        ?>
+                        <article class="tsa-card tsa-home-price-card">
+                            <h3><?= e($plan['name'] ?? 'Plan') ?></h3>
+                            <span class="tsa-home-price-value">Rs <?= number_format($effectivePrice, 0) ?><small>/<?= e($billing) ?></small></span>
+                            <p><?= !empty($plan['description']) ? e($plan['description']) : 'Business operations plan with structured workspace access.' ?></p>
+                            <ul class="tsa-home-price-list">
+                                <li><i class="fas fa-check"></i><span><?= e($limits['users_label']) ?></span></li>
+                                <li><i class="fas fa-check"></i><span><?= e($limits['products_label']) ?></span></li>
+                                <?php foreach ($featuresPreview as $item): ?>
+                                    <li><i class="fas fa-check"></i><span><?= e($item) ?></span></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </article>
                     <?php endforeach; ?>
-                </ul>
-                <a href="<?= APP_URL ?>/signup" class="btn-plan <?= $isFeatured ? 'btn-p' : 'btn-g' ?>" style="width:100%;justify-content:center">Start Free Trial</a>
-            </div>
-            <?php 
-                $delay += 80;
-                endforeach; 
-            else: 
-            ?>
-            <div class="p-card rv">
-                <div class="p-name">Free</div>
-                <div class="p-price">₹0<sub>/forever</sub></div>
-                <p class="p-desc">Perfect to get started</p>
-                <p class="p-desc" style="margin-top:-4px">1 user • 100 products</p>
-                <ul class="p-feat"><li><span class="ck"><i class="fas fa-check-circle"></i></span>GST invoicing</li><li><span class="ck"><i class="fas fa-check-circle"></i></span>Inventory management</li><li><span class="ck"><i class="fas fa-check-circle"></i></span>Basic reports</li></ul>
-                <a href="<?= APP_URL ?>/signup" class="btn-plan btn-g" style="width:100%;justify-content:center">Get Started Free</a>
-            </div>
-            <div class="p-card pop rv" style="transition-delay:80ms">
-                <div class="pop-badge">⚡ MOST POPULAR</div>
-                <div class="p-name" style="color:var(--pl)">Starter</div>
-                <div class="p-price">₹299<sub>/month</sub></div>
-                <p class="p-desc">Core billing stack for new businesses</p>
-                <p class="p-desc" style="margin-top:-4px">3 users • 500 products</p>
-                <ul class="p-feat"><li><span class="ck"><i class="fas fa-check-circle"></i></span>GST invoicing</li><li><span class="ck"><i class="fas fa-check-circle"></i></span>Inventory & payments</li><li><span class="ck"><i class="fas fa-check-circle"></i></span>Audit trail & PDF export</li></ul>
-                <a href="<?= APP_URL ?>/signup" class="btn-plan btn-p" style="width:100%;justify-content:center">Start Free Trial</a>
-            </div>
-            <div class="p-card rv" style="transition-delay:160ms">
-                <div class="p-name">Professional</div>
-                <div class="p-price">₹699<sub>/month</sub></div>
-                <p class="p-desc">More users, reports, quotations and returns</p>
-                <p class="p-desc" style="margin-top:-4px">10 users • 5,000 products</p>
-                <ul class="p-feat"><li><span class="ck"><i class="fas fa-check-circle"></i></span>Advanced reports</li><li><span class="ck"><i class="fas fa-check-circle"></i></span>Quotations & sale returns</li><li><span class="ck"><i class="fas fa-check-circle"></i></span>Multi-user operations</li></ul>
-                <a href="<?= APP_URL ?>/signup" class="btn-plan btn-g" style="width:100%;justify-content:center">Start Free Trial</a>
-            </div>
+                </div>
+            <?php else: ?>
+                <div class="tsa-card" style="text-align:center">
+                    <h3>Pricing details are available on the pricing page.</h3>
+                    <p>Use the pricing page to review the latest plans and workspace limits.</p>
+                </div>
             <?php endif; ?>
-        </div>
-    </div>
-</section>
+            <div class="tsa-hero-actions">
+                <a href="<?= APP_URL ?>/pricing" class="tsa-btn tsa-btn-secondary">View Pricing</a>
+            </div>
+        </section>
 
-<!-- FAQ -->
-<section class="sec">
-    <div class="mx">
-        <div class="sec-hd rv"><div class="sec-tag" style="color:var(--ac)"><i class="fas fa-circle-question"></i> FAQ</div><h2 class="sec-t">Questions people ask before<br>choosing business software</h2><p class="sec-s">These answers help clarify whether TSA Legacy fits small-business billing, inventory and multi-user workflows.</p></div>
-        <div class="faq-grid">
-            <div class="faq-card rv">
-                <h3>What is TSA Legacy used for?</h3>
-                <p>TSA Legacy is used for GST billing, inventory management, customer and supplier tracking, reporting, and multi-user business operations for Indian SMEs.</p>
+        <section class="tsa-section">
+            <div class="tsa-section-head">
+                <div class="tsa-section-kicker">Trust & Security</div>
+                <h2>Clear safeguards for teams that need dependable operational control</h2>
+                <p>The trust layer should be understandable: controlled access, reviewable records, and cloud-based deployment that supports business continuity.</p>
             </div>
-            <div class="faq-card rv" style="transition-delay:80ms">
-                <h3>Is TSA Legacy good for small businesses in India?</h3>
-                <p>Yes. It is designed for Indian small businesses that need affordable monthly billing and inventory software with cloud access and self-serve onboarding.</p>
+            <div class="tsa-grid-3">
+                <?php foreach ($securityCards as $card): ?>
+                    <article class="tsa-card">
+                        <div class="tsa-icon-chip"><i class="fas <?= htmlspecialchars($card['icon']) ?>"></i></div>
+                        <h3><?= htmlspecialchars($card['title']) ?></h3>
+                        <p><?= htmlspecialchars($card['text']) ?></p>
+                    </article>
+                <?php endforeach; ?>
             </div>
-            <div class="faq-card rv" style="transition-delay:160ms">
-                <h3>Does TSA Legacy include both billing and inventory management?</h3>
-                <p>Yes. The platform combines GST billing, inventory management, customer records, supplier workflows, reports, and operational controls in one SaaS product.</p>
-            </div>
-            <div class="faq-card rv" style="transition-delay:240ms">
-                <h3>Can growing teams use it with multiple users?</h3>
-                <p>Yes. Plans support multi-user access, role-based control, shared inventory visibility, and operational workflows for growing business teams.</p>
-            </div>
-        </div>
-    </div>
-</section>
+        </section>
 
-<section class="sec sec-alt">
-    <div class="mx">
-        <div class="sec-hd rv"><div class="sec-tag" style="color:var(--ac)"><i class="fas fa-pen"></i> Guides</div><h2 class="sec-t">Helpful articles for buyers<br>and small-business teams</h2><p class="sec-s">These support pages build authority around billing, inventory and software selection topics people search before buying.</p></div>
-        <div class="seo-links">
-            <a href="<?= APP_URL ?>/blog/how-to-choose-gst-billing-software" class="seo-link rv">
-                <h3>How to choose GST billing software</h3>
-                <p>A practical buyer guide for businesses comparing billing tools in India.</p>
-            </a>
-            <a href="<?= APP_URL ?>/blog/inventory-management-tips-small-business-india" class="seo-link rv" style="transition-delay:80ms">
-                <h3>Inventory management tips for small businesses</h3>
-                <p>Operational advice for better stock visibility, purchase control and fewer manual errors.</p>
-            </a>
-            <a href="<?= APP_URL ?>/blog/billing-software-vs-accounting-software" class="seo-link rv" style="transition-delay:160ms">
-                <h3>Billing software vs accounting software</h3>
-                <p>Understand what small businesses should buy first and when deeper accounting tools matter.</p>
-            </a>
-        </div>
-        <div class="seo-links" style="margin-top:20px">
-            <a href="<?= APP_URL ?>/blog/best-billing-software-for-kirana-shop" class="seo-link rv">
-                <h3>Best billing software for kirana shop</h3>
-                <p>Focus on faster counters, dues tracking and practical daily workflows for local stores.</p>
-            </a>
-            <a href="<?= APP_URL ?>/blog/wholesale-billing-software-features" class="seo-link rv" style="transition-delay:80ms">
-                <h3>Wholesale billing software features</h3>
-                <p>See what matters for supplier balances, bulk products, returns and stock-heavy operations.</p>
-            </a>
-            <a href="<?= APP_URL ?>/blog/retail-billing-software-checklist" class="seo-link rv" style="transition-delay:160ms">
-                <h3>Retail billing software checklist</h3>
-                <p>A practical selection checklist for retail teams comparing billing tools.</p>
-            </a>
-        </div>
-    </div>
-</section>
-
-<!-- CTA -->
-<section class="sec">
-    <div class="mx-xs">
-        <div class="cta-box rv">
-            <div class="bg"></div>
-            <div style="position:relative;z-index:1">
-                <div class="badge" style="margin-bottom:20px"><span class="dot"></span>No card required</div>
-                <h2 style="font-size:clamp(1.6rem,4vw,2.4rem);font-weight:900;color:var(--w);margin-bottom:12px">Ready to transform<br>your business?</h2>
-                <p style="color:var(--mt);margin-bottom:28px;font-size:.95rem">Launch fast with billing and inventory, then grow into bulk imports, AI insights, API access, backup, and HR workflows on the same platform.</p>
-                <form class="cta-form" action="<?= APP_URL ?>/index.php" method="get" onsubmit="return hL(event)">
-                    <input type="hidden" name="page" value="signup">
-                    <input type="email" id="le" name="email" placeholder="Enter your email" required class="cta-input">
-                    <button type="submit" class="btn-p">Get Started</button>
-                </form>
-                <p id="lm" style="color:var(--ac2);font-size:.75rem;font-weight:600;display:none">🎉 Welcome! Redirecting to signup...</p>
-                <p style="color:rgba(148,163,184,.5);font-size:.7rem">Free 14-day trial • No credit card • Cancel anytime</p>
+        <section class="tsa-section" style="padding-top:12px">
+            <div class="tsa-cta-box">
+                <div class="tsa-eyebrow"><span class="dot"></span>TSA Legacy</div>
+                <h2>Start your business operations on one system</h2>
+                <p>Move billing, inventory, records, and reporting into one structured workspace built for practical day-to-day business use.</p>
+                <div class="tsa-hero-actions">
+                    <a href="<?= APP_URL ?>/signup" class="tsa-btn tsa-btn-primary">Start Free Trial</a>
+                    <a href="<?= APP_URL ?>/demo" class="tsa-btn tsa-btn-secondary">Instant Demo Access</a>
+                </div>
             </div>
-        </div>
+        </section>
     </div>
-</section>
+</main>
 
-<!-- FOOTER -->
-<footer>
-    <div class="mx">
-        <div class="ft-grid">
-            <div>
-                <a href="<?= APP_URL ?>/" class="logo" style="margin-bottom:10px"><img src="<?= htmlspecialchars($logoUrl, ENT_QUOTES) ?>" alt="TSA Legacy" style="height:32px"></a>
-                <p style="color:var(--mt);font-size:.78rem;line-height:1.6;margin:10px 0">Cloud-native business management platform built for Indian SMEs.</p>
-                <p style="color:var(--mt);font-size:.72rem"><i class="fas fa-map-marker-alt" style="margin-right:4px"></i> India-based Startup</p>
-            </div>
-            <div><div class="ft-title">Product</div><div class="ft-links"><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="<?= APP_URL ?>/blog">Guides</a><a href="<?= APP_URL ?>/demo">Live Demo</a><a href="<?= APP_URL ?>/signup">Sign Up</a></div></div>
-            <div><div class="ft-title">Company</div><div class="ft-links"><a href="#about">About Us</a><a href="<?= APP_URL ?>/privacy">Privacy Policy</a><a href="<?= APP_URL ?>/terms">Terms of Service</a><a href="<?= APP_URL ?>/refund">Refund Policy</a></div></div>
-            <div><div class="ft-title">Contact</div><div class="ft-links"><a href="mailto:hello@tsalegacy.com"><i class="fas fa-envelope" style="margin-right:4px"></i>hello@tsalegacy.com</a><span style="color:var(--mt);font-size:.78rem"><i class="fas fa-building" style="margin-right:4px"></i>TSA Legacy Ventures</span><span style="color:var(--mt);font-size:.78rem"><i class="fas fa-certificate" style="margin-right:4px"></i>MSME / Udyam Registered</span><span style="color:var(--mt);font-size:.78rem"><i class="fas fa-flag" style="margin-right:4px"></i>Made with ❤️ in India</span></div></div>
-        </div>
-        <div class="ft-bar">
-            <p class="ft-copy">© 2025–<?= date('Y') ?> TSA Legacy Ventures. All rights reserved.</p>
-            <div style="display:flex;align-items:center;gap:8px"><span class="ft-copy">Powered by</span><span style="color:var(--mt);font-size:.75rem;font-weight:600"><i class="fab fa-google" style="margin-right:3px"></i>Google Cloud</span></div>
-        </div>
-    </div>
-</footer>
-
-<script nonce="<?= htmlspecialchars($GLOBALS['csp_nonce'] ?? '', ENT_QUOTES) ?>">
-document.getElementById('hamburger').addEventListener('click',function(){document.getElementById('mobMenu').classList.toggle('open')});
-function clM(){document.getElementById('mobMenu').classList.remove('open')}
-var revEls=document.querySelectorAll('.rv');
-if('IntersectionObserver' in window){
-var ob=new IntersectionObserver(function(e){e.forEach(function(el){if(el.isIntersecting){el.target.classList.add('vis');ob.unobserve(el.target)}})},{threshold:.08,rootMargin:'0px 0px -20px 0px'});
-revEls.forEach(function(el){ob.observe(el)});
-}
-setTimeout(function(){revEls.forEach(function(el){el.classList.add('vis')})},2500);
-function hL(e){e.preventDefault();var em=document.getElementById('le').value;if(em){document.getElementById('lm').style.display='block';setTimeout(function(){window.location.href='<?= APP_URL ?>/signup?email='+encodeURIComponent(em)},1200)}return false}
-window.addEventListener('scroll',function(){document.getElementById('mainNav').style.background=window.scrollY>50?'rgba(6,16,27,.96)':'rgba(6,16,27,.9)'});
+<?php tsa_render_public_footer(['show_guides' => true]); ?>
+<script nonce="<?= $nonce ?>">
+<?= tsa_brand_script() ?>
 </script>
 </body>
 </html>

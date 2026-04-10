@@ -1,27 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 160" fill="none">
-  <defs>
-    <linearGradient id="bg" x1="16" y1="14" x2="146" y2="144" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#08111D"/>
-      <stop offset="0.56" stop-color="#142A45"/>
-      <stop offset="1" stop-color="#2563EB"/>
-    </linearGradient>
-    <linearGradient id="metal" x1="44" y1="26" x2="114" y2="132" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F8FAFC"/>
-      <stop offset="1" stop-color="#D7DEE8"/>
-    </linearGradient>
-    <linearGradient id="accent" x1="92" y1="18" x2="100" y2="138" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#60A5FA"/>
-      <stop offset="1" stop-color="#2563EB"/>
-    </linearGradient>
-  </defs>
-  <rect x="0" y="0" width="160" height="160" rx="40" fill="url(#bg)"/>
-  <path d="M42 38H118" stroke="url(#metal)" stroke-width="12" stroke-linecap="round"/>
-  <path d="M80 38V122" stroke="url(#metal)" stroke-width="12" stroke-linecap="round"/>
-  <path d="M54 122H108" stroke="url(#metal)" stroke-width="12" stroke-linecap="round"/>
-  <path d="M94 24V132" stroke="url(#accent)" stroke-width="4.2" stroke-linecap="round"/>
-  <circle cx="94" cy="20" r="6" fill="#60A5FA"/>
-  <text x="196" y="66" fill="#F8FAFC" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="54" font-weight="800" letter-spacing="-1.4">TSA</text>
-  <text x="340" y="66" fill="#93C5FD" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="54" font-weight="700" letter-spacing="-0.8">Legacy</text>
-  <text x="560" y="66" fill="#CBD5E1" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="22" font-weight="600" letter-spacing="1.8">VENTURES</text>
-  <text x="200" y="112" fill="#94A3B8" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="19" font-weight="700" letter-spacing="3">BUILT TO ENDURE</text>
+  <rect x="0" y="0" width="160" height="160" rx="34" fill="#10263F"/>
+  <rect x="16" y="16" width="128" height="128" rx="28" stroke="#223A5A" stroke-width="4"/>
+  <path d="M42 42H118" stroke="#F6F8FB" stroke-width="12" stroke-linecap="round"/>
+  <path d="M80 42V118" stroke="#F6F8FB" stroke-width="12" stroke-linecap="round"/>
+  <path d="M56 118H104" stroke="#F6F8FB" stroke-width="12" stroke-linecap="round"/>
+  <path d="M102 30V130" stroke="#B28A4A" stroke-width="6" stroke-linecap="round"/>
+  <text x="196" y="66" fill="#F6F8FB" font-family="Manrope, Inter, Arial, sans-serif" font-size="54" font-weight="800" letter-spacing="-1.4">TSA</text>
+  <text x="336" y="66" fill="#D9B77C" font-family="Manrope, Inter, Arial, sans-serif" font-size="54" font-weight="700" letter-spacing="-0.9">LEGACY</text>
+  <text x="196" y="108" fill="#A9B5C4" font-family="Manrope, Inter, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="4">VENTURES</text>
 </svg>
