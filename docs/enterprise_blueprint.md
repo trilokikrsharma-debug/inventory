@@ -399,7 +399,7 @@ class HealthController extends Controller {
 ### Log Rotation (logrotate config)
 
 ```
-/var/www/inventory/logs/*.log {
+/var/www/tsalegacy/logs/*.log {
     daily
     missingok
     rotate 30

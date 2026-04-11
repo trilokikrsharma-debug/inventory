@@ -49,7 +49,7 @@ if (!empty($user['full_name'])) {
                     <div class="user-name"><?= Helper::escape($user['full_name'] ?? 'User') ?></div>
                     <div class="user-role"><?= Helper::escape($user['role'] ?? 'staff') ?></div>
                 </div>
-                <i class="fas fa-chevron-down ms-1" style="font-size:0.65rem; color: var(--text-muted);"></i>
+                <i class="fas fa-chevron-down ms-1 navbar-chevron"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
                 <li>

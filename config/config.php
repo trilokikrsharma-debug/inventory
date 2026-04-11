@@ -128,10 +128,18 @@ define('CONTROLLER_PATH', BASE_PATH . '/controllers');
 define('MODEL_PATH', BASE_PATH . '/models');
 define('VIEW_PATH', BASE_PATH . '/views');
 define('ASSET_PATH', BASE_PATH . '/assets');
-define('UPLOAD_PATH', BASE_PATH . '/uploads');
+define('LEGACY_UPLOAD_PATH', BASE_PATH . '/uploads');
+define(
+    'UPLOAD_PATH',
+    rtrim((string)(getenv('UPLOAD_PATH') ?: dirname(dirname(BASE_PATH)) . '/inventory_uploads'), '\\/')
+);
 define('LOG_PATH', BASE_PATH . '/logs');
 define('CACHE_PATH', BASE_PATH . '/cache');
 define('CLI_PATH', BASE_PATH . '/cli');
+define(
+    'BACKUP_PATH',
+    rtrim((string)(getenv('BACKUP_PATH') ?: dirname(dirname(BASE_PATH)) . '/inventory_backups'), '\\/')
+);
 
 // Session Configuration
 define('SESSION_NAME', 'invenbill_session');

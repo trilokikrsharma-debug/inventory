@@ -1,7 +1,7 @@
 <?php
 /**
  * Company Settings Controller
- * 
+ *
  * Manages per-company settings (business name, GST, logo, etc.)
  * This extends the existing settings functionality with company context.
  */
@@ -10,7 +10,7 @@ class CompanySettingsController extends Controller {
 
     public function index() {
         $this->requirePermission('settings.manage');
-        
+
         $company = Tenant::company();
         $currentPlan = Tenant::currentPlan();
         $settings = (new SettingsModel())->getSettings();

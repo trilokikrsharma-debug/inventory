@@ -1,15 +1,15 @@
 <?php
 /**
  * Enterprise Rate Limiter — Per-Tenant + Per-IP
- * 
+ *
  * Sliding window rate limiting with Redis support and file-based fallback.
  * Designed for SaaS multi-tenant workloads.
- * 
+ *
  * Strategies:
  *   - Per-IP: Prevents abuse from single source
  *   - Per-Tenant: Prevents one tenant from starving others
  *   - Per-Endpoint: Fine-grained API rate control
- * 
+ *
  * Usage:
  *   // In middleware or front controller:
  *   if (!RateLimiter::attempt('api:' . $tenantId, 100, 60)) {
@@ -17,7 +17,7 @@
  *       echo json_encode(['error' => 'Rate limit exceeded']);
  *       exit;
  *   }
- * 
+ *
  *   // Check remaining:
  *   $remaining = RateLimiter::remaining('api:' . $tenantId, 100, 60);
  */
@@ -31,13 +31,13 @@ class RateLimiter {
      */
     private static function getDriver(): string {
         if (self::$driver !== null) return self::$driver;
-        
+
         // Try Redis first
         if (extension_loaded('redis') && getenv('REDIS_HOST')) {
             try {
                 self::$redis = new \Redis();
                 self::$redis->connect(
-                    getenv('REDIS_HOST') ?: '127.0.0.1',
+                    (string) getenv('REDIS_HOST'),
                     (int)(getenv('REDIS_PORT') ?: 6379),
                     1.0 // 1s timeout
                 );
@@ -54,14 +54,14 @@ class RateLimiter {
                 error_log('[RATE_LIMITER] Redis unavailable, falling back to file: ' . $e->getMessage());
             }
         }
-        
+
         self::$driver = 'file';
         return 'file';
     }
 
     /**
      * Attempt a rate-limited action. Returns true if allowed, false if denied.
-     * 
+     *
      * @param string $key     Unique identifier (e.g., "api:{tenant_id}" or "login:{ip}")
      * @param int    $maxHits Maximum number of attempts allowed in the window
      * @param int    $windowSeconds  Time window in seconds
@@ -69,7 +69,7 @@ class RateLimiter {
      */
     public static function attempt(string $key, int $maxHits, int $windowSeconds): bool {
         $key = 'rl:' . preg_replace('/[^a-zA-Z0-9_:\-]/', '_', $key);
-        
+
         if (self::getDriver() === 'redis') {
             return self::redisAttempt($key, $maxHits, $windowSeconds);
         }
@@ -81,7 +81,7 @@ class RateLimiter {
      */
     public static function remaining(string $key, int $maxHits, int $windowSeconds): int {
         $key = 'rl:' . preg_replace('/[^a-zA-Z0-9_:\-]/', '_', $key);
-        
+
         if (self::getDriver() === 'redis') {
             $current = (int)self::$redis->get($key);
             return max(0, $maxHits - $current);

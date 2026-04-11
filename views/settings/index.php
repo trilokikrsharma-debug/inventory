@@ -83,6 +83,10 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
 
     .gst-fields { transition: opacity 0.3s ease; }
     .gst-fields.disabled { opacity: 0.4; pointer-events: none; }
+    .settings-hidden { display: none !important; }
+    .settings-table-cell-hidden { display: none; }
+    .settings-block-hidden { display: none; }
+    .settings-dimmed { opacity: 0.4; pointer-events: none; }
 
     .section-divider {
         border: 0;
@@ -100,6 +104,133 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
         display: flex;
         align-items: center;
         gap: 0.5rem;
+    }
+    .settings-preview-image-logo { max-height: 80px; }
+    .settings-preview-image-signature { max-height: 70px; }
+    .settings-preview-image-seal { max-height: 85px; }
+    .settings-icon-primary { color: #4e73df; }
+    .settings-icon-success { color: #28a745; }
+    .settings-icon-info { color: #17a2b8; }
+    .settings-icon-brand { color: #0d6efd; }
+    .settings-icon-purple { color: #6f42c1; }
+    .settings-icon-danger { color: #dc3545; }
+    .settings-icon-orange { color: #fd7e14; }
+    .settings-icon-teal { color: #20c997; }
+    .settings-alert-note {
+        border-radius: 12px;
+        font-size: 0.85rem;
+    }
+    .settings-help-copy {
+        font-size: 0.88rem;
+        color: var(--text-secondary, #636e72);
+    }
+    .settings-help-copy strong {
+        color: var(--text-primary, #2d3436);
+    }
+    .settings-preview-card-body {
+        font-size: 0.8rem;
+    }
+    .settings-preview-shell {
+        border: 1px solid var(--border-color, #e3e6f0);
+        border-radius: 10px;
+        padding: 1rem;
+        background: var(--bg-card, #fff);
+    }
+    .settings-preview-head {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #4e73df;
+    }
+    .settings-preview-company {
+        color: #4e73df;
+        font-size: 0.9rem;
+    }
+    .settings-preview-company-address,
+    .settings-preview-number,
+    .settings-preview-signature {
+        font-size: 0.7rem;
+        color: #888;
+    }
+    .settings-preview-right {
+        text-align: right;
+    }
+    .settings-preview-title {
+        font-weight: 700;
+        font-size: 0.75rem;
+        color: #4e73df;
+        text-transform: uppercase;
+    }
+    .settings-preview-subtitle {
+        font-size: 0.68rem;
+        color: #6c757d;
+        margin-top: 2px;
+    }
+    .settings-preview-status-wrap {
+        margin-top: 4px;
+    }
+    .settings-preview-status-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .settings-preview-table {
+        width: 100%;
+        font-size: 0.7rem;
+        border-collapse: collapse;
+    }
+    .settings-preview-table-head {
+        background: #4e73df;
+        color: #fff;
+    }
+    .settings-preview-cell {
+        padding: 4px;
+    }
+    .settings-preview-cell-sm {
+        padding: 3px;
+    }
+    .settings-preview-text-center { text-align: center; }
+    .settings-preview-text-right { text-align: right; }
+    .settings-preview-text-left { text-align: left; }
+    .settings-preview-summary {
+        text-align: right;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        border-top: 1px solid #eee;
+        padding-top: 0.5rem;
+        color: #555;
+    }
+    .settings-preview-grand-total {
+        font-weight: 700;
+        font-size: 0.8rem;
+        color: #222;
+    }
+    .settings-preview-paid {
+        color: #28a745;
+    }
+    .settings-preview-due {
+        color: #dc3545;
+        font-weight: 600;
+    }
+    .settings-preview-signature-block {
+        text-align: right;
+        margin-top: 1rem;
+        padding-top: 0.5rem;
+        border-top: 1px dashed #ddd;
+        font-size: 0.7rem;
+        color: #888;
+    }
+    .settings-preview-note {
+        font-size: 0.75rem;
+    }
+    .settings-save-btn {
+        border-radius: 10px;
+        font-weight: 600;
     }
 </style>
 
@@ -144,7 +275,8 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
             <div class="card mb-3">
                 <div class="card-header"><h6><i class="fas fa-image me-2"></i>Logo</h6></div>
                 <div class="card-body text-center">
-                    <?php if (!empty($settings['company_logo'])): ?><img src="<?= APP_URL ?>/<?= $settings['company_logo'] ?>" class="img-fluid mb-2" style="max-height:80px;"><?php endif; ?>
+                    <?php $companyLogoSrc = Helper::uploadedImageSrc($settings['company_logo'] ?? ''); ?>
+                    <?php if ($companyLogoSrc !== ''): ?><img src="<?= Helper::escape($companyLogoSrc) ?>" class="img-fluid mb-2 settings-preview-image-logo"><?php endif; ?>
                     <input type="file" name="company_logo" class="form-control" accept="image/*">
                 </div>
             </div>
@@ -152,13 +284,15 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                 <div class="card-header"><h6><i class="fas fa-signature me-2"></i>Seal & Signature</h6></div>
                 <div class="card-body">
                     <div class="mb-3 text-center">
-                        <?php if (!empty($settings['invoice_signature_image'])): ?><img src="<?= APP_URL ?>/<?= Helper::escape($settings['invoice_signature_image']) ?>" class="img-fluid mb-2" style="max-height:70px;"><?php endif; ?>
+                        <?php $signaturePreviewSrc = Helper::uploadedImageSrc($settings['invoice_signature_image'] ?? ''); ?>
+                        <?php if ($signaturePreviewSrc !== ''): ?><img src="<?= Helper::escape($signaturePreviewSrc) ?>" class="img-fluid mb-2 settings-preview-image-signature"><?php endif; ?>
                         <label class="form-label">Signature Image</label>
                         <input type="file" name="invoice_signature_image" class="form-control" accept="image/*">
                         <small class="text-muted">Best results: transparent PNG, landscape signature.</small>
                     </div>
                     <div class="text-center">
-                        <?php if (!empty($settings['invoice_seal_image'])): ?><img src="<?= APP_URL ?>/<?= Helper::escape($settings['invoice_seal_image']) ?>" class="img-fluid mb-2" style="max-height:85px;"><?php endif; ?>
+                        <?php $sealPreviewSrc = Helper::uploadedImageSrc($settings['invoice_seal_image'] ?? ''); ?>
+                        <?php if ($sealPreviewSrc !== ''): ?><img src="<?= Helper::escape($sealPreviewSrc) ?>" class="img-fluid mb-2 settings-preview-image-seal"><?php endif; ?>
                         <label class="form-label">Seal Image</label>
                         <input type="file" name="invoice_seal_image" class="form-control" accept="image/*">
                         <small class="text-muted">Best results: square PNG with transparent background.</small>
@@ -189,7 +323,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                     <!-- Enable Tax Toggle -->
                     <div class="toggle-card">
                         <div class="toggle-info">
-                            <h6><i class="fas fa-calculator me-2" style="color: #4e73df;"></i>Enable Tax</h6>
+                            <h6><i class="fas fa-calculator me-2 settings-icon-primary"></i>Enable Tax</h6>
                             <p>Enable or disable tax calculation on invoices</p>
                         </div>
                         <div class="form-check form-switch form-switch-lg">
@@ -201,7 +335,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                     <!-- GST Toggle -->
                     <div class="toggle-card" id="gstToggleCard">
                         <div class="toggle-info">
-                            <h6><i class="fas fa-landmark me-2" style="color: #28a745;"></i>GST Business</h6>
+                            <h6><i class="fas fa-landmark me-2 settings-icon-success"></i>GST Business</h6>
                             <p>Enable GST for registered businesses. Disable for non-GST businesses (Bill of Supply)</p>
                         </div>
                         <div class="form-check form-switch form-switch-lg">
@@ -231,7 +365,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                                 </div>
                             </div>
 
-                            <div class="alert alert-info mt-3" style="border-radius: 12px; font-size: 0.85rem;">
+                            <div class="alert alert-info mt-3 settings-alert-note">
                                 <i class="fas fa-info-circle me-2"></i>
                                 <strong>GST Enabled:</strong> Invoice will show as <strong>"Tax Invoice"</strong> with GSTIN, tax columns (CGST/SGST/IGST), HSN codes, and tax breakup.
                             </div>
@@ -239,7 +373,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
 
                         <div class="toggle-card mt-3">
                             <div class="toggle-info">
-                                <h6><i class="fas fa-equals me-2" style="color: #0d6efd;"></i>Auto Round Off to Nearest ₹1</h6>
+                                <h6><i class="fas fa-equals me-2 settings-icon-brand"></i>Auto Round Off to Nearest ₹1</h6>
                                 <p>Automatically applies round-off on sale bills so final total rounds to nearest rupee.</p>
                             </div>
                             <div class="form-check form-switch form-switch-lg">
@@ -250,24 +384,26 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                     </div>
 
                     <!-- Non-GST Info -->
-                    <div id="nonGstInfo" style="display: none;">
+                    <div id="nonGstInfo" class="settings-hidden">
                         <hr class="section-divider">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">Tax Label <small class="text-muted">(optional)</small></label>
+                                <label class="form-label">Business Identifier <small class="text-muted">(optional)</small></label>
                                 <input type="text" name="tax_number_nongst" class="form-control" 
                                        value="<?= Helper::escape($settings['tax_number'] ?? '') ?>"
-                                       placeholder="e.g. PAN, TIN, etc.">
+                                       placeholder="e.g. PAN, TIN, MSME, etc.">
+                                <small class="text-muted">Stored for display/reference only in non-GST mode.</small>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Default Tax Rate (%) <small class="text-muted">(if any)</small></label>
-                                <input type="number" name="tax_rate_nongst" class="form-control" step="0.01" 
-                                       value="<?= $settings['tax_rate'] ?? 0 ?>">
+                                <div class="alert alert-secondary h-100 mb-0 settings-alert-note">
+                                    <i class="fas fa-ban me-2"></i>
+                                    <strong>Tax is disabled in non-GST mode.</strong> The system will issue a bill of supply style invoice and hide tax columns instead of applying a fallback tax rate.
+                                </div>
                             </div>
                         </div>
-                        <div class="alert alert-warning mt-3" style="border-radius: 12px; font-size: 0.85rem;">
+                        <div class="alert alert-warning mt-3 settings-alert-note">
                             <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>Non-GST Business:</strong> Invoice will show as <strong>"Bill of Supply"</strong> (or your custom title). Tax columns will be hidden from invoices.
+                            <strong>Non-GST Business:</strong> Invoice will show as <strong>"Bill of Supply"</strong> (or your custom title). Tax columns and tax calculations will stay disabled.
                         </div>
                     </div>
                 </div>
@@ -276,19 +412,19 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
         <div class="col-lg-4">
             <div class="card">
                 <div class="card-header"><h6><i class="fas fa-question-circle me-2"></i>Help</h6></div>
-                <div class="card-body" style="font-size: 0.88rem; color: var(--text-secondary, #636e72);">
+                <div class="card-body settings-help-copy">
                     <div class="mb-3">
-                        <strong style="color: var(--text-primary, #2d3436);">GST Business</strong>
+                        <strong>GST Business</strong>
                         <p class="mb-0">If you have a GSTIN, enable this. Your invoices will show as "Tax Invoice" with proper GST breakup (CGST+SGST or IGST).</p>
                     </div>
                     <hr>
                     <div class="mb-3">
-                        <strong style="color: var(--text-primary, #2d3436);">Non-GST Business</strong>
-                        <p class="mb-0">If you're not GST registered, disable GST. Invoices will show as "Bill of Supply" and tax columns won't appear.</p>
+                        <strong>Non-GST Business</strong>
+                        <p class="mb-0">If you're not GST registered, disable GST. Invoices will show as "Bill of Supply" and both tax columns and tax calculations stay off.</p>
                     </div>
                     <hr>
                     <div>
-                        <strong style="color: var(--text-primary, #2d3436);">Tax Disabled</strong>
+                        <strong>Tax Disabled</strong>
                         <p class="mb-0">If you disable tax entirely, no tax will be calculated on any transaction.</p>
                     </div>
                 </div>
@@ -350,7 +486,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                 <div class="card-body">
                     <div class="toggle-card">
                         <div class="toggle-info">
-                            <h6><i class="fas fa-image me-2" style="color: #4e73df;"></i>Show Logo on Invoice</h6>
+                            <h6><i class="fas fa-image me-2 settings-icon-primary"></i>Show Logo on Invoice</h6>
                             <p>Displays the uploaded company logo on invoices and quotations.</p>
                         </div>
                         <div class="form-check form-switch form-switch-lg">
@@ -360,7 +496,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                     </div>
                     <div class="toggle-card">
                         <div class="toggle-info">
-                            <h6><i class="fas fa-signature me-2" style="color: #6f42c1;"></i>Show Signature on Invoice</h6>
+                            <h6><i class="fas fa-signature me-2 settings-icon-purple"></i>Show Signature on Invoice</h6>
                             <p>Displays the uploaded signature image in the invoice sign area.</p>
                         </div>
                         <div class="form-check form-switch form-switch-lg">
@@ -370,7 +506,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                     </div>
                     <div class="toggle-card">
                         <div class="toggle-info">
-                            <h6><i class="fas fa-stamp me-2" style="color: #dc3545;"></i>Show Seal on Invoice</h6>
+                            <h6><i class="fas fa-stamp me-2 settings-icon-danger"></i>Show Seal on Invoice</h6>
                             <p>Displays the uploaded seal image in the invoice sign area.</p>
                         </div>
                         <div class="form-check form-switch form-switch-lg">
@@ -380,7 +516,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                     </div>
                     <div class="toggle-card">
                         <div class="toggle-info">
-                            <h6><i class="fas fa-receipt me-2" style="color: #17a2b8;"></i>Show Payment Status Badge</h6>
+                            <h6><i class="fas fa-receipt me-2 settings-icon-info"></i>Show Payment Status Badge</h6>
                             <p>Shows paid, unpaid, partial, or returned status in the invoice header.</p>
                         </div>
                         <div class="form-check form-switch form-switch-lg">
@@ -390,7 +526,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                     </div>
                     <div class="toggle-card">
                         <div class="toggle-info">
-                            <h6><i class="fas fa-money-check-dollar me-2" style="color: #28a745;"></i>Show Paid / Due on Invoice</h6>
+                            <h6><i class="fas fa-money-check-dollar me-2 settings-icon-success"></i>Show Paid / Due on Invoice</h6>
                             <p>When enabled, "Paid" and "Balance Due" amounts will be shown on the invoice PDF. Disable to hide payment info from printed invoices.</p>
                         </div>
                         <div class="form-check form-switch form-switch-lg">
@@ -400,7 +536,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                     </div>
                     <div class="toggle-card">
                         <div class="toggle-info">
-                            <h6><i class="fas fa-weight-scale me-2" style="color: #6f42c1;"></i>Show Unit on Invoice</h6>
+                            <h6><i class="fas fa-weight-scale me-2 settings-icon-purple"></i>Show Unit on Invoice</h6>
                             <p>When enabled, the product unit will be shown next to the quantity (e.g. 2 Nos instead of just 2).</p>
                         </div>
                         <div class="form-check form-switch form-switch-lg">
@@ -410,7 +546,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                     </div>
                     <div class="toggle-card">
                         <div class="toggle-info">
-                            <h6><i class="fas fa-tags me-2" style="color: #fd7e14;"></i>Show Discount on Invoice</h6>
+                            <h6><i class="fas fa-tags me-2 settings-icon-orange"></i>Show Discount on Invoice</h6>
                             <p>When enabled, the discount column will be visible on printed invoices.</p>
                         </div>
                         <div class="form-check form-switch form-switch-lg">
@@ -420,7 +556,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                     </div>
                     <div class="toggle-card">
                         <div class="toggle-info">
-                            <h6><i class="fas fa-barcode me-2" style="color: #20c997;"></i>Show HSN/SAC on Invoice</h6>
+                            <h6><i class="fas fa-barcode me-2 settings-icon-teal"></i>Show HSN/SAC on Invoice</h6>
                             <p>When enabled, HSN/SAC column is shown on GST invoices. In non-GST mode it stays hidden.</p>
                         </div>
                         <div class="form-check form-switch form-switch-lg">
@@ -459,65 +595,65 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
             <!-- Invoice Preview -->
             <div class="card">
                 <div class="card-header"><h6><i class="fas fa-eye me-2"></i>Preview</h6></div>
-                <div class="card-body" style="font-size: 0.8rem;">
-                    <div style="border: 1px solid var(--border-color, #e3e6f0); border-radius: 10px; padding: 1rem; background: var(--bg-card, #fff);">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:0.75rem; padding-bottom:0.5rem; border-bottom:2px solid #4e73df;">
+                <div class="card-body settings-preview-card-body">
+                    <div class="settings-preview-shell">
+                        <div class="settings-preview-head">
                             <div>
-                                <strong style="color:#4e73df; font-size: 0.9rem;"><?= Helper::escape($settings['company_name'] ?? 'Company Name') ?></strong><br>
-                                <span style="font-size:0.7rem; color:#888;"><?= Helper::escape($settings['company_address'] ?? 'Address') ?></span>
+                                <strong class="settings-preview-company"><?= Helper::escape($settings['company_name'] ?? 'Company Name') ?></strong><br>
+                                <span class="settings-preview-company-address"><?= Helper::escape($settings['company_address'] ?? 'Address') ?></span>
                             </div>
-                            <div style="text-align:right;">
-                                <div id="previewTitle" style="font-weight:700; font-size:0.75rem; color:#4e73df; text-transform:uppercase;">
+                            <div class="settings-preview-right">
+                                <div id="previewTitle" class="settings-preview-title">
                                     <?= Helper::escape($settings['invoice_title'] ?? 'Tax Invoice') ?>
                                 </div>
-                                <div id="previewSubtitle" style="font-size:0.68rem; color:#6c757d; margin-top:2px; display: <?= !empty($settings['invoice_subtitle']) ? 'block' : 'none' ?>;">
+                                <div id="previewSubtitle" class="settings-preview-subtitle<?= !empty($settings['invoice_subtitle']) ? '' : ' settings-block-hidden' ?>">
                                     <?= Helper::escape($settings['invoice_subtitle'] ?? '') ?>
                                 </div>
-                                <div style="font-size:0.7rem; color:#888;">INV-00001</div>
-                                <div id="previewStatusWrap" style="margin-top:4px; display: <?= $previewShowPaymentStatus ? 'block' : 'none' ?>;">
-                                    <span style="display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.65rem; font-weight:700; background:#f8d7da; color:#721c24;">UNPAID</span>
+                                <div class="settings-preview-number">INV-00001</div>
+                                <div id="previewStatusWrap" class="settings-preview-status-wrap<?= $previewShowPaymentStatus ? '' : ' settings-block-hidden' ?>">
+                                    <span class="settings-preview-status-badge">UNPAID</span>
                                 </div>
                             </div>
                         </div>
-                        <table style="width:100%; font-size:0.7rem; border-collapse:collapse;">
+                        <table class="settings-preview-table">
                             <thead>
-                                <tr style="background:#4e73df; color:#fff;">
-                                    <th style="padding:4px;">Item</th>
-                                    <th style="padding:4px; text-align:center;">Qty</th>
-                                    <th style="padding:4px; text-align:left; display: <?= ($previewTaxEnabled && $previewGstEnabled && $previewShowHsn) ? '' : 'none' ?>;" id="previewHsnCol">HSN/SAC</th>
-                                    <th style="padding:4px; text-align:right;">Rate</th>
-                                    <th style="padding:4px; text-align:right; display: <?= $previewShowDiscount ? '' : 'none' ?>;" id="previewDiscountCol">Disc</th>
-                                    <th style="padding:4px; text-align:right; display: <?= ($previewTaxEnabled && $previewGstEnabled) ? '' : 'none' ?>;" id="previewTaxRateCol">GST %</th>
-                                    <th style="padding:4px; text-align:right; display: <?= ($previewTaxEnabled && $previewGstEnabled) ? '' : 'none' ?>;" id="previewTaxAmtCol">GST Amt</th>
-                                    <th style="padding:4px; text-align:right;">Total</th>
+                                <tr class="settings-preview-table-head">
+                                    <th class="settings-preview-cell">Item</th>
+                                    <th class="settings-preview-cell settings-preview-text-center">Qty</th>
+                                    <th class="settings-preview-cell settings-preview-text-left<?= ($previewTaxEnabled && $previewGstEnabled && $previewShowHsn) ? '' : ' settings-table-cell-hidden' ?>" id="previewHsnCol">HSN/SAC</th>
+                                    <th class="settings-preview-cell settings-preview-text-right">Rate</th>
+                                    <th class="settings-preview-cell settings-preview-text-right<?= $previewShowDiscount ? '' : ' settings-table-cell-hidden' ?>" id="previewDiscountCol">Disc</th>
+                                    <th class="settings-preview-cell settings-preview-text-right<?= ($previewTaxEnabled && $previewGstEnabled) ? '' : ' settings-table-cell-hidden' ?>" id="previewTaxRateCol">GST %</th>
+                                    <th class="settings-preview-cell settings-preview-text-right<?= ($previewTaxEnabled && $previewGstEnabled) ? '' : ' settings-table-cell-hidden' ?>" id="previewTaxAmtCol">GST Amt</th>
+                                    <th class="settings-preview-cell settings-preview-text-right">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td style="padding:3px;">Sample Product</td>
-                                    <td style="padding:3px; text-align:center;" id="previewQtyCell"><?= $previewShowUnit ? '2 Pcs' : '2' ?></td>
-                                    <td style="padding:3px; display: <?= ($previewTaxEnabled && $previewGstEnabled && $previewShowHsn) ? '' : 'none' ?>;" id="previewHsnCell">8471</td>
-                                    <td style="padding:3px; text-align:right;"><?= Helper::escape($previewCurrency) ?>500</td>
-                                    <td style="padding:3px; text-align:right; display: <?= $previewShowDiscount ? '' : 'none' ?>;" id="previewDiscountCell">-</td>
-                                    <td style="padding:3px; text-align:right; display: <?= ($previewTaxEnabled && $previewGstEnabled) ? '' : 'none' ?>;" class="preview-tax-cell">18%</td>
-                                    <td style="padding:3px; text-align:right; display: <?= ($previewTaxEnabled && $previewGstEnabled) ? '' : 'none' ?>;" class="preview-tax-cell"><?= Helper::escape($previewCurrency) ?>180</td>
-                                    <td style="padding:3px; text-align:right;"><?= Helper::escape($previewCurrency) ?>1,180</td>
+                                    <td class="settings-preview-cell-sm">Sample Product</td>
+                                    <td class="settings-preview-cell-sm settings-preview-text-center" id="previewQtyCell"><?= $previewShowUnit ? '2 Pcs' : '2' ?></td>
+                                    <td class="settings-preview-cell-sm<?= ($previewTaxEnabled && $previewGstEnabled && $previewShowHsn) ? '' : ' settings-table-cell-hidden' ?>" id="previewHsnCell">8471</td>
+                                    <td class="settings-preview-cell-sm settings-preview-text-right"><?= Helper::escape($previewCurrency) ?>500</td>
+                                    <td class="settings-preview-cell-sm settings-preview-text-right<?= $previewShowDiscount ? '' : ' settings-table-cell-hidden' ?>" id="previewDiscountCell">-</td>
+                                    <td class="settings-preview-cell-sm settings-preview-text-right preview-tax-cell<?= ($previewTaxEnabled && $previewGstEnabled) ? '' : ' settings-table-cell-hidden' ?>">18%</td>
+                                    <td class="settings-preview-cell-sm settings-preview-text-right preview-tax-cell<?= ($previewTaxEnabled && $previewGstEnabled) ? '' : ' settings-table-cell-hidden' ?>"><?= Helper::escape($previewCurrency) ?>180</td>
+                                    <td class="settings-preview-cell-sm settings-preview-text-right"><?= Helper::escape($previewCurrency) ?>1,180</td>
                                 </tr>
                             </tbody>
                         </table>
-                        <div style="text-align:right; margin-top:0.5rem; font-size:0.75rem; border-top:1px solid #eee; padding-top:0.5rem; color:#555;">
-                            <div id="previewTaxSummaryRow" style="display: <?= ($previewTaxEnabled && $previewGstEnabled) ? 'block' : 'none' ?>;">Tax: <?= Helper::escape($previewCurrency) ?>180.00</div>
-                            <div style="font-weight:700; font-size:0.8rem; color:#222;">Grand Total: <?= Helper::escape($previewCurrency) ?>1,180.00</div>
-                            <div id="previewPaidDueRow" style="display: <?= $previewShowPaidDue ? 'block' : 'none' ?>;">
-                                <div style="color:#28a745;">Paid: <?= Helper::escape($previewCurrency) ?>0.00</div>
-                                <div style="color:#dc3545; font-weight:600;">Balance Due: <?= Helper::escape($previewCurrency) ?>1,180.00</div>
+                        <div class="settings-preview-summary">
+                            <div id="previewTaxSummaryRow" class="<?= ($previewTaxEnabled && $previewGstEnabled) ? '' : 'settings-block-hidden' ?>">Tax: <?= Helper::escape($previewCurrency) ?>180.00</div>
+                            <div class="settings-preview-grand-total">Grand Total: <?= Helper::escape($previewCurrency) ?>1,180.00</div>
+                            <div id="previewPaidDueRow" class="<?= $previewShowPaidDue ? '' : 'settings-block-hidden' ?>">
+                                <div class="settings-preview-paid">Paid: <?= Helper::escape($previewCurrency) ?>0.00</div>
+                                <div class="settings-preview-due">Balance Due: <?= Helper::escape($previewCurrency) ?>1,180.00</div>
                             </div>
                         </div>
-                        <div id="previewSignature" style="text-align:right; margin-top:1rem; padding-top:0.5rem; border-top:1px dashed #ddd; font-size:0.7rem; color:#888;">
+                        <div id="previewSignature" class="settings-preview-signature-block">
                             <?= Helper::escape($settings['invoice_signature_label'] ?? 'Authorised Signatory') ?>
                         </div>
                     </div>
-                    <p class="text-muted text-center mt-2 mb-0" style="font-size: 0.75rem;">
+                    <p class="text-muted text-center mt-2 mb-0 settings-preview-note">
                         <i class="fas fa-info-circle me-1"></i> Live preview updates as you type
                     </p>
                 </div>
@@ -544,7 +680,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
 
 <!-- Save Button (always visible) -->
 <div class="mt-3 mb-4">
-    <button type="submit" class="btn btn-primary px-4" style="border-radius: 10px; font-weight: 600;">
+    <button type="submit" class="btn btn-primary px-4 settings-save-btn">
         <i class="fas fa-save me-2"></i>Save All Settings
     </button>
 </div>
@@ -582,23 +718,21 @@ function toggleTaxFields() {
     const gstSwitch = document.getElementById('enableGstSwitch');
 
     if (enabled) {
-        gstCard.style.opacity = '1';
-        gstCard.style.pointerEvents = 'auto';
+        gstCard.classList.remove('settings-dimmed');
         if (gstSwitch) {
             gstSwitch.disabled = false;
             if (!gstSwitch.checked) gstSwitch.checked = true;
         }
         toggleGstFields();
     } else {
-        gstCard.style.opacity = '0.4';
-        gstCard.style.pointerEvents = 'none';
+        gstCard.classList.add('settings-dimmed');
         if (gstSwitch) {
             gstSwitch.checked = false;
             gstSwitch.disabled = true;
         }
-        if (gstFields) gstFields.style.display = 'block';
-        if (gstOnlyFields) gstOnlyFields.style.display = 'none';
-        if (nonGstInfo) nonGstInfo.style.display = 'none';
+        if (gstFields) gstFields.classList.remove('settings-hidden');
+        if (gstOnlyFields) gstOnlyFields.classList.add('settings-hidden');
+        if (nonGstInfo) nonGstInfo.classList.add('settings-hidden');
         updatePreviewLayout();
     }
 }
@@ -617,9 +751,9 @@ function toggleGstFields() {
         if (taxSwitch && !taxSwitch.checked) {
             taxSwitch.checked = true;
         }
-        if (gstFields) gstFields.style.display = 'block';
-        if (gstOnlyFields) gstOnlyFields.style.display = 'block';
-        nonGstInfo.style.display = 'none';
+        if (gstFields) gstFields.classList.remove('settings-hidden');
+        if (gstOnlyFields) gstOnlyFields.classList.remove('settings-hidden');
+        nonGstInfo.classList.add('settings-hidden');
         // Auto-suggest title
         if (titleField && (titleField.value === 'Bill of Supply' || titleField.value === '')) {
             titleField.value = 'Tax Invoice';
@@ -629,9 +763,9 @@ function toggleGstFields() {
         if (taxSwitch && taxSwitch.checked) {
             taxSwitch.checked = false;
         }
-        if (gstFields) gstFields.style.display = 'block';
-        if (gstOnlyFields) gstOnlyFields.style.display = 'none';
-        nonGstInfo.style.display = 'block';
+        if (gstFields) gstFields.classList.remove('settings-hidden');
+        if (gstOnlyFields) gstOnlyFields.classList.add('settings-hidden');
+        nonGstInfo.classList.remove('settings-hidden');
         // Auto-suggest title
         if (titleField && (titleField.value === 'Tax Invoice' || titleField.value === '')) {
             titleField.value = 'Bill of Supply';
@@ -651,7 +785,7 @@ function updatePreview() {
         const subtitleNode = document.getElementById('previewSubtitle');
         if (subtitleNode) {
             subtitleNode.textContent = subtitle.value || '';
-            subtitleNode.style.display = subtitle.value ? 'block' : 'none';
+            subtitleNode.classList.toggle('settings-block-hidden', !subtitle.value);
         }
     }
     if (sig) document.getElementById('previewSignature').textContent = sig.value || 'Authorised Signatory';
@@ -686,17 +820,17 @@ function updatePreviewLayout() {
     const taxSummaryRow = document.getElementById('previewTaxSummaryRow');
     const statusWrap = document.getElementById('previewStatusWrap');
 
-    if (discountCol) discountCol.style.display = showDiscount ? '' : 'none';
-    if (discountCell) discountCell.style.display = showDiscount ? '' : 'none';
-    if (hsnCol) hsnCol.style.display = showHsnColumn ? '' : 'none';
-    if (hsnCell) hsnCell.style.display = showHsnColumn ? '' : 'none';
-    if (taxRateCol) taxRateCol.style.display = showTaxColumns ? '' : 'none';
-    if (taxAmtCol) taxAmtCol.style.display = showTaxColumns ? '' : 'none';
-    taxCells.forEach(c => c.style.display = showTaxColumns ? '' : 'none');
+    if (discountCol) discountCol.classList.toggle('settings-table-cell-hidden', !showDiscount);
+    if (discountCell) discountCell.classList.toggle('settings-table-cell-hidden', !showDiscount);
+    if (hsnCol) hsnCol.classList.toggle('settings-table-cell-hidden', !showHsnColumn);
+    if (hsnCell) hsnCell.classList.toggle('settings-table-cell-hidden', !showHsnColumn);
+    if (taxRateCol) taxRateCol.classList.toggle('settings-table-cell-hidden', !showTaxColumns);
+    if (taxAmtCol) taxAmtCol.classList.toggle('settings-table-cell-hidden', !showTaxColumns);
+    taxCells.forEach(c => c.classList.toggle('settings-table-cell-hidden', !showTaxColumns));
     if (qtyCell) qtyCell.textContent = showUnit ? '2 Pcs' : '2';
-    if (paidDueRow) paidDueRow.style.display = showPaidDue ? 'block' : 'none';
-    if (statusWrap) statusWrap.style.display = showPaymentStatus ? 'block' : 'none';
-    if (taxSummaryRow) taxSummaryRow.style.display = showTaxColumns ? 'block' : 'none';
+    if (paidDueRow) paidDueRow.classList.toggle('settings-block-hidden', !showPaidDue);
+    if (statusWrap) statusWrap.classList.toggle('settings-block-hidden', !showPaymentStatus);
+    if (taxSummaryRow) taxSummaryRow.classList.toggle('settings-block-hidden', !showTaxColumns);
 }
 
 // Attach live preview listeners

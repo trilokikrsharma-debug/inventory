@@ -1,11 +1,11 @@
 <?php
 /**
  * Request — Immutable HTTP Request Abstraction
- * 
+ *
  * Wraps PHP superglobals ($_GET, $_POST, $_SERVER, $_FILES, $_COOKIE)
  * into a clean, testable object. Eliminates direct superglobal access
  * throughout the application.
- * 
+ *
  * Usage:
  *   $request = Request::capture();
  *   $page  = $request->query('page', 'dashboard');
@@ -76,7 +76,6 @@ class Request {
         $server = array_merge(['REQUEST_METHOD' => 'GET', 'REMOTE_ADDR' => '127.0.0.1'], $server);
         return new self($query, $post, $server, $files, $cookies);
     }
-
     // ── Accessors ──
 
     public function page(): string {
@@ -98,7 +97,6 @@ class Request {
     public function hasExplicitPageQuery(): bool {
         return $this->hasExplicitPageQuery;
     }
-
     public function method(): string {
         return $this->method;
     }
@@ -264,7 +262,7 @@ class Request {
         }
 
         $normalized = '/' . ltrim($rawPath, '/');
-        return $normalized === '//' || $normalized === '' ? '/' : $normalized;
+        return $normalized === '//' ? '/' : $normalized;
     }
 
     private static function extractRewrittenPathFromQuery(array $query): ?string {

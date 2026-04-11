@@ -10,7 +10,7 @@
         <div class="card">
             <div class="card-body text-center">
                 <?php if ($product['image']): ?>
-                <img src="<?= APP_URL ?>/<?= $product['image'] ?>" class="img-fluid rounded mb-3" style="max-height:200px;" loading="lazy">
+                <img src="<?= APP_URL ?>/<?= $product['image'] ?>" class="img-fluid rounded mb-3 product-image-preview" loading="lazy">
                 <?php else: ?>
                 <div class="py-4"><i class="fas fa-box-open fa-3x text-muted opacity-25"></i></div>
                 <?php endif; ?>

@@ -29,7 +29,7 @@ class ApiController extends Controller {
 
     public function generate() {
         $companyId = $this->requireTenantApiManagementAccess();
-        
+
         if (!$this->isPost()) {
             $this->redirect('index.php?page=api');
             return;

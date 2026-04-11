@@ -1,10 +1,10 @@
 <?php
 /**
  * Demo Guard Middleware
- * 
+ *
  * Blocks all write operations (POST/PUT/DELETE) for demo companies,
  * except logout. Shows a flash message or JSON error for AJAX requests.
- * 
+ *
  * Extracted from index.php lines 212-225.
  */
 class DemoGuardMiddleware implements MiddlewareInterface {

@@ -46,19 +46,19 @@ EXIT;
 ## 4) Deploy Code + Permissions
 
 ```bash
-sudo mkdir -p /var/www/inventory
-sudo chown -R $USER:www-data /var/www/inventory
-git clone <YOUR_REPO_URL> /var/www/inventory
-cd /var/www/inventory
+sudo mkdir -p /var/www/tsalegacy
+sudo chown -R $USER:www-data /var/www/tsalegacy
+git clone <YOUR_REPO_URL> /var/www/tsalegacy
+cd /var/www/tsalegacy
 cp deploy/env/.env.production.example .env
 nano .env
 composer install --no-dev --optimize-autoloader --classmap-authoritative --prefer-dist
 composer run-script assets:build
 php cli/migrate.php --status
 php cli/migrate.php
-sudo chown -R www-data:www-data /var/www/inventory/cache /var/www/inventory/logs /var/www/inventory/uploads
-sudo chmod -R 775 /var/www/inventory/cache /var/www/inventory/logs /var/www/inventory/uploads
-sudo chmod 640 /var/www/inventory/.env
+sudo chown -R www-data:www-data /var/www/tsalegacy/cache /var/www/tsalegacy/logs /var/www/tsalegacy/uploads
+sudo chmod -R 775 /var/www/tsalegacy/cache /var/www/tsalegacy/logs /var/www/tsalegacy/uploads
+sudo chmod 640 /var/www/tsalegacy/.env
 ```
 
 Recommended final permissions:
@@ -121,7 +121,7 @@ Minimum required values:
 - `REDIS_ENABLED=true` + Redis credentials
 
 Template file:
-- [deploy/env/.env.production.example](/var/www/inventory/deploy/env/.env.production.example)
+- [deploy/env/.env.production.example](/var/www/tsalegacy/deploy/env/.env.production.example)
 
 ## 8) Razorpay LIVE Setup
 
@@ -150,10 +150,10 @@ sudo systemctl status invenbill-scheduler.timer --no-pager
 ```
 
 Fallback cron profile:
-- [deploy/cron/invenbill.cron](/var/www/inventory/deploy/cron/invenbill.cron)
+- [deploy/cron/invenbill.cron](/var/www/tsalegacy/deploy/cron/invenbill.cron)
 
 Scheduler CLI:
-- [cli/scheduler.php](/var/www/inventory/cli/scheduler.php)
+- [cli/scheduler.php](/var/www/tsalegacy/cli/scheduler.php)
 
 ## 10) Backups + Storage
 
@@ -175,7 +175,7 @@ mysqldump -u invenbill_user -p inventory_billing | gzip > /var/backups/invenbill
 ## 11) Monitoring + Logs
 
 App logs:
-- `/var/www/inventory/logs/`
+- `/var/www/tsalegacy/logs/`
 - queue worker: `queue-worker.log`, `queue-worker-error.log`
 - scheduler: `scheduler.log`
 
@@ -223,7 +223,7 @@ sudo systemctl status php8.2-fpm --no-pager
 ## 13) Go-Live Deployment Command
 
 ```bash
-sudo bash /var/www/inventory/deploy/scripts/deploy.sh
+sudo bash /var/www/tsalegacy/deploy/scripts/deploy.sh
 ```
 
 Deployment script behavior:
@@ -235,7 +235,7 @@ Deployment script behavior:
 - Verifies the live HTTP smoke tests after reload
 
 Script file:
-- [deploy/scripts/deploy.sh](/var/www/inventory/deploy/scripts/deploy.sh)
+- [deploy/scripts/deploy.sh](/var/www/tsalegacy/deploy/scripts/deploy.sh)
 
 ## 14) Rollback Plan
 

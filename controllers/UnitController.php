@@ -5,6 +5,7 @@
 class UnitController extends Controller {
 
     protected $allowedActions = ['index', 'create', 'edit', 'delete', 'fetch'];
+    private ?CatalogLookupService $catalogLookupService = null;
 
     public function index() {
         $this->requireAuth();
@@ -18,11 +19,7 @@ class UnitController extends Controller {
         $this->requirePermission('catalog.manage');
         if ($this->isPost()) {
             $this->validateCSRF();
-            (new UnitModel())->create([
-                'name' => $this->sanitize($this->post('name')),
-                'short_name' => $this->sanitize($this->post('short_name')),
-                'is_active' => $this->post('is_active', 1),
-            ]);
+            (new UnitModel())->create($this->lookupService()->buildUnitPayload($this->post()));
             $this->setFlash('success', 'Unit created successfully.');
             $this->redirect('index.php?page=units');
         }
@@ -33,11 +30,7 @@ class UnitController extends Controller {
         $id = (int)$this->get('id');
         if ($this->isPost()) {
             $this->validateCSRF();
-            (new UnitModel())->update($id, [
-                'name' => $this->sanitize($this->post('name')),
-                'short_name' => $this->sanitize($this->post('short_name')),
-                'is_active' => $this->post('is_active', 1),
-            ]);
+            (new UnitModel())->update($id, $this->lookupService()->buildUnitPayload($this->post()));
             $this->setFlash('success', 'Unit updated successfully.');
             $this->redirect('index.php?page=units');
         }
@@ -55,5 +48,13 @@ class UnitController extends Controller {
     public function fetch() {
         $this->requireAuth();
         $this->json((new UnitModel())->find((int)parent::get('id')) ?: ['error' => 'Not found']);
+    }
+
+    private function lookupService(): CatalogLookupService {
+        if ($this->catalogLookupService === null) {
+            $this->catalogLookupService = new CatalogLookupService();
+        }
+
+        return $this->catalogLookupService;
     }
 }

@@ -1,10 +1,10 @@
 <?php
 /**
  * Structured JSON Logger — Enterprise Observability
- * 
+ *
  * Produces machine-parseable JSON logs with tenant/user context.
  * Compatible with ELK Stack, CloudWatch, Datadog, Grafana Loki.
- * 
+ *
  * Features:
  *   - Channel-based output (app.log, security.log, queue.log)
  *   - Request ID correlation across all log entries
@@ -12,7 +12,7 @@
  *   - Severity levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
  *   - Performance timing support
  *   - Non-blocking (never throws, never crashes main flow)
- * 
+ *
  * Usage:
  *   Logger::info('Sale created', ['sale_id' => 42, 'total' => 1500]);
  *   Logger::error('Payment failed', ['gateway' => 'razorpay', 'code' => 'TIMEOUT']);
@@ -60,7 +60,11 @@ class Logger {
      */
     public static function getRequestId(): string {
         if (self::$requestId === null) {
-            self::$requestId = substr(bin2hex(random_bytes(8)), 0, 16);
+            if (defined('REQUEST_ID') && trim((string)REQUEST_ID) !== '') {
+                self::$requestId = trim((string)REQUEST_ID);
+            } else {
+                self::$requestId = substr(bin2hex(random_bytes(8)), 0, 16);
+            }
         }
         return self::$requestId;
     }

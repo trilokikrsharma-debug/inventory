@@ -1,12 +1,13 @@
 <?php
 /**
  * Payment Controller
- * 
+ *
  * Handles payment entries (to suppliers) and receipts (from customers).
  */
 class PaymentController extends Controller {
 
     protected $allowedActions = ['index', 'create', 'view_payment', 'delete'];
+    private ?PaymentWorkflowService $paymentWorkflowService = null;
 
     public function index() {
         $this->requirePermission('payments.view');
@@ -32,31 +33,12 @@ class PaymentController extends Controller {
 
         if ($this->isPost()) {
             $this->validateCSRF();
-            $settingsModel = new SettingsModel();
             $type = $this->post('type');
-            $prefix = $type === 'receipt' ? 'receipt' : 'payment';
-            $paymentNumber = $settingsModel->getNextNumber($prefix);
-
-            $data = [
-                'payment_number' => $paymentNumber,
-                'type'           => $type,
-                'customer_id'    => $type === 'receipt' ? (int)$this->post('customer_id') : null,
-                'supplier_id'    => $type === 'payment' ? (int)$this->post('supplier_id') : null,
-                'sale_id'        => $this->post('sale_id') ?: null,
-                'purchase_id'    => $this->post('purchase_id') ?: null,
-                'amount'         => max(0, (float)$this->post('amount')),
-                'payment_method' => $this->normalizePaymentMethod($this->post('payment_method', 'cash')),
-                'payment_date'   => $this->post('payment_date'),
-                'reference_number'=> $this->sanitize($this->post('reference_number')),
-                'bank_name'      => $this->sanitize($this->post('bank_name')),
-                'note'           => $this->sanitize($this->post('note')),
-            ];
 
             try {
-                $paymentModel = new PaymentModel();
-                $paymentId = $paymentModel->createPayment($data, Session::get('user')['id']);
-                $this->logActivity('Created ' . $type . ': ' . $paymentNumber, 'payments', $paymentId);
-                $this->setFlash('success', ucfirst($type) . ' recorded successfully.');
+                $result = $this->workflowService()->createPayment($this->post(), (int)(Session::get('user')['id'] ?? 0));
+                $this->logActivity('Created ' . $result['type'] . ': ' . $result['payment_number'], 'payments', $result['id']);
+                $this->setFlash('success', ucfirst($result['type']) . ' recorded successfully.');
                 $this->redirect('index.php?page=payments');
             } catch (Exception $e) {
                 error_log($e->getMessage());
@@ -102,5 +84,13 @@ class PaymentController extends Controller {
             $this->setFlash('error', 'An unexpected error occurred. Please try again.');
         }
         $this->redirect('index.php?page=payments');
+    }
+
+    private function workflowService(): PaymentWorkflowService {
+        if ($this->paymentWorkflowService === null) {
+            $this->paymentWorkflowService = new PaymentWorkflowService();
+        }
+
+        return $this->paymentWorkflowService;
     }
 }

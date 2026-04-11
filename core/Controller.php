@@ -1,7 +1,7 @@
 <?php
 /**
  * Base Controller Class
- * 
+ *
  * All controllers extend this class for common functionality
  * including view rendering, redirects, and JSON responses.
  */
@@ -33,38 +33,38 @@ class Controller {
         // Extract data to make variables accessible in views
         // SECURITY: EXTR_SKIP prevents $data keys from overwriting existing variables ($this, $cspNonce, etc.)
         extract($data, EXTR_SKIP);
-        
+
         // Get company settings for all views
         $settingsModel = new SettingsModel();
         $company = $settingsModel->getSettings();
-        
+
         // Get current user
         $currentUser = Session::get('user');
-        
+
         // CSRF Token
         $csrfToken = CSRF::generateToken();
-        
+
         // CSP Nonce (generated in index.php, needed for inline scripts in views)
         $cspNonce = $GLOBALS['csp_nonce'] ?? '';
-        
+
         // Start output buffering for content
         ob_start();
-        
+
         $viewFile = VIEW_PATH . '/' . str_replace('.', '/', $viewPath) . '.php';
         if (file_exists($viewFile)) {
             require $viewFile;
         } else {
             echo "<div class='alert alert-danger'>View not found: {$viewPath}</div>";
         }
-        
+
         $content = ob_get_clean();
-        
+
         // Check if it's an AJAX request
         if ($this->isAjax()) {
             echo $content;
             return;
         }
-        
+
         // Include the layout
         require VIEW_PATH . '/layouts/main.php';
     }
@@ -78,7 +78,7 @@ class Controller {
         $company = $settingsModel->getSettings();
         $csrfToken = CSRF::generateToken();
         $cspNonce = $GLOBALS['csp_nonce'] ?? '';
-        
+
         $viewFile = VIEW_PATH . '/' . str_replace('.', '/', $viewPath) . '.php';
         if (file_exists($viewFile)) {
             require $viewFile;
@@ -121,7 +121,7 @@ class Controller {
      * Check if request is AJAX
      */
     protected function isAjax() {
-        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
                strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
 
@@ -297,7 +297,7 @@ class Controller {
      * @param string      $action      Action description
      * @param string|null $module      Module name (e.g. 'sales', 'users')
      * @param int|null    $referenceId Entity ID
-     * @param string|null $details     Extra details or change summary
+     * @param array<string, mixed>|string|null $details Extra details or change summary
      */
     protected function logActivity($action, $module = null, $referenceId = null, $details = null) {
         try {
@@ -334,7 +334,7 @@ class Controller {
      * Guard method for demo mode — prevents write operations.
      * Call at the start of any mutation action for fine-grained control.
      * Returns true if blocked (caller should return early).
-     * 
+     *
      * @return bool True if demo and action was blocked
      */
     protected function demoGuard() {
@@ -365,13 +365,15 @@ class Controller {
         if (Session::hasPermission($permission)) {
             return true;
         }
-        
+
         if ($this->isAjax()) {
             $this->json(['success' => false, 'message' => 'You do not have permission to perform this action.'], 403);
+            return false;
         }
 
         Session::setFlash('error', 'You do not have permission to perform this action.');
         $this->redirect('index.php?page=dashboard');
+        return false;
     }
 
     /**
@@ -414,10 +416,12 @@ class Controller {
 
         if ($this->isAjax()) {
             $this->json(['success' => false, 'message' => 'This action requires super admin privileges.'], 403);
+            return false;
         }
 
         Session::setFlash('error', 'Access denied. Super admin privileges required.');
         $this->redirect('index.php?page=dashboard');
+        return false;
     }
 
     /**

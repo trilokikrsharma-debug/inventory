@@ -31,7 +31,7 @@
                 <?php if ($partyPhone): ?>Ph: <?= Helper::escape($partyPhone) ?><br><?php endif; ?>
             </div>
         </div>
-        <div style="text-align:right;">
+        <div class="text-right">
             <?php if (!empty($data['reference_number'])): ?>
                 <div class="label">Reference</div>
                 <div><?= Helper::escape($data['reference_number']) ?></div>
@@ -69,18 +69,18 @@
             <?php if (!empty($data['note'])): ?>
             <tr>
                 <td class="detail-label">Note</td>
-                <td class="detail-value" style="font-weight:normal; color:#666;"><?= Helper::escape($data['note']) ?></td>
+                <td class="detail-value detail-note"><?= Helper::escape($data['note']) ?></td>
             </tr>
             <?php endif; ?>
         </tbody>
     </table>
 
     <!-- Amount in words box -->
-    <div style="background:#f8f9fc; border-radius:8px; padding:14px 16px; margin-bottom:25px;">
-        <div style="font-size:11px; color:#4e73df; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+    <div class="amount-words-box">
+        <div class="amount-words-label">
             Amount in Words
         </div>
-        <div style="font-size:13px; font-weight:600; color:#333;">
+        <div class="amount-words-value">
             <?= Helper::escape(Helper::numberToWords($data['amount'] ?? 0)) ?>
         </div>
     </div>

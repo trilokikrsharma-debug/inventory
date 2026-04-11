@@ -1,18 +1,12 @@
 <?php
 /**
  * Sales Model — Multi-Tenant Aware
- * 
+ *
  * Manages sales transactions, items, and related operations.
  * All queries scoped by company_id via Tenant::id().
  */
 class SalesModel extends Model {
     protected $table = 'sales';
-    /**
-     * Cached products table columns for optional HSN compatibility.
-     *
-     * @var array<string, bool>|null
-     */
-    private static $productColumnMap = null;
 
     public function activeWarehouses(): array {
         if (Tenant::id() === null || !Tenant::canUse('multi_warehouse')) {
@@ -154,9 +148,6 @@ class SalesModel extends Model {
         )->fetch();
 
         if ($sale) {
-            $hsnSelect = $this->productColumnExists('hsn_code')
-                ? ", p.hsn_code as hsn_code"
-                : ", NULL as hsn_code";
             $sale['items'] = $this->db->query(
                 "SELECT
                     si.id,
@@ -172,7 +163,8 @@ class SalesModel extends Model {
                     si.total,
                     p.name as product_name,
                     p.sku,
-                    un.short_name as unit_name{$hsnSelect}
+                    p.hsn_code as hsn_code,
+                    un.short_name as unit_name
                  FROM sale_items si
                  LEFT JOIN products p ON si.product_id = p.id
                  LEFT JOIN units un ON p.unit_id = un.id
@@ -463,23 +455,4 @@ class SalesModel extends Model {
         )->fetchAll();
     }
 
-    /**
-     * Check products table column existence with cached schema lookup.
-     */
-    private function productColumnExists(string $column): bool {
-        if (self::$productColumnMap === null) {
-            self::$productColumnMap = [];
-            try {
-                $rows = Database::getInstance()->query("SHOW COLUMNS FROM products")->fetchAll();
-                foreach ($rows as $row) {
-                    if (!empty($row['Field'])) {
-                        self::$productColumnMap[$row['Field']] = true;
-                    }
-                }
-            } catch (Throwable $e) {
-                self::$productColumnMap = [];
-            }
-        }
-        return !empty(self::$productColumnMap[$column]);
-    }
 }

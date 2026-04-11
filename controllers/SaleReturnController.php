@@ -4,7 +4,9 @@
  */
 class SaleReturnController extends Controller {
 
-    protected $allowedActions = ['index', 'create', 'detail'];
+    protected $allowedActions = ['index', 'create', 'detail', 'cancel'];
+    private ?SaleReturnWorkflowService $saleReturnWorkflowService = null;
+    private ?SaleReturnLifecycleService $saleReturnLifecycleService = null;
 
     public function index() {
         $this->requireFeature('sale_returns');
@@ -36,7 +38,9 @@ class SaleReturnController extends Controller {
         if ($sale) {
             $summary = $returnModel->getSaleReturnSummary($saleId);
             $remainingAmount = max(0, (float)$sale['grand_total'] - (float)($summary['returned_amount'] ?? 0));
-            if ($remainingAmount <= 0.009) {
+            try {
+                $this->workflowService()->ensureSaleIsReturnable($sale, $remainingAmount);
+            } catch (\InvalidArgumentException $e) {
                 $this->setFlash('error', 'This invoice has already been fully returned.');
                 $this->redirect('index.php?page=sales&action=view_sale&id=' . $saleId);
                 return;
@@ -48,56 +52,35 @@ class SaleReturnController extends Controller {
 
             $saleId   = (int)$this->post('sale_id');
             $sale     = $salesModel->getWithDetails($saleId);
-            if (!$sale) { $this->setFlash('error', 'Invalid sale.'); $this->redirect('index.php?page=sale_returns&action=create'); return; }
             $summary = $returnModel->getSaleReturnSummary($saleId);
             $remainingAmount = max(0, (float)$sale['grand_total'] - (float)($summary['returned_amount'] ?? 0));
-            if ($remainingAmount <= 0.009) {
-                $this->setFlash('error', 'This invoice has already been fully returned.');
-                $this->redirect('index.php?page=sales&action=view_sale&id=' . $saleId);
-                return;
-            }
-
-            $productIds = $this->post('product_id', []);
-            $quantities = $this->post('quantity', []);
-            $unitPrices = $this->post('unit_price', []);
-
-            $items       = [];
-            $totalAmount = 0;
-            foreach ($productIds as $i => $pid) {
-                $qty = (float)($quantities[$i] ?? 0);
-                $up  = (float)($unitPrices[$i] ?? 0);
-
-                if ($qty < 0 || $up < 0) {
-                    error_log("Invalid input values in SaleReturn: qty=$qty, price=$up");
-                    $this->setFlash('error', 'Invalid quantities or prices provided. Values must be positive.');
-                    $this->redirect('index.php?page=sale_returns&action=create&sale_id=' . $saleId);
-                    return;
+            try {
+                $this->workflowService()->ensureSaleIsReturnable($sale, $remainingAmount);
+                $prepared = $this->workflowService()->buildCreatePayload(
+                    $this->post(),
+                    $sale,
+                    $remainingAmount,
+                    $returnModel->getNextReturnNumber()
+                );
+                $returnData = $prepared['return'];
+                $items = $prepared['items'];
+            } catch (\InvalidArgumentException $e) {
+                $this->setFlash('error', $e->getMessage());
+                $redirectTarget = $saleId > 0 ? 'index.php?page=sale_returns&action=create&sale_id=' . $saleId : 'index.php?page=sale_returns&action=create';
+                if ($e->getMessage() === 'This invoice has already been fully returned.') {
+                    $redirectTarget = 'index.php?page=sales&action=view_sale&id=' . $saleId;
+                } elseif ($e->getMessage() === 'Invalid sale.') {
+                    $redirectTarget = 'index.php?page=sale_returns&action=create';
                 }
-                if ($qty <= 0 || !$pid) continue;
-                $total        = $qty * $up;
-                $totalAmount += $total;
-                $items[] = ['product_id' => (int)$pid, 'quantity' => $qty, 'unit_price' => $up, 'total' => $total];
-            }
-
-            if (empty($items)) {
-                $this->setFlash('error', 'Please add at least one item to return.');
-                $this->redirect('index.php?page=sale_returns&action=create&sale_id=' . $saleId);
+                $this->redirect($redirectTarget);
                 return;
             }
-
-            $returnData = [
-                'return_number' => $returnModel->getNextReturnNumber(),
-                'sale_id'       => $saleId,
-                // customer_id is NOT stored here - model fetches it from sales table
-                'total_amount'  => $totalAmount,
-                'return_date'   => $this->post('return_date', date('Y-m-d')),
-                'note'          => $this->sanitize($this->post('reason')),
-            ];
 
             try {
                 $userId   = Session::get('user')['id'];
                 $returnId = $returnModel->createReturn($returnData, $items, $userId);
-                $this->logActivity('Created sale return: ' . $returnData['return_number'], 'sale_returns', $returnId, 'Against sale #' . $saleId . ', Amount: ' . $totalAmount);
+                $returnNumber = 'RET-' . str_pad((string)$returnId, 4, '0', STR_PAD_LEFT);
+                $this->logActivity('Created sale return: ' . $returnNumber, 'sale_returns', $returnId, 'Against sale #' . $saleId . ', Amount: ' . $returnData['total_amount']);
                 $this->setFlash('success', 'Sale return created. Stock restored and balances updated.');
                 $this->redirect('index.php?page=sale_returns&action=detail&id=' . $returnId);
             } catch (Exception $e) {
@@ -109,7 +92,6 @@ class SaleReturnController extends Controller {
 
         // Get recent sales for dropdown - show all sales with IN clause
         $recentSales = $returnModel->getRecentSalesForReturn();
-
         $this->view('sale_returns.create', [
             'pageTitle'   => 'New Sale Return',
             'sale'        => $sale,
@@ -124,5 +106,48 @@ class SaleReturnController extends Controller {
         $return = (new SaleReturnModel())->getWithDetails($id);
         $this->authorizeRecordAccess($return, 'index.php?page=sale_returns');
         $this->view('sale_returns.view', ['pageTitle' => 'Return Details', 'return' => $return]);
+    }
+
+    public function cancel() {
+        $this->requireFeature('sale_returns');
+        if (!$this->hasReturnCancelPermission()) {
+            $this->setFlash('error', 'You do not have permission to perform this action.');
+            $this->redirect('index.php?page=sale_returns');
+            return;
+        }
+        if (!$this->isPost()) { $this->redirect('index.php?page=sale_returns'); }
+        $this->validateCSRF();
+
+        $id = (int)$this->post('id');
+        try {
+            $return = $this->lifecycleService()->cancelReturn($id, $this->post('cancel_reason', ''), (int)(Session::get('user')['id'] ?? 0));
+            $this->logActivity('Cancelled sale return: ' . ($return['return_number'] ?? $id), 'sale_returns', $id, (string)($return['cancel_reason'] ?? ''));
+            $this->setFlash('success', 'Sale return cancelled successfully. Stock and customer balances were recalculated.');
+        } catch (\Throwable $e) {
+            $this->setFlash('error', $e->getMessage());
+        }
+
+        $this->redirect('index.php?page=sale_returns&action=detail&id=' . $id);
+    }
+
+    private function workflowService(): SaleReturnWorkflowService {
+        if ($this->saleReturnWorkflowService === null) {
+            $this->saleReturnWorkflowService = new SaleReturnWorkflowService();
+        }
+
+        return $this->saleReturnWorkflowService;
+    }
+
+    private function lifecycleService(): SaleReturnLifecycleService {
+        if ($this->saleReturnLifecycleService === null) {
+            $this->saleReturnLifecycleService = new SaleReturnLifecycleService();
+        }
+
+        return $this->saleReturnLifecycleService;
+    }
+
+    private function hasReturnCancelPermission(): bool {
+        $this->requireAuth();
+        return Session::hasPermission('returns.cancel') || Session::hasPermission('returns.create');
     }
 }

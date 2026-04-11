@@ -14,7 +14,7 @@ $isGstEnabled = !isset($company['enable_gst']) || !empty($company['enable_gst'])
     </ol></nav>
     <div class="detail-page-actions">
         <a href="<?= APP_URL ?>/index.php?page=invoice&type=quotation&id=<?= $quote['id'] ?>" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-invoice me-1"></i>Print Quotation</a>
-        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i>Print</button>
+        <button type="button" id="printQuotationBtn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i>Print</button>
         <?php if ($quote['status'] !== 'converted' && $quote['status'] !== 'cancelled'): ?>
         <!-- Update Status -->
         <div class="dropdown">
@@ -154,3 +154,9 @@ $isGstEnabled = !isset($company['enable_gst']) || !empty($company['enable_gst'])
     </div>
 </div>
 </div>
+
+<script nonce="<?= $cspNonce ?? '' ?>">
+document.getElementById('printQuotationBtn')?.addEventListener('click', function () {
+    window.print();
+});
+</script>

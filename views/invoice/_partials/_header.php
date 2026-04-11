@@ -16,11 +16,12 @@ $badgeHtml = $badgeHtml ?? '';
 $extraInfo = $extraInfo ?? '';
 $showLogo = !isset($company['invoice_show_logo']) || !empty($company['invoice_show_logo']);
 $subtitle = trim((string)($company['invoice_subtitle'] ?? ''));
+$companyLogoSrc = Helper::uploadedImageSrc($company['company_logo'] ?? '');
 ?>
 <div class="header">
     <div class="company-block">
-        <?php if ($showLogo && !empty($company['company_logo'])): ?>
-            <img src="<?= APP_URL ?>/<?= Helper::escape($company['company_logo']) ?>" alt="Company Logo" class="company-logo">
+        <?php if ($showLogo && $companyLogoSrc !== ''): ?>
+            <img src="<?= Helper::escape($companyLogoSrc) ?>" alt="Company Logo" class="company-logo">
         <?php endif; ?>
         <h1><?= Helper::escape($company['company_name'] ?? APP_NAME) ?></h1>
         <div class="company-details">
@@ -49,15 +50,15 @@ $subtitle = trim((string)($company['invoice_subtitle'] ?? ''));
     <div class="invoice-block">
         <div class="invoice-title"><?= Helper::escape($documentTitle) ?></div>
         <?php if ($subtitle !== ''): ?>
-        <div class="invoice-date" style="margin-top:0;"><?= Helper::escape($subtitle) ?></div>
+        <div class="invoice-date invoice-date-subtitle"><?= Helper::escape($subtitle) ?></div>
         <?php endif; ?>
         <div class="invoice-number"><?= Helper::escape($documentNumber) ?></div>
         <div class="invoice-date">Date: <?= Helper::formatDate($documentDate) ?></div>
         <?php if ($badgeHtml): ?>
-        <div style="margin-top:5px;"><?= $badgeHtml ?></div>
+        <div class="invoice-badge-wrap"><?= $badgeHtml ?></div>
         <?php endif; ?>
         <?php if ($extraInfo): ?>
-        <div style="margin-top:3px; font-size:11px; color:#666;"><?= $extraInfo ?></div>
+        <div class="space-top-3 meta-small"><?= $extraInfo ?></div>
         <?php endif; ?>
     </div>
 </div>

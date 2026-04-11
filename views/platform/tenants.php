@@ -53,7 +53,7 @@
                             </form>
                             
                             <?php if($t['subscription_status'] === 'suspended'): ?>
-                                <form action="<?php echo APP_URL; ?>/index.php?page=platform&action=reactivate_tenant" method="POST" class="d-inline" onsubmit="return confirm('Reactivate this tenant?');">
+                                <form action="<?php echo APP_URL; ?>/index.php?page=platform&action=reactivate_tenant" method="POST" class="d-inline" data-confirm="Reactivate this tenant?">
                                     <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                                     <input type="hidden" name="id" value="<?php echo $t['id']; ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-success" title="Reactivate">
@@ -61,7 +61,7 @@
                                     </button>
                                 </form>
                             <?php else: ?>
-                                <form action="<?php echo APP_URL; ?>/index.php?page=platform&action=suspend_tenant" method="POST" class="d-inline" onsubmit="return confirm('Suspend tenant? They will be locked out immediately.');">
+                                <form action="<?php echo APP_URL; ?>/index.php?page=platform&action=suspend_tenant" method="POST" class="d-inline" data-confirm="Suspend tenant? They will be locked out immediately.">
                                     <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                                     <input type="hidden" name="id" value="<?php echo $t['id']; ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-warning" title="Suspend">
@@ -70,7 +70,7 @@
                                 </form>
                             <?php endif; ?>
                             
-                            <form action="<?php echo APP_URL; ?>/index.php?page=platform&action=delete_tenant" method="POST" class="d-inline" onsubmit="return confirm('EXTREME DANGER: Fully wipe tenant and all data? This cannot be undone.');">
+                            <form action="<?php echo APP_URL; ?>/index.php?page=platform&action=delete_tenant" method="POST" class="d-inline" data-confirm="EXTREME DANGER: Fully wipe tenant and all data? This cannot be undone.">
                                 <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                                 <input type="hidden" name="id" value="<?php echo $t['id']; ?>">
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Hard Wipe">

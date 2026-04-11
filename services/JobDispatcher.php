@@ -1,10 +1,10 @@
 <?php
 /**
  * Job Dispatcher — Queue Background Tasks
- * 
+ *
  * Pushes jobs to the `jobs` database table for async processing.
  * Jobs are picked up by the cli/worker.php script.
- * 
+ *
  * Usage:
  *   JobDispatcher::dispatch('email', 'SendInvoiceEmail', ['sale_id' => 123]);
  *   JobDispatcher::dispatch('webhook', 'DeliverWebhook', $payload, priority: 1);

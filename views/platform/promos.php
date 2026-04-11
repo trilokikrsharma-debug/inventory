@@ -77,7 +77,7 @@
                                 </button>
                             </form>
                             <form method="POST" action="<?= APP_URL ?>/index.php?page=promos&action=delete" class="d-inline"
-                                  onsubmit="return confirm('Delete this promo code? If usage exists it will be disabled instead.');">
+                                  data-confirm="Delete this promo code? If usage exists it will be disabled instead.">
                                 <?= CSRF::field() ?>
                                 <input type="hidden" name="id" value="<?= (int)$promo['id'] ?>">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">

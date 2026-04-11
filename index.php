@@ -32,14 +32,22 @@ if (file_exists($maintenanceFile)) {
 }
 
 // ─── Request Tracing ─────────────────────────────────────────
-define('REQUEST_ID', bin2hex(random_bytes(8)));
+$incomingRequestId = trim((string)($_SERVER['HTTP_X_REQUEST_ID'] ?? ''));
+$requestId = preg_match('/^[A-Za-z0-9._-]{8,128}$/', $incomingRequestId)
+    ? $incomingRequestId
+    : bin2hex(random_bytes(8));
+define('REQUEST_ID', $requestId);
 header('X-Request-ID: ' . REQUEST_ID);
+unset($incomingRequestId, $requestId);
 
 // Load configuration (defines paths, constants, APP_ENV, etc.)
 require_once BASE_PATH . '/config/config.php';
 
 // Composer autoloader — replaces all manual require_once calls
 require_once BASE_PATH . '/vendor/autoload.php';
+
+// Keep structured logs and response headers on the same request correlation ID.
+Logger::setRequestId(REQUEST_ID);
 
 // Register error/exception handlers (environment-aware)
 ErrorHandler::register();

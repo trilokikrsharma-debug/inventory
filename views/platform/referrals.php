@@ -88,7 +88,7 @@
                 <form method="GET" class="d-flex gap-2">
                     <input type="hidden" name="page" value="referrals">
                     <input type="hidden" name="action" value="index">
-                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <select name="status" class="form-select form-select-sm" id="referralStatusFilter">
                         <option value="" <?= ($status ?? '') === '' ? 'selected' : '' ?>>All Statuses</option>
                         <option value="pending" <?= ($status ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
                         <option value="successful" <?= ($status ?? '') === 'successful' ? 'selected' : '' ?>>Successful</option>
@@ -137,7 +137,7 @@
                                         </button>
                                     </form>
                                     <form method="POST" action="<?= APP_URL ?>/index.php?page=referrals&action=reject_reward" class="d-inline"
-                                          onsubmit="return confirm('Reject this referral reward?');">
+                                          data-confirm="Reject this referral reward?">
                                         <?= CSRF::field() ?>
                                         <input type="hidden" name="referral_id" value="<?= (int)$ref['id'] ?>">
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject Reward">
@@ -163,3 +163,9 @@
     </div>
 </div>
 </div>
+
+<script nonce="<?= $cspNonce ?? '' ?>">
+document.getElementById('referralStatusFilter')?.addEventListener('change', function () {
+    this.form.submit();
+});
+</script>

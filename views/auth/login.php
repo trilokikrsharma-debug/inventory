@@ -128,6 +128,22 @@
             font-size: 0.72rem;
             font-weight: 600;
         }
+        .login-alert {
+            font-size: 0.85rem;
+            border-radius: 0.5rem;
+        }
+        .login-input-addon {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.1);
+            color: #858796;
+        }
+        .login-input-addon-button {
+            cursor: pointer;
+        }
+        .login-remember-label {
+            color: #cbd5e1;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -138,7 +154,7 @@
         <p class="login-subtitle">Sign in to your account</p>
 
         <?php if (!empty($error)): ?>
-        <div class="alert alert-danger py-2" style="font-size:0.85rem;border-radius:0.5rem;">
+        <div class="alert alert-danger py-2 login-alert">
             <i class="fas fa-exclamation-circle me-1"></i> <?= Helper::escape($error) ?>
         </div>
         <?php endif; ?>
@@ -148,7 +164,7 @@
             <div class="mb-3">
                 <label class="form-label">Username or Email</label>
                 <div class="input-group">
-                    <span class="input-group-text" style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1);color:#858796;">
+                    <span class="input-group-text login-input-addon">
                         <i class="fas fa-user"></i>
                     </span>
                     <input
@@ -168,7 +184,7 @@
             <div class="mb-4">
                 <label class="form-label">Password</label>
                 <div class="input-group">
-                    <span class="input-group-text" style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1);color:#858796;">
+                    <span class="input-group-text login-input-addon">
                         <i class="fas fa-lock"></i>
                     </span>
                     <input
@@ -181,10 +197,9 @@
                         autocomplete="current-password"
                     >
                     <button
-                        class="input-group-text"
+                        class="input-group-text login-input-addon login-input-addon-button"
                         type="button"
                         id="togglePassword"
-                        style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1);color:#858796;cursor:pointer;"
                         aria-label="Toggle password visibility"
                     >
                         <i class="fas fa-eye"></i>
@@ -201,7 +216,7 @@
                     id="rememberMe"
                     name="remember_me"
                 >
-                <label class="form-check-label" for="rememberMe" style="color:#cbd5e1;font-size:0.85rem;">
+                <label class="form-check-label login-remember-label" for="rememberMe">
                     Keep me signed in on this device
                 </label>
             </div>
@@ -216,7 +231,7 @@
             <div class="demo-pills">
                 <span class="demo-pill"><i class="fas fa-file-import"></i>Bulk Import</span>
                 <span class="demo-pill"><i class="fas fa-code"></i>API Access</span>
-                <span class="demo-pill"><i class="fas fa-brain"></i>AI Insights</span>
+                <span class="demo-pill"><i class="fas fa-brain"></i>Automated Insights</span>
                 <span class="demo-pill"><i class="fas fa-people-arrows"></i>Custom Fields</span>
                 <span class="demo-pill"><i class="fas fa-warehouse"></i>Multi Warehouse</span>
                 <span class="demo-pill"><i class="fas fa-id-badge"></i>HR Tools</span>

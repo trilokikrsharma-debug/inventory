@@ -24,13 +24,13 @@
                     </div>
 
                     <div class="d-flex gap-2 mb-3">
-                        <button class="btn btn-outline-primary btn-sm" onclick="copyRecoveryCodes()">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="copyRecoveryCodesBtn">
                             <i class="fas fa-copy me-1"></i> Copy
                         </button>
-                        <button class="btn btn-outline-primary btn-sm" onclick="downloadRecoveryCodes()">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="downloadRecoveryCodesBtn">
                             <i class="fas fa-download me-1"></i> Download
                         </button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="printRecoveryCodesBtn">
                             <i class="fas fa-print me-1"></i> Print
                         </button>
                     </div>
@@ -46,7 +46,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="<?= $cspNonce ?? '' ?>">
 function copyRecoveryCodes() {
     const codes = <?= json_encode($codes) ?>;
     navigator.clipboard.writeText(codes.join('\n')).then(() => {
@@ -63,4 +63,10 @@ function downloadRecoveryCodes() {
     a.download = 'invenbill-recovery-codes.txt';
     a.click();
 }
+
+document.getElementById('copyRecoveryCodesBtn')?.addEventListener('click', copyRecoveryCodes);
+document.getElementById('downloadRecoveryCodesBtn')?.addEventListener('click', downloadRecoveryCodes);
+document.getElementById('printRecoveryCodesBtn')?.addEventListener('click', function () {
+    window.print();
+});
 </script>

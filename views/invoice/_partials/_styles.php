@@ -56,12 +56,84 @@
 
     /* Footer */
     .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #eee; text-align: center; font-size: 11px; color: #999; }
+    .footer-note { margin-bottom: 8px; color: #666; }
 
     /* Badge */
     .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
     .badge-paid { background: #d4edda; color: #155724; }
     .badge-unpaid { background: #f8d7da; color: #721c24; }
     .badge-partial { background: #fff3cd; color: #856404; }
+    .badge-returned { background: #cfe2ff; color: #084298; }
+
+    /* Shared utility */
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .text-muted-soft { color: #666; }
+    .font-semibold { font-weight: 600; }
+    .sku-note { color: #888; }
+    .space-top-3 { margin-top: 3px; }
+    .space-top-5 { margin-top: 5px; }
+    .space-top-6 { margin-top: 6px; }
+    .meta-small { font-size: 11px; color: #666; }
+    .detail-note { font-weight: normal; color: #666; }
+    .total-refund { color: #dc3545; }
+
+    /* Print bar */
+    .print-bar {
+        text-align: center;
+        padding: 12px;
+        background: #f0f0f0;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+    .print-bar-btn,
+    .print-bar-link {
+        padding: 8px 24px;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .print-bar-btn-primary {
+        border: none;
+        background: #4e73df;
+        color: #fff;
+    }
+    .print-bar-link {
+        border: none;
+        background: #1cc88a;
+        color: #fff;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+    .print-bar-btn-secondary {
+        border: 1px solid #ccc;
+        background: #fff;
+    }
+
+    /* Header helper classes */
+    .invoice-date-subtitle { margin-top: 0; }
+    .invoice-badge-wrap { margin-top: 5px; }
+
+    /* Common table sizing */
+    .col-num { width: 30px; }
+    .col-hsn { text-align: left; width: 80px; }
+    .col-qty { text-align: center; width: 60px; }
+    .col-qty-wide { text-align: center; width: 80px; }
+    .col-money-sm { text-align: right; width: 70px; }
+    .col-money-md { text-align: right; width: 80px; }
+    .col-money-lg { text-align: right; width: 90px; }
+    .col-money-xl { text-align: right; width: 100px; }
+    .td-right { text-align: right; }
+    .td-center { text-align: center; }
+    .td-strong { font-weight: 600; }
+
+    /* Receipt helper */
+    .amount-words-box { background: #f8f9fc; border-radius: 8px; padding: 14px 16px; margin-bottom: 25px; }
+    .amount-words-label { font-size: 11px; color: #4e73df; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .amount-words-value { font-size: 13px; font-weight: 600; color: #333; }
 
     /* Detail Row (for receipts) */
     .detail-table td { padding: 10px 14px; }

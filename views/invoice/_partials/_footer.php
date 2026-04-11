@@ -15,7 +15,7 @@ if ($notesLabel === '') {
 ?>
 <div class="footer">
     <?php if (!empty($noteText)): ?>
-    <p style="margin-bottom:8px; color:#666;"><?= Helper::escape($notesLabel) ?>: <?= Helper::escape($noteText) ?></p>
+    <p class="footer-note"><?= Helper::escape($notesLabel) ?>: <?= Helper::escape($noteText) ?></p>
     <?php endif; ?>
     <?php if (!empty($footerText)): ?>
     <p><?= Helper::escape($footerText) ?></p>

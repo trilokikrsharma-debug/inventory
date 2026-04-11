@@ -44,11 +44,25 @@
         position: relative;
         z-index: 1;
     }
+    .backup-hero-title-icon {
+        color: #4e73df;
+    }
     .backup-hero p {
         opacity: 0.8;
         margin-bottom: 0;
         position: relative;
         z-index: 1;
+    }
+    .backup-hero-badge {
+        background: rgba(255,255,255,0.15);
+        font-size: 0.75rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 8px;
+        position: relative;
+        z-index: 1;
+    }
+    .backup-hero-badge .fa-crown {
+        color: #ffd700;
     }
     .backup-hero .hero-icon {
         font-size: 4rem;
@@ -141,6 +155,12 @@
     .section-card .section-body {
         padding: 1.5rem;
     }
+    .section-body.section-body-flush {
+        padding: 0;
+    }
+    .section-body.section-body-centered {
+        padding: 2rem;
+    }
 
     .btn-create-backup {
         background: linear-gradient(135deg, #28a745, #20c997);
@@ -161,11 +181,22 @@
         box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
         color: #fff;
     }
+    .btn-create-backup.btn-create-full {
+        background: linear-gradient(135deg, #4e73df, #224abe);
+        box-shadow: 0 4px 15px rgba(78,115,223,0.3);
+    }
 
     .backup-table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
+    }
+    .backup-table-file-column {
+        width: 35%;
+    }
+    .backup-table-actions-column {
+        width: 160px;
+        text-align: center;
     }
     .backup-table thead th {
         background: var(--table-header-bg, #f8f9fc);
@@ -204,6 +235,41 @@
         color: #4e73df;
         font-size: 1.1rem;
         flex-shrink: 0;
+    }
+    .backup-file-name {
+        font-weight: 600;
+        font-size: 0.92rem;
+    }
+    .backup-file-meta,
+    .backup-date-time {
+        font-size: 0.78rem;
+        color: var(--text-secondary, #636e72);
+    }
+    .backup-file-size {
+        font-weight: 600;
+    }
+    .backup-date-day {
+        font-size: 0.9rem;
+    }
+    .backup-type-badge {
+        font-size: 0.72rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 6px;
+    }
+    .backup-type-tenant {
+        background: #28a745;
+    }
+    .backup-type-full {
+        background: #4e73df;
+    }
+    .backup-type-legacy {
+        background: #6c757d;
+    }
+    .backup-type-legacy-full {
+        background: #495057;
+    }
+    .backup-type-unknown {
+        background: #999;
     }
 
     .btn-action {
@@ -335,6 +401,28 @@
     .warning-box .warning-text strong {
         color: #e6a000;
     }
+    .backup-alert-rounded {
+        border-radius: 12px;
+    }
+    .backup-restricted-badge {
+        font-size: 0.7rem;
+        margin-left: 0.5rem;
+    }
+    .backup-restricted-icon {
+        font-size: 2rem;
+        color: var(--text-secondary);
+        opacity: 0.4;
+        margin-bottom: 0.75rem;
+    }
+    .backup-restricted-title {
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .backup-restricted-copy {
+        color: var(--text-secondary);
+        font-size: 0.88rem;
+        margin-bottom: 0;
+    }
 
     .empty-state {
         text-align: center;
@@ -379,6 +467,31 @@
         border: none;
         padding: 1rem 1.5rem;
     }
+    .modal-warning-icon {
+        font-size: 3rem;
+        color: #fd7e14;
+    }
+    .modal-warning-title {
+        font-weight: 600;
+        font-size: 1.05rem;
+    }
+    .modal-warning-file {
+        color: #fd7e14;
+        font-weight: 600;
+    }
+    .modal-action-btn {
+        border-radius: 10px;
+        min-width: 100px;
+    }
+    .section-title-icon-green {
+        color: #28a745;
+    }
+    .section-title-icon-orange {
+        color: #fd7e14;
+    }
+    .restore-file-input {
+        display: none;
+    }
 
     @keyframes fadeInUp {
         from { opacity: 0; transform: translateY(20px); }
@@ -396,14 +509,14 @@
 <!-- Hero Header -->
 <div class="backup-hero animate-in">
     <i class="fas fa-shield-halved hero-icon"></i>
-    <h2><i class="fas fa-database me-2" style="color: #4e73df;"></i> Backup & Restore</h2>
+    <h2><i class="fas fa-database me-2 backup-hero-title-icon"></i> Backup & Restore</h2>
     <p>Protect your data. Create backups, download them, or restore from a previous backup file.</p>
     <?php if (!empty($isSuperAdmin)): ?>
-    <span class="badge" style="background:rgba(255,255,255,0.15);font-size:0.75rem;padding:0.4rem 0.8rem;border-radius:8px;position:relative;z-index:1;">
-        <i class="fas fa-crown me-1" style="color:#ffd700;"></i> Super Admin — Full platform access
+    <span class="badge backup-hero-badge">
+        <i class="fas fa-crown me-1"></i> Super Admin — Full platform access
     </span>
     <?php else: ?>
-    <span class="badge" style="background:rgba(255,255,255,0.15);font-size:0.75rem;padding:0.4rem 0.8rem;border-radius:8px;position:relative;z-index:1;">
+    <span class="badge backup-hero-badge">
         <i class="fas fa-building me-1"></i> Company backup only
     </span>
     <?php endif; ?>
@@ -453,7 +566,7 @@
 <div class="section-card animate-in delay-2">
     <div class="section-header">
         <h5>
-            <i class="fas fa-box-archive" style="color: #28a745;"></i>
+            <i class="fas fa-box-archive section-title-icon-green"></i>
             Backup Files
         </h5>
         <div class="d-flex gap-2 flex-wrap">
@@ -471,8 +584,7 @@
             <form method="POST" action="<?= APP_URL ?>/index.php?page=backup&action=create" id="createFullBackupForm">
                 <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
                 <input type="hidden" name="backup_type" value="full">
-                <button type="submit" class="btn-create-backup" id="btnCreateFullBackup" 
-                        style="background:linear-gradient(135deg, #4e73df, #224abe);box-shadow:0 4px 15px rgba(78,115,223,0.3);">
+                <button type="submit" class="btn-create-backup btn-create-full" id="btnCreateFullBackup">
                     <i class="fas fa-server"></i>
                     Full DB Backup
                 </button>
@@ -480,7 +592,7 @@
             <?php endif; ?>
         </div>
     </div>
-    <div class="section-body" style="padding: 0;">
+    <div class="section-body section-body-flush">
         <?php if (empty($backups)): ?>
         <div class="empty-state">
             <i class="fas fa-box-open"></i>
@@ -492,11 +604,11 @@
             <table class="backup-table">
                 <thead>
                     <tr>
-                        <th style="width: 35%;">File Name</th>
+                        <th class="backup-table-file-column">File Name</th>
                         <th>Type</th>
                         <th>Size</th>
                         <th>Created</th>
-                        <th style="width: 160px; text-align: center;">Actions</th>
+                        <th class="backup-table-actions-column">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -508,28 +620,33 @@
                                     <i class="fas fa-file-code"></i>
                                 </div>
                                 <div>
-                                    <div style="font-weight: 600; font-size: 0.92rem;"><?= htmlspecialchars($backup['filename']) ?></div>
-                                    <div style="font-size: 0.78rem; color: var(--text-secondary, #636e72);">.sql backup file</div>
+                                    <div class="backup-file-name"><?= htmlspecialchars($backup['filename']) ?></div>
+                                    <div class="backup-file-meta">.sql backup file</div>
                                 </div>
                             </div>
                         </td>
                         <td>
                             <?php 
                                 $type = $backup['type'] ?? 'unknown';
-                                $typeColor = ['tenant' => '#28a745', 'full' => '#4e73df', 'legacy' => '#6c757d', 'legacy_full' => '#495057'][$type] ?? '#999';
                                 $typeIcon = ['tenant' => 'fa-building', 'full' => 'fa-server', 'legacy' => 'fa-clock-rotate-left', 'legacy_full' => 'fa-database'][$type] ?? 'fa-file';
                                 $typeLabel = ['tenant' => 'Company', 'full' => 'Full DB', 'legacy' => 'Legacy', 'legacy_full' => 'Legacy Full'][$type] ?? ucfirst($type);
+                                $typeClass = [
+                                    'tenant' => 'backup-type-tenant',
+                                    'full' => 'backup-type-full',
+                                    'legacy' => 'backup-type-legacy',
+                                    'legacy_full' => 'backup-type-legacy-full',
+                                ][$type] ?? 'backup-type-unknown';
                             ?>
-                            <span class="badge" style="background: <?= $typeColor ?>; font-size: 0.72rem; padding: 0.35rem 0.65rem; border-radius: 6px;">
+                            <span class="badge backup-type-badge <?= $typeClass ?>">
                                 <i class="fas <?= $typeIcon ?> me-1"></i><?= $typeLabel ?>
                             </span>
                         </td>
                         <td>
-                            <span style="font-weight: 600;"><?= Helper::formatFileSize($backup['size']) ?></span>
+                            <span class="backup-file-size"><?= Helper::formatFileSize($backup['size']) ?></span>
                         </td>
                         <td>
-                            <div style="font-size: 0.9rem;"><?= date('d M Y', strtotime($backup['created'])) ?></div>
-                            <div style="font-size: 0.78rem; color: var(--text-secondary, #636e72);"><?= date('h:i A', strtotime($backup['created'])) ?></div>
+                            <div class="backup-date-day"><?= date('d M Y', strtotime($backup['created'])) ?></div>
+                            <div class="backup-date-time"><?= date('h:i A', strtotime($backup['created'])) ?></div>
                         </td>
                         <td>
                             <?php $deleteFormId = 'delete-backup-' . md5((string)$backup['filename']); ?>
@@ -558,9 +675,9 @@
                                     <input type="hidden" name="file" value="<?= htmlspecialchars((string)$backup['filename'], ENT_QUOTES, 'UTF-8') ?>">
                                     <button
                                         type="submit"
-                                        class="btn-action btn-delete"
+                                        class="btn-action btn-delete js-confirm-backup-delete"
                                         title="Delete"
-                                        onclick="return window.confirm('Delete backup: <?= htmlspecialchars((string)$backup['filename'], ENT_QUOTES, 'UTF-8') ?>?');">
+                                        data-confirm-message="Delete backup: <?= htmlspecialchars((string)$backup['filename'], ENT_QUOTES, 'UTF-8') ?>?">
                                     <i class="fas fa-trash-can"></i>
                                     </button>
                                 </form>
@@ -580,14 +697,14 @@
 <div class="section-card animate-in delay-3">
     <div class="section-header">
         <h5>
-            <i class="fas fa-upload" style="color: #fd7e14;"></i>
+            <i class="fas fa-upload section-title-icon-orange"></i>
             Restore from File Upload
-            <span class="badge bg-danger" style="font-size:0.7rem;margin-left:0.5rem;">Super Admin Only</span>
+            <span class="badge bg-danger backup-restricted-badge">Super Admin Only</span>
         </h5>
     </div>
     <div class="section-body">
         <?php if (empty($companyId)): ?>
-        <div class="alert alert-info mb-3" style="border-radius: 12px;">
+        <div class="alert alert-info mb-3 backup-alert-rounded">
             <i class="fas fa-circle-info me-2"></i>
             You are at platform level. Full database backups work here. To create a tenant-only backup, open that tenant from the tenants area first.
         </div>
@@ -596,8 +713,8 @@
             <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
             <input type="hidden" name="restore_source" value="upload">
 
-            <div class="restore-zone" id="restoreDropZone" onclick="document.getElementById('restoreFileInput').click()">
-                <input type="file" name="backup_file" id="restoreFileInput" accept=".sql" style="display: none;" onchange="handleFileSelect(this)">
+            <div class="restore-zone" id="restoreDropZone">
+                <input type="file" name="backup_file" id="restoreFileInput" accept=".sql" class="restore-file-input">
                 <div class="upload-icon">
                     <i class="fas fa-cloud-arrow-up"></i>
                 </div>
@@ -618,7 +735,7 @@
             </div>
 
             <div class="text-end mt-3">
-                <button type="button" class="btn-restore" id="btnRestoreUpload" disabled onclick="confirmRestoreUpload()">
+                <button type="button" class="btn-restore" id="btnRestoreUpload" disabled>
                     <i class="fas fa-rotate-left"></i>
                     Restore Full Database
                 </button>
@@ -629,10 +746,10 @@
 <?php else: ?>
 <!-- Non-super-admin info -->
 <div class="section-card animate-in delay-3">
-    <div class="section-body text-center" style="padding: 2rem;">
-        <i class="fas fa-shield-halved" style="font-size: 2rem; color: var(--text-secondary); opacity: 0.4; margin-bottom: 0.75rem;"></i>
-        <h6 style="font-weight: 700; color: var(--text-primary);">Database Restore</h6>
-        <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 0;">Full database restore is restricted to super administrators. Contact your system admin if you need to restore data.</p>
+    <div class="section-body section-body-centered text-center">
+        <i class="fas fa-shield-halved backup-restricted-icon"></i>
+        <h6 class="backup-restricted-title">Database Restore</h6>
+        <p class="backup-restricted-copy">Full database restore is restricted to super administrators. Contact your system admin if you need to restore data.</p>
     </div>
 </div>
 <?php endif; ?>
@@ -647,14 +764,14 @@
             </div>
             <div class="modal-body">
                 <div class="text-center mb-3">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #fd7e14;"></i>
+                    <i class="fas fa-exclamation-triangle modal-warning-icon"></i>
                 </div>
-                <p class="text-center" style="font-weight: 600; font-size: 1.05rem;">Are you sure you want to restore the database?</p>
+                <p class="text-center modal-warning-title">Are you sure you want to restore the database?</p>
                 <p class="text-center text-muted small mb-0">All current data will be <strong>permanently replaced</strong> with the data from the backup file. This cannot be undone.</p>
             </div>
             <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 10px; min-width: 100px;">Cancel</button>
-                <button type="button" class="btn btn-warning text-white" style="border-radius: 10px; min-width: 100px;" onclick="submitRestoreUpload()">
+                <button type="button" class="btn btn-secondary modal-action-btn" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning text-white modal-action-btn" id="confirmRestoreUploadBtn">
                     <i class="fas fa-rotate-left me-1"></i> Yes, Restore
                 </button>
             </div>
@@ -672,19 +789,19 @@
             </div>
             <div class="modal-body">
                 <div class="text-center mb-3">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #fd7e14;"></i>
+                    <i class="fas fa-exclamation-triangle modal-warning-icon"></i>
                 </div>
-                <p class="text-center" style="font-weight: 600; font-size: 1.05rem;">Restore from existing backup?</p>
-                <p class="text-center mb-1" style="color: #fd7e14; font-weight: 600;" id="restoreExistingFileName"></p>
+                <p class="text-center modal-warning-title">Restore from existing backup?</p>
+                <p class="text-center mb-1 modal-warning-file" id="restoreExistingFileName"></p>
                 <p class="text-center text-muted small mb-0">All current data will be <strong>permanently replaced</strong>. This cannot be undone.</p>
             </div>
             <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 10px; min-width: 100px;">Cancel</button>
+                <button type="button" class="btn btn-secondary modal-action-btn" data-bs-dismiss="modal">Cancel</button>
                 <form method="POST" action="<?= APP_URL ?>/index.php?page=backup&action=restore" id="restoreExistingForm">
                     <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
                     <input type="hidden" name="restore_source" value="existing">
                     <input type="hidden" name="backup_file" id="restoreExistingFileInput">
-                    <button type="submit" class="btn btn-warning text-white" style="border-radius: 10px; min-width: 100px;">
+                    <button type="submit" class="btn btn-warning text-white modal-action-btn">
                         <i class="fas fa-rotate-left me-1"></i> Yes, Restore
                     </button>
                 </form>
@@ -693,7 +810,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="<?= $cspNonce ?? '' ?>">
 // ==========================================
 // Restore from existing backup
 // ==========================================
@@ -713,6 +830,15 @@ function confirmRestoreExisting(filename) {
 document.querySelectorAll('.js-restore-existing').forEach((button) => {
     button.addEventListener('click', () => {
         confirmRestoreExisting(button.dataset.backupFile || '');
+    });
+});
+
+document.querySelectorAll('.js-confirm-backup-delete').forEach((button) => {
+    button.addEventListener('click', function (event) {
+        const message = button.dataset.confirmMessage || 'Delete this backup?';
+        if (!window.confirm(message)) {
+            event.preventDefault();
+        }
     });
 });
 
@@ -777,6 +903,14 @@ function submitRestoreUpload() {
 const dropZone = document.getElementById('restoreDropZone');
 const fileInput = document.getElementById('restoreFileInput');
 if (dropZone && fileInput) {
+    dropZone.addEventListener('click', function () {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', function () {
+        handleFileSelect(fileInput);
+    });
+
     ['dragenter', 'dragover'].forEach(event => {
         dropZone.addEventListener(event, function(e) {
             e.preventDefault();
@@ -797,6 +931,20 @@ if (dropZone && fileInput) {
             fileInput.files = files;
             handleFileSelect(fileInput);
         }
+    });
+}
+
+const restoreUploadButton = document.getElementById('btnRestoreUpload');
+if (restoreUploadButton) {
+    restoreUploadButton.addEventListener('click', function () {
+        confirmRestoreUpload();
+    });
+}
+
+const confirmRestoreUploadButton = document.getElementById('confirmRestoreUploadBtn');
+if (confirmRestoreUploadButton) {
+    confirmRestoreUploadButton.addEventListener('click', function () {
+        submitRestoreUpload();
     });
 }
 

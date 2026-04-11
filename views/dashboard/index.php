@@ -1,5 +1,35 @@
 ﻿<?php $pageTitle = 'Dashboard'; ?>
 
+<style>
+    .dashboard-delay-10 { animation-delay:0.1s; }
+    .dashboard-delay-15 { animation-delay:0.15s; }
+    .dashboard-delay-20 { animation-delay:0.2s; }
+    .dashboard-delay-25 { animation-delay:0.25s; }
+    .dashboard-delay-30 { animation-delay:0.3s; }
+    .dashboard-insights-title-icon { color:#f6c23e; }
+    .dashboard-inline-insight-card {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+    .dashboard-inline-insight-icon {
+        font-size: 1.2rem;
+    }
+    .dashboard-inline-insight-title {
+        font-size: 0.85rem;
+    }
+    .dashboard-inline-insight-badge {
+        font-size: 0.6rem;
+    }
+    .dashboard-inline-insight-message {
+        font-size: 0.8rem;
+        color: #b7b9cc;
+        margin-bottom: 0.25rem;
+    }
+    .dashboard-inline-insight-link {
+        font-size: 0.75rem;
+    }
+</style>
+
 <!-- Stats Row -->
 <div class="row g-3 mb-4">
     <div class="col-xl-3 col-md-6">
@@ -10,21 +40,21 @@
         </div>
     </div>
     <div class="col-xl-3 col-md-6">
-        <div class="stat-card stat-primary animate-fade-in-up" style="animation-delay:0.1s">
+        <div class="stat-card stat-primary animate-fade-in-up dashboard-delay-10">
             <div class="stat-icon"><i class="fas fa-cart-shopping"></i></div>
             <div class="stat-value"><?= Helper::formatCurrency($purchaseAll['total_amount'] ?? 0) ?></div>
             <div class="stat-label">Total Purchases</div>
         </div>
     </div>
     <div class="col-xl-3 col-md-6">
-        <div class="stat-card stat-warning animate-fade-in-up" style="animation-delay:0.2s">
+        <div class="stat-card stat-warning animate-fade-in-up dashboard-delay-20">
             <div class="stat-icon"><i class="fas fa-sun"></i></div>
             <div class="stat-value"><?= Helper::formatCurrency($salesToday['total_amount'] ?? 0) ?></div>
             <div class="stat-label">Today's Sales</div>
         </div>
     </div>
     <div class="col-xl-3 col-md-6">
-        <div class="stat-card stat-info animate-fade-in-up" style="animation-delay:0.3s">
+        <div class="stat-card stat-info animate-fade-in-up dashboard-delay-30">
             <div class="stat-icon"><i class="fas fa-boxes-stacked"></i></div>
             <div class="stat-value"><?= Helper::formatCurrency($stockValue['total_value'] ?? 0) ?></div>
             <div class="stat-label">Stock Value</div>
@@ -35,28 +65,28 @@
 <!-- Second Row - More Stats -->
 <div class="row g-3 mb-4">
     <div class="col-xl-3 col-md-6">
-        <div class="stat-card stat-danger animate-fade-in-up" style="animation-delay:0.1s">
+        <div class="stat-card stat-danger animate-fade-in-up dashboard-delay-10">
             <div class="stat-icon"><i class="fas fa-user-clock"></i></div>
             <div class="stat-value"><?= Helper::formatCurrency($customerDues ?? 0) ?></div>
             <div class="stat-label">Customer Dues</div>
         </div>
     </div>
     <div class="col-xl-3 col-md-6">
-        <div class="stat-card stat-warning animate-fade-in-up" style="animation-delay:0.15s">
+        <div class="stat-card stat-warning animate-fade-in-up dashboard-delay-15">
             <div class="stat-icon"><i class="fas fa-truck-clock"></i></div>
             <div class="stat-value"><?= Helper::formatCurrency($supplierDues ?? 0) ?></div>
             <div class="stat-label">Supplier Dues</div>
         </div>
     </div>
     <div class="col-xl-3 col-md-6">
-        <div class="stat-card stat-success animate-fade-in-up" style="animation-delay:0.2s">
+        <div class="stat-card stat-success animate-fade-in-up dashboard-delay-20">
             <div class="stat-icon"><i class="fas fa-calendar"></i></div>
             <div class="stat-value"><?= Helper::formatCurrency($salesMonth['total_amount'] ?? 0) ?></div>
             <div class="stat-label">This Month Sales</div>
         </div>
     </div>
     <div class="col-xl-3 col-md-6">
-        <div class="stat-card stat-primary animate-fade-in-up" style="animation-delay:0.25s">
+        <div class="stat-card stat-primary animate-fade-in-up dashboard-delay-25">
             <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
             <div class="stat-value"><?= Helper::formatCurrency($purchaseMonth['total_amount'] ?? 0) ?></div>
             <div class="stat-label">This Month Purchase</div>
@@ -162,12 +192,12 @@
 
 <?php $hasInsightsFeature = Tenant::id() !== null && (Session::isSuperAdmin() || Tenant::canUse('ai_insights')); ?>
 <?php if ($hasInsightsFeature): ?>
-<!-- AI Business Insights -->
+<!-- Automated Business Insights -->
 <div class="row g-3 mt-3">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h6><i class="fas fa-brain me-2" style="color:#f6c23e;"></i>AI Business Insights</h6>
+                <h6><i class="fas fa-brain me-2 dashboard-insights-title-icon"></i>Automated Business Insights</h6>
                 <a href="<?= APP_URL ?>/index.php?page=insights" class="btn btn-sm btn-outline-info">View All</a>
             </div>
             <div class="card-body" id="insightsContainer">
@@ -234,36 +264,30 @@ document.addEventListener('DOMContentLoaded', function() {
         col.className = 'col-md-4';
 
         const card = document.createElement('div');
-        card.className = 'p-2 rounded';
-        card.style.background = 'rgba(255,255,255,0.03)';
-        card.style.border = '1px solid rgba(255,255,255,0.05)';
+        card.className = 'p-2 rounded dashboard-inline-insight-card';
 
         const header = document.createElement('div');
         header.className = 'd-flex align-items-center mb-1';
 
         const icon = document.createElement('span');
-        icon.style.fontSize = '1.2rem';
+        icon.className = 'dashboard-inline-insight-icon';
         icon.textContent = insight.icon || '';
         header.appendChild(icon);
 
         const title = document.createElement('strong');
-        title.className = 'ms-2 text-' + getSafeColor(insight.color);
-        title.style.fontSize = '0.85rem';
+        title.className = 'ms-2 text-' + getSafeColor(insight.color) + ' dashboard-inline-insight-title';
         title.textContent = insight.title || '';
         header.appendChild(title);
 
         if (insight.priority === 'high') {
             const badge = document.createElement('span');
-            badge.className = 'badge bg-danger ms-1';
-            badge.style.fontSize = '0.6rem';
+            badge.className = 'badge bg-danger ms-1 dashboard-inline-insight-badge';
             badge.textContent = 'URGENT';
             header.appendChild(badge);
         }
 
         const message = document.createElement('p');
-        message.style.fontSize = '0.8rem';
-        message.style.color = '#b7b9cc';
-        message.style.marginBottom = '0.25rem';
+        message.className = 'dashboard-inline-insight-message';
         message.textContent = insight.message || '';
 
         const footer = document.createElement('div');
@@ -276,8 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (isSafeInsightAction(insight.action)) {
             const link = document.createElement('a');
-            link.className = 'text-muted';
-            link.style.fontSize = '0.75rem';
+            link.className = 'text-muted dashboard-inline-insight-link';
             link.href = insight.action.trim();
             link.setAttribute('aria-label', 'View insight details');
 

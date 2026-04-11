@@ -1,25 +1,26 @@
 <?php
 /**
  * Platform Controller (Super Admin Dashboard)
- * 
+ *
  * Manages all tenants, subscriptions, MRR, and system health.
  * Strictly requires super admin privileges.
  */
 class PlatformController extends Controller {
-
     protected $allowedActions = [
-        'dashboard', 
+        'dashboard',
         'tenants', 'suspend_tenant', 'reactivate_tenant', 'delete_tenant', 'impersonate_tenant',
-        'subscriptions', 
+        'subscriptions',
         'payments',
         'promos',
         'referrals',
-        'revenue', 
+        'revenue',
         'system',
         'stop_impersonation'
     ];
+    private PlatformDashboardService $platformDashboardService;
 
     public function __construct() {
+        $this->platformDashboardService = new PlatformDashboardService();
         // SECURITY FIX (SES-1): stop_impersonation must work when the active
         // session is a tenant user (because we're impersonating). All other
         // actions still require super-admin privileges.
@@ -41,150 +42,7 @@ class PlatformController extends Controller {
      * Platform Owner Dashboard
      */
     public function dashboard() {
-        $db = Database::getInstance();
-
-        // 1. Tenant Metrics
-        $totalTenants = $db->query("SELECT COUNT(*) FROM companies")->fetchColumn();
-        $activeTenants = $db->query("SELECT COUNT(*) FROM companies WHERE subscription_status = 'active'")->fetchColumn();
-        $trialTenants = $db->query("SELECT COUNT(*) FROM companies WHERE subscription_status = 'trial'")->fetchColumn();
-        $suspendedTenants = $db->query("SELECT COUNT(*) FROM companies WHERE subscription_status = 'suspended'")->fetchColumn();
-
-        // 2. User & System Metrics
-        $totalUsers = $db->query("SELECT COUNT(*) FROM users")->fetchColumn();
-        $totalSales = $db->query("SELECT SUM(grand_total) FROM sales")->fetchColumn();
-        
-        // 3. MRR Calculation
-        $mrr = $db->query("
-            SELECT COALESCE(SUM(p.price), 0) 
-            FROM companies c
-            JOIN saas_plans p ON c.saas_plan_id = p.id
-            WHERE c.subscription_status = 'active'
-        ")->fetchColumn();
-
-        // 4. Queue Status
-        // Handle gracefully if jobs table missing
-        $pendingJobs = 0;
-        $failedJobs = 0;
-        try {
-            $stats = $db->query("SELECT status, COUNT(*) as cnt FROM jobs GROUP BY status")->fetchAll(\PDO::FETCH_KEY_PAIR);
-            $pendingJobs = $stats['pending'] ?? 0;
-            $failedJobs = $stats['failed'] ?? 0;
-        } catch (\Exception $e) {}
-
-        // 5. Build Health Context
-        $sysHealth = [
-            'latency' => 'N/A',
-            'redis'   => extension_loaded('redis') ? 'Available' : 'Missing',
-            'disk'    => round(@disk_free_space(BASE_PATH) / 1073741824, 2) . ' GB Free',
-            'mem'     => round(memory_get_usage(true) / 1048576, 2) . ' MB'
-        ];
-        
-        $start = microtime(true);
-        $db->query("SELECT 1")->fetch();
-        $sysHealth['latency'] = round((microtime(true) - $start) * 1000, 2) . ' ms';
-
-        // SaaS Billing Metrics (fault tolerant if migration not yet applied)
-        $activeSubscriptions = 0;
-        $totalRevenue = 0;
-        $planWiseSubscribers = [];
-        $promoUsageStats = ['total_codes' => 0, 'total_usage' => 0, 'total_discount' => 0];
-        $referralStats = ['pending' => 0, 'successful' => 0, 'rewarded' => 0];
-        $recentPayments = [];
-        $recentFailedPayments = [];
-        $recentLifecycle = [];
-
-        try {
-            $activeSubscriptions = (int)$db->query(
-                "SELECT COUNT(*) FROM tenant_subscriptions WHERE status = 'active'"
-            )->fetchColumn();
-
-            $totalRevenue = (float)$db->query(
-                "SELECT COALESCE(SUM(amount), 0) FROM saas_payment_transactions WHERE status = 'captured'"
-            )->fetchColumn();
-
-            $planWiseSubscribers = $db->query(
-                "SELECT sp.name, COUNT(*) AS subscribers
-                 FROM tenant_subscriptions ts
-                 JOIN saas_plans sp ON sp.id = ts.plan_id
-                 WHERE ts.status = 'active'
-                 GROUP BY sp.id, sp.name
-                 ORDER BY subscribers DESC"
-            )->fetchAll();
-
-            $promoUsageStats = $db->query(
-                "SELECT
-                    (SELECT COUNT(*) FROM promo_codes) AS total_codes,
-                    (SELECT COUNT(*) FROM promo_code_usages) AS total_usage,
-                    (SELECT COALESCE(SUM(discount_amount), 0) FROM promo_code_usages) AS total_discount"
-            )->fetch() ?: $promoUsageStats;
-
-            $referralRows = $db->query(
-                "SELECT referral_status, COUNT(*) AS cnt
-                 FROM referrals
-                 GROUP BY referral_status"
-            )->fetchAll();
-            foreach ($referralRows as $row) {
-                $status = $row['referral_status'] ?? '';
-                if (isset($referralStats[$status])) {
-                    $referralStats[$status] = (int)$row['cnt'];
-                }
-            }
-
-            $recentPayments = $db->query(
-                "SELECT pt.*, c.name AS company_name, sp.name AS plan_name
-                 FROM saas_payment_transactions pt
-                 LEFT JOIN tenant_subscriptions ts ON ts.id = pt.subscription_id
-                 LEFT JOIN companies c ON c.id = pt.company_id
-                 LEFT JOIN saas_plans sp ON sp.id = ts.plan_id
-                 ORDER BY pt.id DESC LIMIT 10"
-            )->fetchAll();
-
-            $recentFailedPayments = $db->query(
-                "SELECT pt.*, c.name AS company_name
-                 FROM saas_payment_transactions pt
-                 LEFT JOIN companies c ON c.id = pt.company_id
-                 WHERE pt.status IN ('failed', 'error')
-                 ORDER BY pt.id DESC LIMIT 10"
-            )->fetchAll();
-
-            $recentLifecycle = $db->query(
-                "SELECT ts.id, ts.company_id, ts.plan_id, ts.status, ts.change_type, ts.updated_at,
-                        c.name AS company_name, sp.name AS plan_name
-                 FROM tenant_subscriptions ts
-                 JOIN companies c ON c.id = ts.company_id
-                 JOIN saas_plans sp ON sp.id = ts.plan_id
-                 WHERE ts.status IN ('active', 'cancelled', 'halted', 'completed', 'upgraded')
-                 ORDER BY ts.updated_at DESC LIMIT 12"
-            )->fetchAll();
-        } catch (\Throwable $e) {
-            Logger::warning('Platform billing dashboard metrics unavailable', ['error' => $e->getMessage()]);
-        }
-
-        $this->view('platform.dashboard', [
-            'pageTitle' => 'Platform Dashboard',
-            'metrics' => [
-                'totalTenants' => $totalTenants,
-                'activeTenants' => $activeTenants,
-                'trialTenants' => $trialTenants,
-                'suspendedTenants' => $suspendedTenants,
-                'totalUsers' => $totalUsers,
-                'mrr' => $mrr,
-                'totalSales' => $totalSales,
-                'activeSubscriptions' => $activeSubscriptions,
-                'totalRevenue' => $totalRevenue,
-            ],
-            'queue' => [
-                'pending' => $pendingJobs,
-                'failed'  => $failedJobs
-            ],
-            'sysHealth' => $sysHealth,
-            'planWiseSubscribers' => $planWiseSubscribers,
-            'promoUsageStats' => $promoUsageStats,
-            'referralStats' => $referralStats,
-            'recentPayments' => $recentPayments,
-            'recentFailedPayments' => $recentFailedPayments,
-            'recentLifecycle' => $recentLifecycle,
-        ]);
+        $this->view('platform.dashboard', $this->platformDashboardService->buildViewData());
     }
 
     /**
@@ -251,7 +109,7 @@ class PlatformController extends Controller {
         if ($this->demoGuard()) return;
         $id = $this->post('id');
         // Extreme operation — requires cascade delete natively in DB or raw deletes
-        // We will just do a hard delete if foreign keys allow, or soft delete 
+        // We will just do a hard delete if foreign keys allow, or soft delete
         // For SaaS, usually we just flag as 'deleted' but let's fire DB delete.
         if ($id) {
             try {
@@ -307,7 +165,7 @@ class PlatformController extends Controller {
 
     /**
      * Stop impersonation and restore the original super-admin session.
-     * 
+     *
      * SECURITY FIX (SES-1): This action is exempt from requireSuperAdmin()
      * because the active session is that of a tenant user. Authenticity is
      * verified by checking that _impersonating_from exists in the session
@@ -399,7 +257,7 @@ class PlatformController extends Controller {
 
         // Since it's management, maybe they want to see all companies and their sub status too
         // But requested: show active, expired, trial users...
-        
+
         $this->view('platform.subscriptions', [
             'pageTitle' => 'Subscription Management',
             'subscriptions' => $subs
@@ -465,7 +323,7 @@ class PlatformController extends Controller {
             WHERE c.subscription_status = 'active'
         ")->fetchColumn();
         $arr = $mrr * 12;
-        
+
         $this->view('platform.revenue', [
             'pageTitle' => 'Revenue Analytics',
             'history' => $history,

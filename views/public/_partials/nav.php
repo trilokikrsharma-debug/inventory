@@ -23,10 +23,10 @@ $_logoUrl = $logoUrl ?? rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
     </div>
 </nav>
 <div class="mob-menu" id="mobMenu">
-    <a href="<?= APP_URL ?>/#features" onclick="clM()">Features</a>
-    <a href="<?= APP_URL ?>/pricing" onclick="clM()">Pricing</a>
-    <a href="<?= APP_URL ?>/#about" onclick="clM()">About</a>
-    <a href="<?= APP_URL ?>/blog" onclick="clM()">Guides</a>
+    <a href="<?= APP_URL ?>/#features">Features</a>
+    <a href="<?= APP_URL ?>/pricing">Pricing</a>
+    <a href="<?= APP_URL ?>/#about">About</a>
+    <a href="<?= APP_URL ?>/blog">Guides</a>
     <a href="<?= APP_URL ?>/login">Sign In</a>
-    <a href="<?= APP_URL ?>/signup" style="color:var(--pl);font-weight:700">Start Free Trial →</a>
+    <a href="<?= APP_URL ?>/signup" class="mob-cta-link">Start Free Trial →</a>
 </div>

@@ -15,7 +15,7 @@ $featureLabels = [
     'backup_restore' => 'Backup',
     'backup' => 'Backup',
     'bulk_import' => 'Bulk Import',
-    'ai_insights' => 'AI Insights',
+    'ai_insights' => 'Automated Insights',
     'custom_fields' => 'Custom Fields',
     'multi_warehouse' => 'Multi Warehouse',
     'api' => 'API Access',
@@ -118,7 +118,7 @@ $planFeatureSummary = static function (array $plan) use ($featureLabels): string
             </div>
         </div>
         <div class="mt-3 small" id="promo_message"></div>
-        <div class="mt-2" id="promo_summary" style="display:none;">
+        <div class="mt-2 is-hidden" id="promo_summary">
             <div>Original: <strong id="summary_original">Rs 0.00</strong></div>
             <div>Discount: <strong class="text-success" id="summary_discount">Rs 0.00</strong></div>
             <div>Final Payable: <strong class="text-primary" id="summary_final">Rs 0.00</strong></div>
@@ -219,10 +219,10 @@ function setPromoMessage(text, type = 'muted') {
 function updateSummary(data) {
     const wrap = document.getElementById('promo_summary');
     if (!data) {
-        wrap.style.display = 'none';
+        wrap.classList.add('is-hidden');
         return;
     }
-    wrap.style.display = 'block';
+    wrap.classList.remove('is-hidden');
     document.getElementById('summary_original').textContent = 'Rs ' + Number(data.base_amount || 0).toFixed(2);
     document.getElementById('summary_discount').textContent = 'Rs ' + Number(data.discount_amount || 0).toFixed(2);
     document.getElementById('summary_final').textContent = 'Rs ' + Number(data.final_amount || 0).toFixed(2);

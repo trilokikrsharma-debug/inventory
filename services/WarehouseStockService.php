@@ -52,7 +52,7 @@ class WarehouseStockService {
     public static function totalQuantity(array $allocations): float {
         $total = 0.0;
         foreach ($allocations as $allocation) {
-            $total += (float)($allocation['quantity'] ?? 0);
+            $total += (float)$allocation['quantity'];
         }
         return round($total, 3);
     }

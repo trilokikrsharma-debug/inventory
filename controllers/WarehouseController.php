@@ -2,6 +2,7 @@
 
 class WarehouseController extends Controller {
     protected $allowedActions = ['index', 'create', 'edit', 'delete', 'set_default', 'transfer', 'approve_transfer', 'reject_transfer', 'search_products'];
+    private ?WarehouseWorkflowService $warehouseWorkflowService = null;
 
     public function index() {
         $this->guardWarehouseAccess();
@@ -32,7 +33,7 @@ class WarehouseController extends Controller {
         $this->validateCSRF();
         $warehouseModel = new WarehouseModel();
         try {
-            $payload = $this->validatedPayload();
+            $payload = $this->workflowService()->validateWarehousePayload($this->post());
         } catch (\RuntimeException $e) {
             $this->setFlash('error', $e->getMessage());
             $this->redirect('index.php?page=warehouses');
@@ -73,7 +74,7 @@ class WarehouseController extends Controller {
         }
 
         try {
-            $payload = $this->validatedPayload();
+            $payload = $this->workflowService()->validateWarehousePayload($this->post());
         } catch (\RuntimeException $e) {
             $this->setFlash('error', $e->getMessage());
             $this->redirect('index.php?page=warehouses&edit_id=' . $id);
@@ -165,65 +166,8 @@ class WarehouseController extends Controller {
         }
 
         $this->validateCSRF();
-        $warehouseModel = new WarehouseModel();
-        $activeWarehouses = $warehouseModel->allActiveOrdered();
-        if (count($activeWarehouses) < 2) {
-            $this->setFlash('error', 'At least two active warehouses are required for a transfer.');
-            $this->redirect('index.php?page=warehouses');
-            return;
-        }
-
-        $warehouseMap = [];
-        foreach ($activeWarehouses as $warehouse) {
-            $warehouseMap[(int)$warehouse['id']] = $warehouse;
-        }
-
-        $sourceWarehouseId = (int)$this->post('source_warehouse_id', 0);
-        $destinationWarehouseId = (int)$this->post('destination_warehouse_id', 0);
-        if (!isset($warehouseMap[$sourceWarehouseId]) || !isset($warehouseMap[$destinationWarehouseId])) {
-            $this->setFlash('error', 'Please select valid warehouses.');
-            $this->redirect('index.php?page=warehouses');
-            return;
-        }
-
-        if ($sourceWarehouseId === $destinationWarehouseId) {
-            $this->setFlash('error', 'Source and destination warehouses must be different.');
-            $this->redirect('index.php?page=warehouses');
-            return;
-        }
-
-        $transferDate = trim((string)$this->post('transfer_date', date('Y-m-d')));
-        if (!$this->isValidDateYmd($transferDate)) {
-            $this->setFlash('error', 'Invalid transfer date. Use YYYY-MM-DD.');
-            $this->redirect('index.php?page=warehouses');
-            return;
-        }
-
         try {
-            $items = WarehouseStockService::normalizeTransferItems(
-                (array)$this->post('product_id', []),
-                (array)$this->post('quantity', [])
-            );
-        } catch (\RuntimeException $e) {
-            $this->setFlash('error', $e->getMessage());
-            $this->redirect('index.php?page=warehouses');
-            return;
-        }
-
-        if (empty($items)) {
-            $this->setFlash('error', 'Add at least one transfer line.');
-            $this->redirect('index.php?page=warehouses');
-            return;
-        }
-
-        try {
-            $result = $warehouseModel->createTransfer([
-                'source_warehouse_id' => $sourceWarehouseId,
-                'destination_warehouse_id' => $destinationWarehouseId,
-                'transfer_date' => $transferDate,
-                'reference_number' => $this->sanitize((string)$this->post('reference_number', '')) ?: null,
-                'note' => $this->sanitize((string)$this->post('note', '')) ?: null,
-            ], $items, (int)(Session::get('user')['id'] ?? 0));
+            $result = $this->workflowService()->createTransferRequest($this->post(), (int)(Session::get('user')['id'] ?? 0));
         } catch (\RuntimeException $e) {
             $this->setFlash('error', $e->getMessage());
             $this->redirect('index.php?page=warehouses');
@@ -254,10 +198,8 @@ class WarehouseController extends Controller {
 
         $this->validateCSRF();
         $transferId = (int)$this->post('id', 0);
-        $warehouseModel = new WarehouseModel();
-
         try {
-            $result = $warehouseModel->approveTransfer($transferId, (int)(Session::get('user')['id'] ?? 0));
+            $result = $this->workflowService()->approveTransfer($transferId, (int)(Session::get('user')['id'] ?? 0));
             $this->logActivity(
                 'Approved warehouse transfer: ' . $result['transfer_number'],
                 'warehouses',
@@ -285,10 +227,8 @@ class WarehouseController extends Controller {
         $this->validateCSRF();
         $transferId = (int)$this->post('id', 0);
         $reason = trim((string)$this->post('rejection_reason', '')) ?: 'Rejected';
-        $warehouseModel = new WarehouseModel();
-
         try {
-            $result = $warehouseModel->rejectTransfer($transferId, (int)(Session::get('user')['id'] ?? 0), $this->sanitize($reason));
+            $result = $this->workflowService()->rejectTransfer($transferId, (int)(Session::get('user')['id'] ?? 0), $reason);
             $this->logActivity(
                 'Rejected warehouse transfer: ' . $result['transfer_number'],
                 'warehouses',
@@ -351,30 +291,11 @@ class WarehouseController extends Controller {
         }
     }
 
-    private function isValidDateYmd(string $value): bool {
-        return (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) && strtotime($value) !== false;
-    }
-
-    private function validatedPayload(): array {
-        $name = trim((string)$this->post('name', ''));
-        $code = strtoupper(trim((string)$this->post('code', '')));
-        $location = trim((string)$this->post('location', ''));
-        $description = trim((string)$this->post('description', ''));
-
-        if ($name === '') {
-            throw new \RuntimeException('Warehouse name is required.');
-        }
-        if ($code !== '' && !preg_match('/^[A-Z0-9_-]{2,40}$/', $code)) {
-            throw new \RuntimeException('Warehouse code must be 2 to 40 characters using letters, numbers, dash or underscore.');
+    private function workflowService(): WarehouseWorkflowService {
+        if ($this->warehouseWorkflowService === null) {
+            $this->warehouseWorkflowService = new WarehouseWorkflowService();
         }
 
-        return [
-            'name' => $this->sanitize($name),
-            'code' => $code !== '' ? $this->sanitize($code) : null,
-            'location' => $location !== '' ? $this->sanitize($location) : null,
-            'description' => $description !== '' ? $this->sanitize($description) : null,
-            'is_default' => $this->post('is_default') ? 1 : 0,
-            'is_active' => $this->post('is_active', 1) ? 1 : 0,
-        ];
+        return $this->warehouseWorkflowService;
     }
 }

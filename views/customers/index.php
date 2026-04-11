@@ -18,7 +18,7 @@
         </form>
     </div>
     <div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0 list-table">
-        <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>City</th><th>Balance</th><th>Actions</th></tr></thead>
+        <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>City</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody>
         <?php if (!empty($customers['data'])): $i = ($customers['page']-1) * $customers['perPage'];
             foreach ($customers['data'] as $c): $i++; ?>
@@ -28,11 +28,19 @@
             <td><?= Helper::escape($c['phone'] ?? '-') ?></td>
             <td><?= Helper::escape($c['city'] ?? '-') ?></td>
             <td class="fw-bold <?= ($c['current_balance'] ?? 0) > 0 ? 'text-danger' : 'text-success' ?>"><?= Helper::formatCurrency($c['current_balance'] ?? 0) ?></td>
+            <td><?= !empty($c['is_active']) ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Archived</span>' ?></td>
             <td><div class="action-btns">
                 <a href="<?= APP_URL ?>/index.php?page=customers&action=view_customer&id=<?= $c['id'] ?>" class="btn btn-sm btn-outline-primary btn-icon"><i class="fas fa-eye"></i></a>
                 <a href="<?= APP_URL ?>/index.php?page=customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-sm btn-outline-secondary btn-icon"><i class="fas fa-edit"></i></a>
                 <?php if (Session::hasPermission('customers.delete')): ?>
-                <form method="POST" action="<?= APP_URL ?>/index.php?page=customers&action=delete" class="d-inline" data-confirm="Delete this customer?">
+                <form method="POST" action="<?= APP_URL ?>/index.php?page=customers&action=<?= !empty($c['is_active']) ? 'archive' : 'restore' ?>" class="d-inline" data-confirm="<?= !empty($c['is_active']) ? 'Archive this customer from new transactions?' : 'Restore this customer for new transactions?' ?>">
+                    <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
+                    <input type="hidden" name="id" value="<?= $c['id'] ?>">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary btn-icon" title="<?= !empty($c['is_active']) ? 'Archive' : 'Restore' ?>">
+                        <i class="fas <?= !empty($c['is_active']) ? 'fa-box-archive' : 'fa-rotate-left' ?>"></i>
+                    </button>
+                </form>
+                <form method="POST" action="<?= APP_URL ?>/index.php?page=customers&action=delete" class="d-inline" data-confirm="Remove this customer? If history exists, the customer will be archived instead.">
                     <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
                     <input type="hidden" name="id" value="<?= $c['id'] ?>">
                     <button type="submit" class="btn btn-sm btn-outline-secondary btn-icon"><i class="fas fa-trash"></i></button>
@@ -40,7 +48,7 @@
                 <?php endif; ?>
             </div></td>
         </tr>
-        <?php endforeach; else: ?><tr><td colspan="6" class="text-center py-5 text-muted"><i class="fas fa-user-friends fa-2x mb-2 opacity-25 d-block"></i>No customers found.</td></tr><?php endif; ?>
+        <?php endforeach; else: ?><tr><td colspan="7" class="text-center py-5 text-muted"><i class="fas fa-user-friends fa-2x mb-2 opacity-25 d-block"></i>No customers found.</td></tr><?php endif; ?>
         </tbody>
     </table></div></div>
     <?php if (($customers['totalPages'] ?? 0) > 1): ?>

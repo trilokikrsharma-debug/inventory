@@ -1,10 +1,10 @@
 <?php
 /**
  * Enhanced Health Check Endpoint — Production Monitoring
- * 
+ *
  * Provides deep system health visibility for load balancers,
  * monitoring tools (Prometheus, Datadog), and ops teams.
- * 
+ *
  * Endpoint: /index.php?page=health
  * Returns: JSON with component-level status
  */
@@ -16,13 +16,21 @@ class HealthController extends Controller {
         $startTime = microtime(true);
         $publicMode = $this->isPublicHealthModeEnabled();
         $isPrivileged = Session::isLoggedIn() && Session::isSuperAdmin();
+        $isLoopback = $this->isLoopbackRequest();
 
-        if (!$publicMode && !$isPrivileged) {
-            $this->requireSuperAdmin();
+        if (!$publicMode && !$isPrivileged && !$isLoopback) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            header('Cache-Control: no-store');
+            echo json_encode([
+                'status' => 'forbidden',
+                'message' => 'Health endpoint is restricted.',
+                'timestamp' => date('c'),
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
             return;
         }
 
-        $payload = $isPrivileged
+        $payload = ($isPrivileged || $isLoopback)
             ? $this->buildDetailedPayload($startTime)
             : $this->buildPublicPayload($startTime);
 
@@ -113,19 +121,28 @@ class HealthController extends Controller {
         return '2.0.0';
     }
 
+    private function isLoopbackRequest(): bool {
+        $remoteAddr = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
+        if ($remoteAddr === '') {
+            return false;
+        }
+
+        return in_array($remoteAddr, ['127.0.0.1', '::1'], true);
+    }
+
     private function checkDatabase(): array {
         try {
             $start = microtime(true);
             $db = Database::getInstance();
             $result = $db->query("SELECT 1 AS ok")->fetch();
             $latency = round((microtime(true) - $start) * 1000, 2);
-            
+
             // Check connection pool info
             $threads = $db->query("SHOW STATUS LIKE 'Threads_connected'")->fetch();
             $maxConn = $db->query("SHOW VARIABLES LIKE 'max_connections'")->fetch();
-            
-            $connUsage = ($threads && $maxConn) 
-                ? round(($threads['Value'] / $maxConn['Value']) * 100, 1) 
+
+            $connUsage = ($threads && $maxConn)
+                ? round(($threads['Value'] / $maxConn['Value']) * 100, 1)
                 : null;
 
             return [
@@ -144,7 +161,7 @@ class HealthController extends Controller {
         try {
             $cacheDir = defined('CACHE_PATH') ? CACHE_PATH : BASE_PATH . '/cache';
             $writable = is_writable($cacheDir);
-            
+
             // Check Redis if available
             $redisStatus = 'not_configured';
             if (extension_loaded('redis') && getenv('REDIS_HOST')) {
@@ -173,7 +190,7 @@ class HealthController extends Controller {
         $path = defined('BASE_PATH') ? BASE_PATH : __DIR__;
         $total = @disk_total_space($path);
         $free = @disk_free_space($path);
-        
+
         if ($total === false || $free === false) {
             return ['status' => 'warning', 'message' => 'Unable to read disk space'];
         }
@@ -193,12 +210,12 @@ class HealthController extends Controller {
         $usage = memory_get_usage(true);
         $peak = memory_get_peak_usage(true);
         $limit = ini_get('memory_limit');
-        
+
         // Parse memory limit to bytes
         $limitBytes = $this->parseBytes($limit);
         $usagePct = $limitBytes > 0 ? round(($usage / $limitBytes) * 100, 1) : null;
         $status = ($usagePct !== null && $usagePct > 80) ? 'warning' : 'ok';
-        
+
         return [
             'status'    => $status,
             'current_mb'=> round($usage / 1048576, 2),
@@ -209,27 +226,30 @@ class HealthController extends Controller {
     }
 
     private function checkUploads(): array {
-        $uploadDir = defined('UPLOAD_PATH') ? UPLOAD_PATH : BASE_PATH . '/uploads';
+        $uploadDir = UPLOAD_PATH;
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0755, true);
+        }
         $writable = is_writable($uploadDir);
-        
+
         return [
             'status'    => $writable ? 'ok' : 'error',
             'writable'  => $writable,
-            'path'      => basename($uploadDir),
+            'path'      => $uploadDir,
         ];
     }
 
     private function checkLogs(): array {
         $logDir = BASE_PATH . '/logs';
         $writable = is_writable($logDir);
-        
+
         // Count log files and total size
         $files = glob($logDir . '/*.{log,json}', GLOB_BRACE);
         $totalSize = 0;
         foreach ($files ?: [] as $f) {
             $totalSize += filesize($f);
         }
-        
+
         return [
             'status'     => $writable ? 'ok' : 'warning',
             'writable'   => $writable,

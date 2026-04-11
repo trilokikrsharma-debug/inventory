@@ -1,4 +1,21 @@
 ﻿<?php $flash = Session::getFlash(); ?>
+<style>
+    .two-factor-disable-box {
+        max-width: 300px;
+        margin: 0 auto;
+    }
+    .two-factor-qr {
+        max-width: 220px;
+    }
+    .two-factor-secret-code {
+        word-break: break-all;
+    }
+    .two-factor-otp-input {
+        letter-spacing: 8px;
+        font-size: 24px;
+        font-weight: bold;
+    }
+</style>
 <div class="container-fluid py-4">
     <div class="row justify-content-center">
         <div class="col-lg-8">
@@ -27,12 +44,12 @@
                             
                             <hr>
                             <h6 class="text-danger mb-3">Disable Two-Factor Authentication</h6>
-                            <form method="POST" action="<?= APP_URL ?>/index.php?page=twoFactor&action=disable" id="disable2faForm">
+                            <form method="POST" action="<?= APP_URL ?>/index.php?page=twoFactor&action=disable" id="disable2faForm" data-confirm="Are you sure? This will make your account less secure.">
                                 <?= CSRF::field() ?>
-                                <div class="mb-3" style="max-width:300px; margin:0 auto;">
+                                <div class="mb-3 two-factor-disable-box">
                                     <input type="password" name="password" class="form-control" placeholder="Enter your password to confirm" required>
                                 </div>
-                                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Are you sure? This will make your account less secure.')">
+                                <button type="submit" class="btn btn-outline-danger">
                                     <i class="fas fa-times-circle me-1"></i> Disable 2FA
                                 </button>
                             </form>
@@ -44,12 +61,12 @@
                                 <h6 class="mb-3">Step 1: Scan QR Code</h6>
                                 <p class="text-muted small">Open your authenticator app (Google Authenticator, Authy, etc.) and scan this QR code:</p>
                                 <div class="mb-3">
-                                    <img src="<?= htmlspecialchars($qrUrl) ?>" alt="2FA QR Code" class="img-fluid border rounded" style="max-width:220px;">
+                                    <img src="<?= htmlspecialchars($qrUrl) ?>" alt="2FA QR Code" class="img-fluid border rounded two-factor-qr">
                                 </div>
                                 <details class="text-start">
                                     <summary class="text-muted small cursor-pointer">Can't scan? Enter manually</summary>
                                     <div class="mt-2 p-2 bg-light rounded">
-                                        <code class="user-select-all" style="word-break:break-all;"><?= htmlspecialchars($secret) ?></code>
+                                        <code class="user-select-all two-factor-secret-code"><?= htmlspecialchars($secret) ?></code>
                                     </div>
                                 </details>
                             </div>
@@ -62,7 +79,7 @@
                                         <input type="text" name="otp_code" class="form-control form-control-lg text-center"
                                                maxlength="6" pattern="[0-9]{6}" placeholder="000000"
                                                autocomplete="one-time-code" inputmode="numeric" required autofocus
-                                               style="letter-spacing:8px; font-size:24px; font-weight:bold;">
+                                               class="form-control form-control-lg text-center two-factor-otp-input">
                                     </div>
                                     <button type="submit" class="btn btn-primary w-100">
                                         <i class="fas fa-shield-alt me-1"></i> Enable Two-Factor Authentication

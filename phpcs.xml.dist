@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<ruleset name="TsalegacyHygiene">
+    <description>Incremental PHPCS gate for repository-wide PHP file hygiene.</description>
+
+    <file>core</file>
+    <file>models</file>
+    <file>controllers</file>
+    <file>services</file>
+    <file>repositories</file>
+    <file>middleware</file>
+    <file>bootstrap</file>
+
+    <exclude-pattern>vendor/*</exclude-pattern>
+    <exclude-pattern>tests/*</exclude-pattern>
+    <exclude-pattern>cache/*</exclude-pattern>
+    <exclude-pattern>logs/*</exclude-pattern>
+
+    <rule ref="Generic.Files.ByteOrderMark"/>
+    <rule ref="Generic.Files.LineEndings">
+        <properties>
+            <property name="eolChar" value="\n"/>
+        </properties>
+    </rule>
+    <rule ref="Squiz.WhiteSpace.SuperfluousWhitespace">
+        <exclude name="Squiz.WhiteSpace.SuperfluousWhitespace.EmptyLines"/>
+    </rule>
+</ruleset>

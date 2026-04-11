@@ -4,6 +4,7 @@ class ReportController extends Controller {
         'index',
         'sales',
         'purchases',
+        'tax_summary',
         'stock',
         'warehouse_transfers',
         'payroll_finance',
@@ -14,6 +15,11 @@ class ReportController extends Controller {
         'export_status',
         'download_export',
     ];
+    private ReportExportService $reportExportService;
+
+    public function __construct() {
+        $this->reportExportService = new ReportExportService();
+    }
 
     public function index() {
         $this->requirePermission('reports.view');
@@ -146,6 +152,28 @@ class ReportController extends Controller {
             'toDate' => $toDate,
             'supplierId' => $supplierId,
             'warehouseId' => $warehouseId,
+        ]);
+    }
+
+    public function tax_summary() {
+        $this->requirePermission('reports.view');
+
+        $fromDate = $this->normalizeDate($this->get('from_date', ''), date('Y-m-01'));
+        $toDate = $this->normalizeDate($this->get('to_date', ''), date('Y-m-d'));
+        [$fromDate, $toDate] = $this->normalizeDateRange($fromDate, $toDate);
+        $settings = (new SettingsModel())->getSettings();
+
+        $report = Cache::remember(
+            $this->reportCacheKey('tax_summary', ['from' => $fromDate, 'to' => $toDate]),
+            $this->reportCacheTtl(),
+            fn() => (new TaxReportService())->buildReport($fromDate, $toDate, $settings)
+        );
+
+        $this->view('reports.tax_summary', [
+            'pageTitle' => 'GST / Tax Summary',
+            'report' => $report,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
         ]);
     }
 
@@ -355,7 +383,11 @@ class ReportController extends Controller {
 
         try {
             $jobId = JobDispatcher::dispatch('reports', 'GenerateReportExport', $payload, 4, 2);
-            Cache::set($this->exportResultKey($jobId), ['status' => 'queued'], defined('CACHE_TTL_EXPORT_STATUS') ? CACHE_TTL_EXPORT_STATUS : 86400);
+            $this->reportExportService->markQueued(
+                $companyId,
+                $jobId,
+                defined('CACHE_TTL_EXPORT_STATUS') ? CACHE_TTL_EXPORT_STATUS : 86400
+            );
 
             if ($this->isAjax()) {
                 $this->json(['success' => true, 'job_id' => $jobId, 'message' => 'Export queued successfully.']);
@@ -401,10 +433,10 @@ class ReportController extends Controller {
             return;
         }
 
-        $result = Cache::get($this->exportResultKey($jobId));
+        $result = $this->reportExportService->fetchJobResult($companyId, $jobId);
         $downloadUrl = null;
         if ($job['status'] === 'completed' && is_array($result) && !empty($result['token'])) {
-            $downloadUrl = APP_URL . '/index.php?page=reports&action=download_export&token=' . urlencode((string)$result['token']);
+            $downloadUrl = $this->reportExportService->buildDownloadUrl((string)$result['token']);
         }
 
         $this->json([
@@ -427,29 +459,16 @@ class ReportController extends Controller {
             return;
         }
 
-        $tokenPayload = Cache::get($this->exportTokenKey($token));
-        if (!is_array($tokenPayload) || empty($tokenPayload['path'])) {
-            $this->setFlash('error', 'Export file not found or expired.');
-            $this->redirect('index.php?page=reports');
-            return;
-        }
-
         $companyId = Tenant::require();
-        $allowedRoot = realpath(BASE_PATH . '/uploads/exports/company_' . $companyId);
-        $filePath = realpath((string)$tokenPayload['path']);
-
-        if (
-            !$allowedRoot ||
-            !$filePath ||
-            !is_file($filePath) ||
-            !str_starts_with($filePath, $allowedRoot . DIRECTORY_SEPARATOR)
-        ) {
+        $download = $this->reportExportService->resolveDownloadPayload($companyId, $token);
+        if ($download === null) {
             $this->setFlash('error', 'Export file is unavailable.');
             $this->redirect('index.php?page=reports');
             return;
         }
 
-        $downloadName = basename((string)($tokenPayload['name'] ?? basename($filePath)));
+        $filePath = $download['path'];
+        $downloadName = $download['name'];
         header('Content-Type: text/csv; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $downloadName . '"');
         header('Content-Length: ' . filesize($filePath));
@@ -475,23 +494,15 @@ class ReportController extends Controller {
         return 'c' . (Tenant::id() ?? 0) . '_report_' . $name . '_' . md5(json_encode($filters));
     }
 
-    private function exportResultKey(int $jobId): string {
-        return 'c' . (Tenant::id() ?? 0) . '_report_export_' . $jobId;
-    }
-
-    private function exportTokenKey(string $token): string {
-        return 'c' . (Tenant::id() ?? 0) . '_report_export_token_' . $token;
-    }
-
     private function normalizeReportType(string $type): ?string {
         $type = strtolower(trim($type));
-        $allowed = ['sales', 'purchases', 'stock', 'warehouse_transfers', 'profit', 'customer_dues', 'supplier_dues', 'payroll_finance'];
+        $allowed = ['sales', 'purchases', 'tax_summary', 'stock', 'warehouse_transfers', 'profit', 'customer_dues', 'supplier_dues', 'payroll_finance'];
         return in_array($type, $allowed, true) ? $type : null;
     }
 
     private function collectExportFilters(string $reportType): array {
         $filters = [];
-        if (in_array($reportType, ['sales', 'purchases', 'profit'], true)) {
+        if (in_array($reportType, ['sales', 'purchases', 'tax_summary', 'profit'], true)) {
             $fromDate = $this->normalizeDate((string)$this->post('from_date', $this->get('from_date', '')), date('Y-m-01'));
             $toDate = $this->normalizeDate((string)$this->post('to_date', $this->get('to_date', '')), date('Y-m-d'));
             [$fromDate, $toDate] = $this->normalizeDateRange($fromDate, $toDate);

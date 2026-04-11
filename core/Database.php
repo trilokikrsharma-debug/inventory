@@ -1,10 +1,10 @@
 <?php
 /**
  * Database Class - PDO Wrapper
- * 
+ *
  * Provides a singleton database connection using PDO
  * with prepared statement support for security.
- * 
+ *
  * Includes connection timeout and single-retry for transient failures.
  */
 class Database {
@@ -14,7 +14,7 @@ class Database {
 
     /**
      * Private constructor - Singleton pattern
-     * 
+     *
      * Adds connection timeout (5s) and retry-once on transient failure.
      */
     private function __construct() {
@@ -26,7 +26,7 @@ class Database {
      */
     private function connect(int $maxRetries = 2): void {
         $config = require CONFIG_PATH . '/database.php';
-        
+
         $dsn = sprintf(
             'mysql:host=%s;port=%d;dbname=%s;charset=%s',
             $config['host'],

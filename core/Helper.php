@@ -1,7 +1,7 @@
-﻿<?php
+<?php
 /**
  * Helper Functions
- * 
+ *
  * Collection of useful utility functions used throughout the application.
  */
 class Helper {
@@ -167,7 +167,7 @@ class Helper {
         // 1. Strict MIME validation via finfo
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $realMime = $finfo->file($file['tmp_name']);
-        
+
         if (!empty($allowedTypes) && !in_array($realMime, $allowedTypes, true)) {
             self::securityLog('UPLOAD_REJECTED', 'Invalid MIME found: ' . $realMime);
             return ['success' => false, 'message' => 'Invalid file type. Found: ' . $realMime];
@@ -175,9 +175,9 @@ class Helper {
 
         // 2. Strict Name & Extension Check (Smart block for executable patterns)
         $safeName = basename($file['name']); // Enforce basename sanitization natively
-        
+
         $blockedExts = ['php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'php8', 'phar', 'cgi', 'pl', 'exe', 'sh', 'bat', 'js', 'html', 'htm', 'asp', 'aspx', 'jsp'];
-        
+
         // Smart multi-dot filename detection: block '.php.*' patterns but allow normal dots (e.g., 'version1.2.jpg')
         $dangerousPattern = '/\.(' . implode('|', $blockedExts) . ')(?:\.|$)/i';
         if (preg_match($dangerousPattern, $safeName)) {
@@ -195,7 +195,7 @@ class Helper {
         $tenantId = Tenant::id();
         $tenantPrefix = $tenantId ? 'tenant_' . (int)$tenantId . '/' : 'system/';
         $directory = preg_replace('/[^a-zA-Z0-9_-]/', '', $directory); // Prevent traversal
-        
+
         $targetDir = UPLOAD_PATH . '/' . $tenantPrefix . $directory;
 
         if (!is_dir($targetDir)) {
@@ -246,42 +246,100 @@ class Helper {
     }
 
     /**
+     * Resolve a stored upload reference like "uploads/tenant_1/logo/file.png"
+     * to an absolute filesystem path, with fallback to the legacy public root.
+     */
+    public static function resolveUploadedPath(?string $storedPath): ?string {
+        $relativePath = trim((string)$storedPath);
+        if ($relativePath === '') {
+            return null;
+        }
+
+        $relativePath = ltrim(str_replace('\\', '/', $relativePath), '/');
+        if (!str_starts_with($relativePath, 'uploads/')) {
+            return null;
+        }
+
+        $relativeSuffix = substr($relativePath, strlen('uploads/'));
+        if ($relativeSuffix === '' || str_contains($relativeSuffix, '..')) {
+            return null;
+        }
+
+        $candidates = [
+            rtrim(UPLOAD_PATH, '/\\') . '/' . $relativeSuffix,
+            rtrim(LEGACY_UPLOAD_PATH, '/\\') . '/' . $relativeSuffix,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Convert an uploaded image reference into a data URI for safe rendering
+     * even when uploads are stored outside the public web root.
+     */
+    public static function uploadedImageSrc(?string $storedPath): string {
+        $absolutePath = self::resolveUploadedPath($storedPath);
+        if ($absolutePath === null) {
+            return '';
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = (string)$finfo->file($absolutePath);
+        if (!in_array($mime, ALLOWED_IMAGE_TYPES, true)) {
+            return '';
+        }
+
+        $data = @file_get_contents($absolutePath);
+        if ($data === false) {
+            return '';
+        }
+
+        return 'data:' . $mime . ';base64,' . base64_encode($data);
+    }
+
+    /**
      * Generate pagination HTML
      */
     public static function pagination($currentPage, $totalPages, $baseUrl) {
         if ($totalPages <= 1) return '';
-        
+
         $html = '<nav aria-label="Page navigation"><ul class="pagination justify-content-center mb-0">';
-        
+
         // Previous
         $prevDisabled = ($currentPage <= 1) ? 'disabled' : '';
         $html .= '<li class="page-item ' . $prevDisabled . '"><a class="page-link" href="' . $baseUrl . '&pg=' . ($currentPage - 1) . '">&laquo;</a></li>';
-        
+
         // Page numbers
         $start = max(1, $currentPage - 2);
         $end = min($totalPages, $currentPage + 2);
-        
+
         if ($start > 1) {
             $html .= '<li class="page-item"><a class="page-link" href="' . $baseUrl . '&pg=1">1</a></li>';
             if ($start > 2) $html .= '<li class="page-item disabled"><span class="page-link">...</span></li>';
         }
-        
+
         for ($i = $start; $i <= $end; $i++) {
             $active = ($i == $currentPage) ? 'active' : '';
             $html .= '<li class="page-item ' . $active . '"><a class="page-link" href="' . $baseUrl . '&pg=' . $i . '">' . $i . '</a></li>';
         }
-        
+
         if ($end < $totalPages) {
             if ($end < $totalPages - 1) $html .= '<li class="page-item disabled"><span class="page-link">...</span></li>';
             $html .= '<li class="page-item"><a class="page-link" href="' . $baseUrl . '&pg=' . $totalPages . '">' . $totalPages . '</a></li>';
         }
-        
+
         // Next
         $nextDisabled = ($currentPage >= $totalPages) ? 'disabled' : '';
         $html .= '<li class="page-item ' . $nextDisabled . '"><a class="page-link" href="' . $baseUrl . '&pg=' . ($currentPage + 1) . '">&raquo;</a></li>';
-        
+
         $html .= '</ul></nav>';
-        
+
         return $html;
     }
 
@@ -378,4 +436,3 @@ class Helper {
 function e($value) {
     return Helper::escape($value);
 }
-

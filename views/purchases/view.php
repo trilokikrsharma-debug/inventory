@@ -11,9 +11,15 @@ $isGstEnabled = !isset($company['enable_gst']) || !empty($company['enable_gst'])
         <a href="<?= APP_URL ?>/index.php?page=purchases&action=edit&id=<?= $purchase['id'] ?>" class="btn btn-outline-warning btn-sm"><i class="fas fa-edit me-1"></i>Edit</a>
         <a href="<?= APP_URL ?>/index.php?page=invoice&type=purchase&id=<?= $purchase['id'] ?>" target="_blank" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-invoice me-1"></i>Purchase Bill</a>
         <a href="<?= APP_URL ?>/index.php?page=invoice&action=download&type=purchase&id=<?= $purchase['id'] ?>" class="btn btn-outline-success btn-sm"><i class="fas fa-download me-1"></i>Download PDF</a>
-        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i>Print</button>
+        <button type="button" id="printPurchaseBtn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print me-1"></i>Print</button>
     </div>
 </div>
+
+<script nonce="<?= $cspNonce ?? '' ?>">
+document.getElementById('printPurchaseBtn')?.addEventListener('click', function () {
+    window.print();
+});
+</script>
 <div class="row g-3">
     <div class="col-lg-8">
         <div class="card detail-card">

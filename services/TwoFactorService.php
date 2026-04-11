@@ -1,12 +1,12 @@
 <?php
 /**
  * Two-Factor Authentication Service
- * 
+ *
  * TOTP-based 2FA compatible with Google Authenticator, Authy, etc.
  * Pure PHP implementation — no external dependencies required.
- * 
+ *
  * Uses RFC 6238 (TOTP) and RFC 4226 (HOTP) algorithms.
- * 
+ *
  * Usage:
  *   $secret = TwoFactorService::generateSecret();
  *   $qrUrl  = TwoFactorService::getQrCodeUrl($secret, 'user@email.com');
@@ -34,7 +34,7 @@ class TwoFactorService {
 
     /**
      * Generate recovery backup codes.
-     * 
+     *
      * @return array{plain: string[], hashed: string[]}
      */
     public static function generateRecoveryCodes(): array {
@@ -79,7 +79,7 @@ class TwoFactorService {
 
     /**
      * Verify a recovery code and mark it as used.
-     * 
+     *
      * @param int    $userId  User ID
      * @param string $code    Recovery code (e.g., "A1B2-C3D4")
      * @return bool

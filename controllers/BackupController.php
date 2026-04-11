@@ -1,7 +1,7 @@
 <?php
 /**
  * Backup & Restore Controller — Multi-Tenant Safe
- * 
+ *
  * SECURITY ARCHITECTURE:
  *  - NON-super-admin users can ONLY export their own company's data
  *    via tenant-filtered CSV/SQL export (per-company logical backup).
@@ -11,19 +11,20 @@
  *    from overwriting the entire shared database).
  *  - Backup files are stored in per-company subdirectories to prevent
  *    cross-tenant file access.
- * 
+ *
  * MEMORY SAFETY:
  *  - All exports use streaming writes (chunked queries + fwrite)
  *  - No full-table load into memory
- * 
+ *
  * @version 2.0 — Tenant-safe rewrite
  */
 class BackupController extends Controller {
     private const MAX_RESTORE_FILE_BYTES = 52428800;
 
     protected $allowedActions = ['index', 'create', 'download', 'delete', 'restore'];
-
     private string $backupDir;
+    private BackupRestoreService $backupRestoreService;
+    private ?BackupManagementService $backupManagementService = null;
 
     /**
      * Tables that contain per-tenant data (have company_id column).
@@ -39,16 +40,9 @@ class BackupController extends Controller {
         'users', 'company_settings',
     ];
 
-    /**
-     * System-level tables that should NOT be included in tenant exports.
-     * These are only exported in super-admin full backups.
-     */
-    private static $systemOnlyTables = [
-        'companies', 'roles', 'permissions', 'role_permissions', 'migrations',
-    ];
-
     public function __construct() {
         $this->backupDir = BackupService::resolveBackupRoot();
+        $this->backupRestoreService = new BackupRestoreService();
         BackupService::ensureDir($this->backupDir);
         BackupService::ensureDir($this->getFullBackupDir());
     }
@@ -87,7 +81,6 @@ class BackupController extends Controller {
     public function create() {
         $this->requireFeature('backup_restore');
         $this->requirePermission('backup.manage');
-
         if (!$this->isPost()) {
             $this->redirect('index.php?page=backup');
             return;
@@ -120,7 +113,6 @@ class BackupController extends Controller {
             $this->redirect('index.php?page=backup');
             return;
         }
-
         $currentUser = Session::get('user') ?? [];
         $queuePayload = [
             'company_id' => $companyId,
@@ -157,7 +149,6 @@ class BackupController extends Controller {
                 BackupService::createTenantBackup($pdo, $companyId, (string)(Tenant::company()['name'] ?? 'Unknown'), $filepath);
                 $displayName = basename($filepath);
             }
-
             $this->logActivity('Created backup: ' . $displayName, 'backup', null, $backupType);
             $this->setFlash('success', 'Backup created successfully! File: ' . $displayName);
 
@@ -206,7 +197,6 @@ class BackupController extends Controller {
             $this->redirect('index.php?page=backup');
             return;
         }
-
         // Force download
         header('Content-Description: File Transfer');
         header('Content-Type: application/octet-stream');
@@ -229,7 +219,6 @@ class BackupController extends Controller {
     public function delete() {
         $this->requireFeature('backup_restore');
         $this->requirePermission('backup.manage');
-
         if (!$this->isPost()) {
             $this->redirect('index.php?page=backup');
             return;
@@ -265,7 +254,6 @@ class BackupController extends Controller {
             Helper::securityLog('BACKUP_DELETE_FAILED', 'unlink() failed for: ' . $filepath);
             $this->setFlash('error', 'Failed to delete backup file.');
         }
-
         $this->redirect('index.php?page=backup');
     }
 
@@ -276,7 +264,6 @@ class BackupController extends Controller {
     public function restore() {
         $this->requireFeature('backup_restore');
         $this->requirePermission('backup.manage');
-
         // SECURITY: Restore is super-admin ONLY — it affects all tenants
         $this->requireSuperAdmin();
 
@@ -328,7 +315,6 @@ class BackupController extends Controller {
                 if (empty($_FILES['backup_file']['tmp_name']) || $_FILES['backup_file']['error'] !== UPLOAD_ERR_OK) {
                     throw new Exception("Please upload a valid SQL backup file.");
                 }
-
                 $uploadedFile = $_FILES['backup_file'];
                 $ext = strtolower(pathinfo($uploadedFile['name'], PATHINFO_EXTENSION));
 
@@ -384,7 +370,6 @@ class BackupController extends Controller {
         } finally {
             $this->releaseRestoreLock($restoreLockHandle);
         }
-
         $this->redirect('index.php?page=backup');
     }
 
@@ -399,90 +384,16 @@ class BackupController extends Controller {
      * SECURITY: Blocks GRANT, REVOKE, DROP DATABASE, CREATE USER,
      * INTO OUTFILE/DUMPFILE, LOAD_FILE, and shell-related commands.
      *
-     * @param  PDO    $pdo        Database connection
      * @param  string $sqlContent Raw SQL content from backup file
-     * @return int    Number of statements executed
+     * @return array<int, string> Number of statements executed
      * @throws \RuntimeException if prohibited SQL is detected
      */
     private function validateRestoreSql(string $sqlContent): array {
-        // Blocklist: patterns that should NEVER appear in a legitimate backup
-        $blocked = [
-            '/\bGRANT\b/i',
-            '/\bREVOKE\b/i',
-            '/\bINTO\s+OUTFILE\b/i',
-            '/\bINTO\s+DUMPFILE\b/i',
-            '/\bLOAD_FILE\s*\(/i',
-            '/\bDROP\s+DATABASE\b/i',
-            '/\bCREATE\s+USER\b/i',
-            '/\bALTER\s+USER\b/i',
-            '/\bSET\s+PASSWORD\b/i',
-            '/\bSYSTEM\s*\(/i',
-            '/\bSHELL\b/i',
-            '/\bDEFINER\s*=/i',
-            '/\bCREATE\s+TRIGGER\b/i',
-            '/\bCREATE\s+PROCEDURE\b/i',
-            '/\bCREATE\s+FUNCTION\b/i',
-            '/\bCREATE\s+EVENT\b/i',
-            '/\bTRUNCATE\s+TABLE\b/i',
-        ];
-
-        foreach ($blocked as $pattern) {
-            if (preg_match($pattern, $sqlContent)) {
-                Helper::securityLog('RESTORE_BLOCKED', 'Prohibited SQL pattern detected: ' . $pattern);
-                throw new \RuntimeException('Restore blocked: SQL file contains prohibited statements.');
-            }
-        }
-
-        $statements = $this->splitSqlStatements($sqlContent);
-        if (empty($statements)) {
-            throw new \RuntimeException('Restore blocked: SQL file does not contain executable statements.');
-        }
-
-        $hasSchemaStatement = false;
-        foreach ($statements as $stmt) {
-            $stmt = trim($stmt);
-            if ($stmt === '') {
-                continue;
-            }
-
-            $upperStmt = strtoupper(ltrim($stmt));
-        $allowedPrefixes = ['CREATE ', 'INSERT ', 'DROP TABLE', 'SET ', 'START ', 'COMMIT', 'ALTER TABLE', 'LOCK ', 'UNLOCK '];
-            $isAllowed = false;
-            foreach ($allowedPrefixes as $prefix) {
-                if (str_starts_with($upperStmt, $prefix)) {
-                    $isAllowed = true;
-                    break;
-                }
-            }
-            if (!$isAllowed) {
-                throw new \RuntimeException('Restore blocked: SQL contains unsupported statement type.');
-            }
-
-            if (str_starts_with($upperStmt, 'CREATE ') || str_starts_with($upperStmt, 'ALTER TABLE') || str_starts_with($upperStmt, 'DROP TABLE')) {
-                $hasSchemaStatement = true;
-            }
-        }
-
-        if (!$hasSchemaStatement) {
-            throw new \RuntimeException('Restore blocked: SQL file does not look like a full schema backup.');
-        }
-
-        return $statements;
+        return $this->backupRestoreService->validateRestoreSql($sqlContent);
     }
 
     private function executeRestoreStatements(\PDO $pdo, array $statements): int {
-        $executed = 0;
-        foreach ($statements as $stmt) {
-            $stmt = trim((string)$stmt);
-            if ($stmt === '') {
-                continue;
-            }
-
-            $pdo->exec($stmt);
-            $executed++;
-        }
-
-        return $executed;
+        return $this->backupRestoreService->executeRestoreStatements($pdo, $statements);
     }
 
     /**
@@ -492,122 +403,8 @@ class BackupController extends Controller {
      * @return array<int, string>
      */
     private function splitSqlStatements(string $sqlContent): array {
-        $statements = [];
-        $buffer = '';
-        $length = strlen($sqlContent);
-        $inSingle = false;
-        $inDouble = false;
-        $inBacktick = false;
-        $inLineComment = false;
-        $inBlockComment = false;
-        $escaped = false;
-
-        for ($i = 0; $i < $length; $i++) {
-            $char = $sqlContent[$i];
-            $next = $i + 1 < $length ? $sqlContent[$i + 1] : '';
-
-            if ($inLineComment) {
-                if ($char === "\n") {
-                    $inLineComment = false;
-                }
-                continue;
-            }
-
-            if ($inBlockComment) {
-                if ($char === '*' && $next === '/') {
-                    $inBlockComment = false;
-                    $i++;
-                }
-                continue;
-            }
-
-            if (!$inSingle && !$inDouble && !$inBacktick) {
-                if ($char === '-' && $next === '-') {
-                    $inLineComment = true;
-                    $i++;
-                    continue;
-                }
-                if ($char === '#') {
-                    $inLineComment = true;
-                    continue;
-                }
-                if ($char === '/' && $next === '*') {
-                    $inBlockComment = true;
-                    $i++;
-                    continue;
-                }
-            }
-
-            if ($inSingle) {
-                $buffer .= $char;
-                if ($escaped) {
-                    $escaped = false;
-                } elseif ($char === '\\') {
-                    $escaped = true;
-                } elseif ($char === "'") {
-                    $inSingle = false;
-                }
-                continue;
-            }
-
-            if ($inDouble) {
-                $buffer .= $char;
-                if ($escaped) {
-                    $escaped = false;
-                } elseif ($char === '\\') {
-                    $escaped = true;
-                } elseif ($char === '"') {
-                    $inDouble = false;
-                }
-                continue;
-            }
-
-            if ($inBacktick) {
-                $buffer .= $char;
-                if ($char === '`') {
-                    $inBacktick = false;
-                }
-                continue;
-            }
-
-            if ($char === "'") {
-                $inSingle = true;
-                $buffer .= $char;
-                continue;
-            }
-
-            if ($char === '"') {
-                $inDouble = true;
-                $buffer .= $char;
-                continue;
-            }
-
-            if ($char === '`') {
-                $inBacktick = true;
-                $buffer .= $char;
-                continue;
-            }
-
-            if ($char === ';') {
-                $statement = trim($buffer);
-                if ($statement !== '') {
-                    $statements[] = $statement;
-                }
-                $buffer = '';
-                continue;
-            }
-
-            $buffer .= $char;
-        }
-
-        $tail = trim($buffer);
-        if ($tail !== '') {
-            $statements[] = $tail;
-        }
-
-        return $statements;
+        return $this->backupRestoreService->splitSqlStatements($sqlContent);
     }
-
     // =========================================================
     // PRIVATE: Tenant-Scoped Backup (Logical Export)
     // =========================================================
@@ -632,7 +429,6 @@ class BackupController extends Controller {
     private function getTenantBackupDir($companyId) {
         return $this->backupDir . '/company_' . (int)$companyId;
     }
-
     /**
      * Get full backup directory (super-admin only).
      */
@@ -702,7 +498,6 @@ class BackupController extends Controller {
                 return $legacyFullPath;
             }
         }
-
         return null;
     }
 
@@ -711,29 +506,8 @@ class BackupController extends Controller {
      * This keeps delete/download behavior aligned with what the UI actually shows.
      */
     private function resolveVisibleBackupPath(string $filename, int $companyId, bool $isSuperAdmin): ?string {
-        $filename = basename($filename);
-        if (!$this->isValidBackupFilename($filename)) {
-            return null;
-        }
-        $backups = $this->getBackupList($companyId, $isSuperAdmin);
-
-        foreach ($backups as $backup) {
-            $candidateName = basename((string)($backup['filename'] ?? ''));
-            $candidatePath = (string)($backup['path'] ?? '');
-
-            if ($candidateName !== $filename || $candidatePath === '') {
-                continue;
-            }
-
-            $candidatePath = $this->assertManagedBackupPath($candidatePath);
-            if ($candidatePath !== null) {
-                return $candidatePath;
-            }
-        }
-
-        return $this->resolveFilePath($filename, $companyId, $isSuperAdmin);
+        return $this->backupManagementService()->resolveVisibleBackupPath($filename, $companyId, $isSuperAdmin);
     }
-
     // =========================================================
     // PRIVATE: Backup Listing (Tenant-Scoped)
     // =========================================================
@@ -744,114 +518,29 @@ class BackupController extends Controller {
      * Super-admins additionally see full platform backups.
      */
     private function getBackupList($companyId, $isSuperAdmin) {
-        $backups = [];
-
-        // Always include tenant-specific backups
-        if ((int)$companyId > 0) {
-            $tenantDir = $this->getTenantBackupDir($companyId);
-            $this->scanBackupDir($tenantDir, $backups, 'tenant');
-        }
-
-        // Super-admin: also include full backups and legacy backups
-        if ($isSuperAdmin) {
-            $this->scanBackupDir($this->getFullBackupDir(), $backups, 'full');
-
-            // Legacy: root-level backup files (from before tenant isolation)
-            $legacyRoot = $this->legacyBackupRoot();
-            if ($legacyRoot !== $this->backupDir) {
-                $legacyFiles = glob($legacyRoot . '/*.sql');
-                if ($legacyFiles) {
-                    foreach ($legacyFiles as $file) {
-                        $backups[] = [
-                            'filename' => basename($file),
-                            'size'     => filesize($file),
-                            'created'  => date('Y-m-d H:i:s', filemtime($file)),
-                            'path'     => $file,
-                            'type'     => 'legacy',
-                        ];
-                    }
-                }
-            }
-
-            if ($this->getLegacyFullBackupDir() !== $this->getFullBackupDir()) {
-                $this->scanBackupDir($this->getLegacyFullBackupDir(), $backups, 'legacy_full');
-            }
-        }
-
-        // Sort newest first
-        usort($backups, function($a, $b) {
-            return strtotime($b['created']) - strtotime($a['created']);
-        });
-
-        return $backups;
+        return $this->backupManagementService()->getBackupList((int)$companyId, (bool)$isSuperAdmin);
     }
 
     /**
      * Scan a directory for .sql files and append to the results array.
      */
     private function scanBackupDir($dir, &$backups, $type) {
-        if (!is_dir($dir)) return;
-
-        $files = glob($dir . '/*.sql');
-        if (!$files) return;
-
-        foreach ($files as $file) {
-            $backups[] = [
-                'filename' => basename($file),
-                'size'     => filesize($file),
-                'created'  => date('Y-m-d H:i:s', filemtime($file)),
-                'path'     => $file,
-                'type'     => $type,
-            ];
-        }
+        return;
     }
 
     /**
      * Resolve full-backup files from current and legacy locations.
      */
     private function resolveFullBackupPath(string $file): ?string {
-        if (!$this->isValidBackupFilename($file)) {
-            return null;
-        }
-
-        $current = $this->getFullBackupDir() . '/' . $file;
-        $current = $this->assertManagedBackupPath($current);
-        if ($current !== null) {
-            return $current;
-        }
-
-        $legacy = $this->getLegacyFullBackupDir() . '/' . $file;
-        $legacy = $this->assertManagedBackupPath($legacy);
-        if ($legacy !== null) {
-            return $legacy;
-        }
-
-        return null;
+        return $this->backupManagementService()->resolveFullBackupPath($file);
     }
 
     private function isValidBackupFilename(string $filename): bool {
-        return (bool)preg_match('/\A[a-zA-Z0-9._-]+\.sql\z/', $filename);
+        return $this->backupManagementService()->isValidBackupFilename($filename);
     }
 
     private function assertManagedBackupPath(string $path): ?string {
-        if ($path === '' || !is_file($path)) {
-            return null;
-        }
-
-        $realPath = realpath($path);
-        if ($realPath === false || strtolower(pathinfo($realPath, PATHINFO_EXTENSION)) !== 'sql') {
-            return null;
-        }
-
-        foreach ($this->allowedBackupRoots() as $root) {
-            $realRoot = realpath($root);
-            if ($realRoot !== false && str_starts_with($realPath, rtrim($realRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR)) {
-                return $realPath;
-            }
-        }
-
-        Helper::securityLog('BACKUP_PATH_BLOCKED', 'Blocked backup path outside allowed roots: ' . $path);
-        return null;
+        return $this->backupManagementService()->assertManagedBackupPath($path);
     }
 
     private function allowedBackupRoots(): array {
@@ -918,71 +607,29 @@ class BackupController extends Controller {
         @flock($handle, LOCK_UN);
         fclose($handle);
     }
-
     // =========================================================
     // PRIVATE: Utility
     // =========================================================
 
     /**
-     * Check if a table has a specific column.
-     * Used to verify company_id existence before filtering.
-     */
-    private function tableHasColumn($pdo, $table, $column) {
-        $stmt = $pdo->prepare(
-            "SELECT COUNT(*) FROM information_schema.COLUMNS 
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"
-        );
-        $stmt->execute([$table, $column]);
-        return (int)$stmt->fetchColumn() > 0;
-    }
-
-    /**
      * Get statistics about the current tenant's data.
      */
     private function getTenantStats($db, $companyId) {
-        if ((int)$companyId <= 0) {
-            $pdo = $db->getConnection();
-            $tableCount = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()")->fetchColumn();
-            $dbName = (string)$pdo->query("SELECT DATABASE()")->fetchColumn();
+        return $this->backupManagementService()->getTenantStats($db, (int)$companyId);
+    }
 
-            return [
-                'tableCount' => $tableCount,
-                'totalRows' => 0,
-                'estimatedSize' => 0,
-                'label' => ($dbName !== '' ? $dbName : 'Platform Database') . ' (Full Backup)',
-            ];
+    private function backupManagementService(): BackupManagementService {
+        if ($this->backupManagementService === null) {
+            $this->backupManagementService = new BackupManagementService(
+                $this->backupDir,
+                $this->legacyBackupRoot(),
+                $this->getFullBackupDir(),
+                $this->getLegacyFullBackupDir(),
+                self::$tenantTables
+            );
         }
 
-        $pdo = $db->getConnection();
-        $existingTables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-
-        $tableCount = 0;
-        $totalRows = 0;
-
-        foreach (self::$tenantTables as $table) {
-            if (!in_array($table, $existingTables, true)) continue;
-            if (!$this->tableHasColumn($pdo, $table, 'company_id')) continue;
-
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM `{$table}` WHERE company_id = ?");
-            $stmt->execute([$companyId]);
-            $count = (int)$stmt->fetchColumn();
-            if ($count > 0) {
-                $tableCount++;
-                $totalRows += $count;
-            }
-        }
-
-        // Rough size estimate: avg 200 bytes per row
-        $estimatedSize = $totalRows * 200;
-
-        $companyName = Tenant::company()['name'] ?? 'Company #' . $companyId;
-
-        return [
-            'tableCount'    => $tableCount,
-            'totalRows'     => $totalRows,
-            'estimatedSize' => $estimatedSize,
-            'label'         => $companyName . ' (Tenant Data)',
-        ];
+        return $this->backupManagementService;
     }
 
     private function activeCompanyId(): int {

@@ -3,9 +3,12 @@
  * User Controller - Admin user management
  */
 class UserController extends Controller {
-
     protected $allowedActions = ['index', 'create', 'edit', 'resetPassword', 'toggleActive', 'delete'];
+    private UserManagementService $userManagementService;
 
+    public function __construct() {
+        $this->userManagementService = new UserManagementService();
+    }
 
     public function index() {
         $this->requirePermission('users.view');
@@ -43,8 +46,7 @@ class UserController extends Controller {
 
             // Resolve RBAC role
             $roleId = (int)$this->post('role_id', 0);
-            $role = $this->resolveRoleById($roleId);
-
+            $role = $this->userManagementService->resolveAssignableRole($roleId);
             $result = $model->createUser([
                 'full_name' => $this->sanitize($this->post('full_name')),
                 'username'  => $this->sanitize($this->post('username')),
@@ -66,7 +68,7 @@ class UserController extends Controller {
             }
         }
 
-        $roles = $this->loadRoles();
+        $roles = $this->userManagementService->loadAssignableRoles();
         $this->view('users.create', ['pageTitle' => 'Add User', 'roles' => $roles]);
     }
 
@@ -93,7 +95,7 @@ class UserController extends Controller {
 
             // Resolve RBAC role
             $roleId = (int)$this->post('role_id', 0);
-            $role = $this->resolveRoleById($roleId);
+            $role = $this->userManagementService->resolveAssignableRole($roleId);
 
             $data = [
                 'full_name' => $this->sanitize($this->post('full_name')),
@@ -112,10 +114,7 @@ class UserController extends Controller {
             // Clear permission cache if the edited user is currently logged in
             if ($roleChanged && $id === (int)($currentUser['id'] ?? 0)) {
                 Session::clearPermissionCache();
-                // Update session role info
-                $currentUser['role'] = $role['legacy_role'];
-                $currentUser['role_id'] = $role['role_id'];
-                $currentUser['is_super_admin'] = $role['is_super_admin'];
+                $currentUser = $this->userManagementService->applyRoleSessionState($currentUser, $role);
                 Session::set('user', $currentUser);
             }
 
@@ -123,7 +122,7 @@ class UserController extends Controller {
             $this->redirect('index.php?page=users');
         }
 
-        $roles = $this->loadRoles();
+        $roles = $this->userManagementService->loadAssignableRoles();
         $this->view('users.edit', ['pageTitle' => 'Edit User', 'user' => $user, 'roles' => $roles]);
     }
 
@@ -142,49 +141,23 @@ class UserController extends Controller {
             return;
         }
 
-        if (defined('PASSWORD_COMPLEXITY') && PASSWORD_COMPLEXITY) {
+        if (PASSWORD_COMPLEXITY) {
             if (!preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
                 $this->setFlash('error', 'Password must contain at least 1 uppercase letter and 1 number.');
                 $this->redirect('index.php?page=users');
                 return;
             }
         }
-
         // SECURITY FIX (IDOR-1): Verify target user belongs to current tenant.
         // Model::find() is tenant-scoped — returns null if user belongs to another company.
+        $guard = $this->userManagementService->guardManagedUserTarget($id, 'reset_password');
+        if (!$guard['allowed']) {
+            $this->setFlash('error', $guard['message']);
+            $this->redirect('index.php?page=users');
+            return;
+        }
+
         $model = new UserModel();
-        $targetUser = $model->find($id);
-        if (!$targetUser) {
-            $this->setFlash('error', 'User not found.');
-            $this->redirect('index.php?page=users');
-            return;
-        }
-
-        // SECURITY: Prevent non-super-admins from resetting super-admin passwords.
-        // A tenant admin should never be able to reset the platform owner's password.
-        if (!empty($targetUser['is_super_admin']) && !Session::isSuperAdmin()) {
-            Helper::securityLog('PRIVILEGE_VIOLATION', 'User ' . (Session::get('user')['username'] ?? '?') . ' attempted to reset password for super-admin user ID: ' . $id);
-            $this->setFlash('error', 'You cannot reset the password of a super admin account.');
-            $this->redirect('index.php?page=users');
-            return;
-        }
-        // Also check role-based super-admin flag
-        if (!empty($targetUser['role_id'])) {
-            try {
-                $targetRole = Database::getInstance()->query(
-                    "SELECT is_super_admin FROM roles WHERE id = ?", [$targetUser['role_id']]
-                )->fetch();
-                if ($targetRole && $targetRole['is_super_admin'] && !Session::isSuperAdmin()) {
-                    Helper::securityLog('PRIVILEGE_VIOLATION', 'User ' . (Session::get('user')['username'] ?? '?') . ' attempted to reset password for super-admin role user ID: ' . $id);
-                    $this->setFlash('error', 'You cannot reset the password of a super admin account.');
-                    $this->redirect('index.php?page=users');
-                    return;
-                }
-            } catch (\Exception $e) {
-                error_log('[RBAC] Failed to check target role for password reset: ' . $e->getMessage());
-            }
-        }
-
         $result = $model->resetPassword($id, $password);
         if (empty($result['success'])) {
             $this->setFlash('error', (string)($result['message'] ?? 'Password reset failed.'));
@@ -199,7 +172,6 @@ class UserController extends Controller {
         $this->setFlash('success', (string)($result['message'] ?? 'Password reset successfully.'));
         $this->redirect('index.php?page=users');
     }
-
     public function toggleActive() {
         $this->requirePermission('users.edit');
         if (!$this->isPost()) { $this->redirect('index.php?page=users'); }
@@ -232,273 +204,18 @@ class UserController extends Controller {
         if ($id === (int)$currentUser['id']) {
             $this->setFlash('error', 'You cannot delete your own account.'); $this->redirect('index.php?page=users'); return;
         }
-        $user = (new UserModel())->find($id);
-        if (!$user) {
-            $this->setFlash('error', 'User not found.'); $this->redirect('index.php?page=users'); return;
+
+        $guard = $this->userManagementService->guardManagedUserTarget($id, 'delete');
+        if (!$guard['allowed']) {
+            $this->setFlash('error', $guard['message']);
+            $this->redirect('index.php?page=users');
+            return;
         }
 
-        // SECURITY: Prevent deleting super-admin accounts unless you are also super-admin
-        if (!empty($user['role_id'])) {
-            try {
-                $targetRole = Database::getInstance()->query(
-                    "SELECT is_super_admin FROM roles WHERE id = ?", [$user['role_id']]
-                )->fetch();
-                if ($targetRole && $targetRole['is_super_admin'] && !Session::isSuperAdmin()) {
-                    $this->setFlash('error', 'Cannot delete a super admin account.');
-                    Helper::securityLog('PRIVILEGE_VIOLATION', 'User '.$currentUser['username'].' tried to delete super admin user ID: '.$id);
-                    $this->redirect('index.php?page=users');
-                    return;
-                }
-            } catch (\Exception $e) {
-                error_log('[RBAC] Failed to check target role: ' . $e->getMessage());
-            }
-        }
-
+        $user = $guard['user'];
         (new UserModel())->delete($id);
         $this->logActivity('Deleted user: ' . ($user['username'] ?? $id), 'users', $id, 'Role: ' . ($user['role'] ?? 'unknown'));
         $this->setFlash('success', 'User deleted.');
         $this->redirect('index.php?page=users');
-    }
-
-    // =========================================================
-    // RBAC Role Helpers
-    // =========================================================
-
-    /**
-     * Load all roles from the database for dropdowns.
-     * @return array
-     */
-    private function loadRoles() {
-        try {
-            $db = Database::getInstance();
-            $tenantId = Tenant::id();
-
-            if (Session::isSuperAdmin()) {
-                return $db->query(
-                    "SELECT id, name, display_name, company_id, is_super_admin
-                     FROM roles
-                     ORDER BY company_id IS NULL DESC, company_id ASC, display_name ASC, id ASC"
-                )->fetchAll();
-            }
-
-            if ($tenantId !== null) {
-                $roles = $db->query(
-                    "SELECT id, name, display_name, company_id, is_super_admin
-                     FROM roles
-                     WHERE (company_id IS NULL OR company_id = ?)
-                       AND IFNULL(is_super_admin, 0) = 0
-                     ORDER BY company_id IS NULL ASC, display_name ASC, id ASC",
-                    [$tenantId]
-                )->fetchAll();
-                return $this->deduplicateAssignableRoles($roles, $tenantId);
-            }
-
-            return $db->query(
-                "SELECT id, name, display_name, company_id, is_super_admin
-                 FROM roles
-                 WHERE company_id IS NULL
-                   AND IFNULL(is_super_admin, 0) = 0
-                 ORDER BY display_name ASC, id ASC"
-            )->fetchAll();
-        } catch (\Exception $e) {
-            error_log('[RBAC] Failed to load roles: ' . $e->getMessage());
-            return [];
-        }
-    }
-
-    private function deduplicateAssignableRoles(array $roles, int $tenantId): array {
-        usort($roles, static function (array $a, array $b) use ($tenantId): int {
-            $aCompany = isset($a['company_id']) && $a['company_id'] !== null ? (int)$a['company_id'] : null;
-            $bCompany = isset($b['company_id']) && $b['company_id'] !== null ? (int)$b['company_id'] : null;
-            $aScore = ($aCompany === $tenantId) ? 0 : 1;
-            $bScore = ($bCompany === $tenantId) ? 0 : 1;
-            if ($aScore !== $bScore) {
-                return $aScore <=> $bScore;
-            }
-
-            $byName = strcasecmp((string)($a['display_name'] ?? ''), (string)($b['display_name'] ?? ''));
-            if ($byName !== 0) {
-                return $byName;
-            }
-
-            return ((int)($a['id'] ?? 0)) <=> ((int)($b['id'] ?? 0));
-        });
-
-        $seen = [];
-        $deduped = [];
-        foreach ($roles as $role) {
-            $keys = [];
-            $nameKey = strtolower(trim((string)($role['name'] ?? '')));
-            $displayKey = strtolower(trim((string)($role['display_name'] ?? '')));
-            if ($nameKey !== '') {
-                $keys[] = 'name:' . $nameKey;
-            }
-            if ($displayKey !== '') {
-                $keys[] = 'display:' . $displayKey;
-            }
-
-            $skip = false;
-            foreach ($keys as $key) {
-                if (isset($seen[$key])) {
-                    $skip = true;
-                    break;
-                }
-            }
-
-            if ($skip) {
-                continue;
-            }
-
-            foreach ($keys as $key) {
-                $seen[$key] = true;
-            }
-            $deduped[] = $role;
-        }
-
-        return $deduped;
-    }
-
-    /**
-     * Resolve a role_id into the RBAC role details + legacy ENUM value.
-     * Falls back to staff/role_id=5 if the role is invalid.
-     *
-     * @param int $roleId
-     * @return array ['role_id' => int, 'role_name' => string, 'legacy_role' => string, 'is_super_admin' => bool]
-     */
-    private function resolveRoleById($roleId) {
-        $default = $this->resolveFallbackRole();
-        if ($roleId <= 0) return $default;
-
-        try {
-            $role = Database::getInstance()->query(
-                "SELECT id, name, display_name, company_id, is_super_admin
-                 FROM roles
-                 WHERE id = ?",
-                [$roleId]
-            )->fetch();
-
-            if (!$role || !$this->isRoleAssignable($role)) {
-                if ($role && !$this->isRoleAssignable($role)) {
-                    error_log('[RBAC] Blocked cross-tenant role assignment for role ID ' . $roleId);
-                }
-                return $default;
-            }
-
-            $isSuperAdminRole = (bool)$role['is_super_admin'];
-
-            // GUARD: Prevent Privilege Escalation
-            // A non-super-admin cannot assign a super-admin role to anyone (including themselves)
-            if ($isSuperAdminRole && !Session::isSuperAdmin()) {
-                error_log('[SECURITY] Privilege escalation blocked. User '.Session::get('user')['username'].' attempted to assign super admin role.');
-                return $default;
-            }
-
-            return [
-                'role_id'        => (int)$role['id'],
-                'role_name'      => $role['display_name'],
-                'legacy_role'    => $this->legacyRoleFor($role),
-                'is_super_admin' => $isSuperAdminRole,
-            ];
-        } catch (\Exception $e) {
-            error_log('[RBAC] Failed to resolve role: ' . $e->getMessage());
-            return $default;
-        }
-    }
-
-    /**
-     * Fall back to the safest tenant-visible role instead of assuming role ID 5.
-     */
-    private function resolveFallbackRole(): array {
-        try {
-            $db = Database::getInstance();
-            $tenantId = Tenant::id();
-
-            $sql = "SELECT id, name, display_name, company_id, is_super_admin
-                    FROM roles
-                    WHERE IFNULL(is_super_admin, 0) = 0";
-            $params = [];
-
-            if ($tenantId !== null) {
-                $sql .= " AND (company_id IS NULL OR company_id = ?)";
-                $params[] = $tenantId;
-            } else {
-                $sql .= " AND company_id IS NULL";
-            }
-
-            $sql .= " ORDER BY
-                        CASE
-                            WHEN LOWER(name) IN ('admin', 'tenant_admin', 'owner', 'administrator') THEN 0
-                            WHEN LOWER(display_name) LIKE '%admin%' THEN 1
-                            ELSE 2
-                        END,
-                        company_id IS NULL DESC,
-                        id ASC
-                      LIMIT 1";
-
-            $role = $db->query($sql, $params)->fetch();
-            if ($role) {
-                return [
-                    'role_id'        => (int)$role['id'],
-                    'role_name'      => $role['display_name'],
-                    'legacy_role'    => $this->legacyRoleFor($role),
-                    'is_super_admin' => false,
-                ];
-            }
-        } catch (\Throwable $e) {
-            error_log('[RBAC] Failed to resolve fallback role: ' . $e->getMessage());
-        }
-
-        return [
-            'role_id'        => null,
-            'role_name'      => 'Staff',
-            'legacy_role'    => 'staff',
-            'is_super_admin' => false,
-        ];
-    }
-
-    /**
-     * Check whether a role is visible to the current tenant session.
-     */
-    private function isRoleAssignable(array $role): bool {
-        if (Session::isSuperAdmin()) {
-            return true;
-        }
-
-        if (!empty($role['is_super_admin'])) {
-            return false;
-        }
-
-        $tenantId = Tenant::id();
-        $companyId = isset($role['company_id']) && $role['company_id'] !== null ? (int)$role['company_id'] : null;
-
-        if ($tenantId === null) {
-            return $companyId === null;
-        }
-
-        return $companyId === null || $companyId === (int)$tenantId;
-    }
-
-    /**
-     * Convert an RBAC role into the legacy admin/staff enum value.
-     */
-    private function legacyRoleFor(array $role): string {
-        $name = strtolower(trim((string)($role['name'] ?? '')));
-        $display = strtolower(trim((string)($role['display_name'] ?? '')));
-
-        if (!empty($role['is_super_admin'])) {
-            return 'admin';
-        }
-
-        if (
-            $name === 'admin'
-            || $name === 'tenant_admin'
-            || $name === 'owner'
-            || $name === 'administrator'
-            || strpos($display, 'admin') !== false
-        ) {
-            return 'admin';
-        }
-
-        return 'staff';
     }
 }

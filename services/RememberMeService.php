@@ -210,25 +210,20 @@ class RememberMeService {
         if (self::$schemaChecked) {
             return;
         }
-        self::$schemaChecked = true;
 
-        Database::getInstance()->query(
-            "CREATE TABLE IF NOT EXISTS auth_remember_tokens (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                selector CHAR(18) NOT NULL,
-                user_id INT UNSIGNED NOT NULL,
-                token_hash CHAR(64) NOT NULL,
-                expires_at DATETIME NOT NULL,
-                user_agent VARCHAR(255) NULL,
-                ip_address VARCHAR(45) NULL,
-                created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-                last_used_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (id),
-                UNIQUE KEY uq_auth_remember_selector (selector),
-                KEY idx_auth_remember_user (user_id),
-                KEY idx_auth_remember_expires (expires_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-        );
+        try {
+            Database::getInstance()->query(
+                "SELECT 1 FROM auth_remember_tokens LIMIT 1"
+            )->fetchColumn();
+        } catch (\Throwable $e) {
+            throw new RuntimeException(
+                'Missing auth_remember_tokens table. Run php cli/migrate.php before using remember-me tokens.',
+                0,
+                $e
+            );
+        }
+
+        self::$schemaChecked = true;
 
         try {
             Database::getInstance()->query(

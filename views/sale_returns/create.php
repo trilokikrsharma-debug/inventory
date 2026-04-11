@@ -22,7 +22,7 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Sale Invoice <span class="text-danger">*</span></label>
-                            <select name="sale_id" id="saleSelect" class="form-select" required onchange="loadSaleItems(this.value)">
+                            <select name="sale_id" id="saleSelect" class="form-select" required>
                                 <option value="">-- Select Sale --</option>
                                 <?php foreach ($recentSales as $s): ?>
                                 <option value="<?= $s['id'] ?>" <?= ($sale && $sale['id'] == $s['id']) ? 'selected' : '' ?>>
@@ -63,10 +63,10 @@
                                         <input type="hidden" name="product_id[]" value="<?= $item['product_id'] ?>">
                                         <?= Helper::escape($item['product_name']) ?>
                                     </td>
-                                    <td><input type="number" name="quantity[]" class="form-control form-control-sm qty-input text-center" value="<?= Helper::formatQty($item['quantity']) ?>" min="0.01" max="<?= $item['quantity'] ?>" step="0.01" onchange="calcRow(this)"></td>
-                                    <td><input type="number" name="unit_price[]" class="form-control form-control-sm up-input text-end" value="<?= $item['unit_price'] ?>" step="0.01" onchange="calcRow(this)"></td>
+                                    <td><input type="number" name="quantity[]" class="form-control form-control-sm qty-input text-center" value="<?= Helper::formatQty($item['quantity']) ?>" min="0.01" max="<?= $item['quantity'] ?>" step="0.01"></td>
+                                    <td><input type="number" name="unit_price[]" class="form-control form-control-sm up-input text-end" value="<?= $item['quantity'] > 0 ? round(((float)$item['total'] / (float)$item['quantity']), 2) : $item['unit_price'] ?>" step="0.01" readonly></td>
                                     <td class="text-end fw-bold row-total"><?= Helper::formatCurrency($item['total']) ?></td>
-                                    <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove(); calcGrand();"><i class="fas fa-times"></i></button></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger js-remove-return-row"><i class="fas fa-times"></i></button></td>
                                 </tr>
                                 <?php endforeach; endif; ?>
                             </tbody>
@@ -106,7 +106,7 @@
     </div>
 </form>
 
-<script>
+<script nonce="<?= $cspNonce ?? '' ?>">
 function calcRow(el) {
     const row  = el.closest('tr');
     const qty  = parseFloat(row.querySelector('.qty-input').value) || 0;
@@ -128,5 +128,25 @@ function loadSaleItems(saleId) {
     if (!saleId) return;
     window.location.href = '<?= APP_URL ?>/index.php?page=sale_returns&action=create&sale_id=' + saleId;
 }
+
+document.getElementById('saleSelect')?.addEventListener('change', function() {
+    loadSaleItems(this.value);
+});
+
+document.getElementById('itemsBody')?.addEventListener('input', function(e) {
+    if (e.target.closest('.qty-input, .up-input')) {
+        calcRow(e.target);
+    }
+});
+
+document.getElementById('itemsBody')?.addEventListener('click', function(e) {
+    const removeBtn = e.target.closest('.js-remove-return-row');
+    if (!removeBtn) return;
+    const row = removeBtn.closest('tr');
+    if (row) {
+        row.remove();
+        calcGrand();
+    }
+});
 </script>
 </div>

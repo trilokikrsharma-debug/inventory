@@ -111,7 +111,7 @@
                             </form>
                             <form method="POST" action="<?= APP_URL ?>/index.php?page=saas_plans&action=delete"
                                   class="d-inline"
-                                  onsubmit="return confirm('Delete this plan? If active subscriptions exist, the plan will be disabled instead.');">
+                                  data-confirm="Delete this plan? If active subscriptions exist, the plan will be disabled instead.">
                                 <?= CSRF::field() ?>
                                 <input type="hidden" name="id" value="<?= (int)$plan['id'] ?>">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">

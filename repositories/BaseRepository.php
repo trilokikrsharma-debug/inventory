@@ -1,7 +1,7 @@
 <?php
 /**
  * Base Repository
- * 
+ *
  * Provides foundational data access methods.
  * Specific repositories extend this class.
  */
@@ -24,9 +24,9 @@ abstract class BaseRepository {
             $query .= " AND company_id = ?";
             $params[] = Tenant::id();
         }
-        
+
         // Add soft delete check if column exists (assuming all tables have deleted_at for now, adjust as needed per repository)
-        // $query .= " AND deleted_at IS NULL"; 
+        // $query .= " AND deleted_at IS NULL";
 
         $result = $this->db->query($query, $params)->fetch();
         return $result ?: null;

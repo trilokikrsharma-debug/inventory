@@ -1,17 +1,17 @@
 <?php
 /**
  * Webhook Dispatcher — Event Notifications for Integrations
- * 
+ *
  * Sends HTTP POST notifications to registered webhook URLs when
  * business events occur (sale created, payment received, etc.).
- * 
+ *
  * Features:
  *   - HMAC-SHA256 signed payloads (Stripe-style)
  *   - Async dispatch via file queue (Redis upgrade path)
  *   - Automatic retry with exponential backoff
  *   - Per-tenant webhook registration
  *   - Event filtering (subscribe to specific events only)
- * 
+ *
  * Usage:
  *   WebhookDispatcher::dispatch('sale.created', [
  *       'sale_id' => 42, 'total' => 1500, 'customer' => 'John'
@@ -32,7 +32,7 @@ class WebhookDispatcher {
 
     /**
      * Dispatch a webhook event to all registered endpoints for this tenant
-     * 
+     *
      * @param string $event   Event name (e.g., 'sale.created')
      * @param array  $payload Event data
      * @param int|null $companyId Override tenant (defaults to current)
@@ -92,7 +92,7 @@ class WebhookDispatcher {
 
     /**
      * Process queued webhook deliveries (call from cron or worker)
-     * 
+     *
      * Cron: * / 1 * * * * php /path/to/inventory/cli/process_webhooks.php
      */
     public static function processQueue(int $batchSize = 50): int {
@@ -110,7 +110,7 @@ class WebhookDispatcher {
             if (!$job) { @unlink($file); continue; }
 
             $success = self::deliver($job);
-            
+
             if ($success) {
                 @unlink($file);
                 $processed++;
@@ -192,7 +192,7 @@ class WebhookDispatcher {
             $db->query(
                 "INSERT INTO webhook_deliveries (webhook_id, event, payload, response_code, response_body, success, created_at) 
                  VALUES (?, ?, ?, ?, ?, ?, NOW())",
-                [$job['webhook_id'], $job['event'], $payload, $httpCode, substr($response ?? '', 0, 500), $success ? 1 : 0]
+                [$job['webhook_id'], $job['event'], $payload, $httpCode, substr((string) $response, 0, 500), $success ? 1 : 0]
             );
         } catch (\Exception $e) { /* non-critical logging */ }
 
@@ -208,7 +208,7 @@ class WebhookDispatcher {
         }
 
         $secret = bin2hex(random_bytes(32));
-        
+
         $db = Database::getInstance();
         $db->query(
             "INSERT INTO webhooks (company_id, url, secret, events, is_active, created_at) VALUES (?, ?, ?, ?, 1, NOW())",

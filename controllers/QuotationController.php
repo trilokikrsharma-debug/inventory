@@ -5,6 +5,7 @@
 class QuotationController extends Controller {
 
     protected $allowedActions = ['index', 'create', 'detail', 'updateStatus', 'convert', 'delete'];
+    private ?QuotationWorkflowService $quotationWorkflowService = null;
 
     public function index() {
         $this->requireFeature('quotations');
@@ -34,74 +35,25 @@ class QuotationController extends Controller {
         if ($this->isPost()) {
             $this->validateCSRF();
             $settings = (new SettingsModel())->getSettings();
-            $isTaxEnabled = !isset($settings['enable_tax']) || !empty($settings['enable_tax']);
-            $isGstEnabled = !isset($settings['enable_gst']) || !empty($settings['enable_gst']);
-            $allowTax = $isTaxEnabled && $isGstEnabled;
-
-            $productIds = $this->post('product_id', []);
-            $quantities = $this->post('quantity', []);
-            $unitPrices = $this->post('unit_price', []);
-            $discounts  = $this->post('discount', []);
-            $taxRates   = $this->post('tax_rate', []);
-
-            $items    = [];
-            $subtotal = 0;
-            $taxTotal = 0;
-            foreach ($productIds as $i => $pid) {
-                if (!$pid) continue;
-                $qty   = (float)($quantities[$i] ?? 0);
-                $up    = (float)($unitPrices[$i] ?? 0);
-                $disc  = (float)($discounts[$i] ?? 0);
-                $taxR  = (float)($taxRates[$i] ?? 0);
-                if (!$allowTax) {
-                    $taxR = 0.0;
-                }
-                $lineBase = $qty * $up;
-
-                if ($qty <= 0 || $up < 0 || $taxR < 0 || $taxR > 100 || $disc < 0 || $disc > $lineBase) {
-                    error_log("Invalid input values in Quotation create: qty=$qty, price=$up, tax=$taxR, disc=$disc");
-                    $this->setFlash('error', 'Invalid item values. Quantity must be greater than 0, tax must be 0-100, and discount cannot exceed line amount.');
-                    $this->redirect('index.php?page=quotations&action=create');
-                    return;
-                }
-                $sub   = $lineBase - $disc;
-                $taxA  = $sub * $taxR / 100;
-                $total = $sub + $taxA;
-                $subtotal += $sub;
-                $taxTotal += $taxA;
-                $items[] = ['product_id'=>(int)$pid,'quantity'=>$qty,'unit_price'=>$up,'discount'=>$disc,'tax_rate'=>$taxR,'tax_amount'=>$taxA,'subtotal'=>$sub,'total'=>$total];
-            }
-
-            if (empty($items)) {
-                $this->setFlash('error', 'Add at least one product.');
+            $model        = new QuotationModel();
+            try {
+                $prepared = $this->workflowService()->buildCreatePayload(
+                    $this->post(),
+                    $settings,
+                    $model->getNextNumber()
+                );
+                $data = $prepared['quotation'];
+                $items = $prepared['items'];
+            } catch (\RuntimeException | \InvalidArgumentException $e) {
+                $this->setFlash('error', $e->getMessage());
                 $this->redirect('index.php?page=quotations&action=create');
                 return;
             }
 
-            $discountAmt  = (float)$this->post('discount_amount', 0);
-            $shippingCost = (float)$this->post('shipping_cost', 0);
-            $grandTotal   = $subtotal + $taxTotal - $discountAmt + $shippingCost;
-            $model        = new QuotationModel();
-
-            $data = [
-                'quotation_number'  => $model->getNextNumber(),
-                'customer_id'       => (int)$this->post('customer_id'),
-                'quotation_date'    => $this->post('quotation_date', date('Y-m-d')),
-                'valid_until'       => $this->post('valid_until') ?: null,
-                'subtotal'          => $subtotal,
-                'tax_amount'        => $taxTotal,
-                'discount_amount'   => $discountAmt,
-                'shipping_cost'     => $shippingCost,
-                'grand_total'       => $grandTotal,
-                'status'            => 'draft',
-                'note'              => $this->sanitize($this->post('note')),
-                'terms'             => $this->sanitize($this->post('terms')),
-            ];
-
             try {
                 $userId = Session::get('user')['id'];
                 $qId    = $model->createQuotation($data, $items, $userId);
-                $this->logActivity('Created quotation: ' . $data['quotation_number'], 'quotations', $qId, 'Grand total: ' . $grandTotal);
+                $this->logActivity('Created quotation: ' . $data['quotation_number'], 'quotations', $qId, 'Grand total: ' . $data['grand_total']);
                 $this->setFlash('success', 'Quotation created successfully.');
                 $this->redirect('index.php?page=quotations&action=detail&id=' . $qId);
             } catch (Exception $e) {
@@ -181,35 +133,9 @@ class QuotationController extends Controller {
             $invoiceNo     = $settingsModel->getNextNumber('invoice');
             $userId        = Session::get('user')['id'];
 
-            $saleData = [
-                'invoice_number'  => $invoiceNo,
-                'customer_id'     => $quote['customer_id'],
-                'sale_date'       => date('Y-m-d'),
-                'subtotal'        => $quote['subtotal'],
-                'tax_amount'      => $quote['tax_amount'],
-                'discount_amount' => $quote['discount_amount'],
-                'shipping_cost'   => $quote['shipping_cost'],
-                'grand_total'     => $quote['grand_total'],
-                'paid_amount'     => 0,
-                'due_amount'      => $quote['grand_total'],
-                'payment_status'  => 'unpaid',
-                'quotation_id'    => $id,
-                'note'            => $quote['note'],
-            ];
-
-            // Map quotation items to sale items format
-            $saleItems = array_map(function($item) {
-                return [
-                    'product_id' => $item['product_id'],
-                    'quantity'   => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'discount'   => $item['discount'],
-                    'tax_rate'   => $item['tax_rate'],
-                    'tax_amount' => $item['tax_amount'],
-                    'subtotal'   => $item['subtotal'],
-                    'total'      => $item['total'],
-                ];
-            }, $quote['items']);
+            $prepared = $this->workflowService()->buildSaleConversionPayload($quote, $invoiceNo, date('Y-m-d'));
+            $saleData = $prepared['sale'];
+            $saleItems = $prepared['items'];
 
             // Single atomic operation: creates sale + items + stock + balance + marks converted
             $result = $model->convertToSale($id, $saleData, $saleItems, $userId);
@@ -256,5 +182,13 @@ class QuotationController extends Controller {
         $this->logActivity('Deleted quotation: ' . ($quote['quotation_number'] ?? $id), 'quotations', $id);
         $this->setFlash('success', 'Quotation deleted.');
         $this->redirect('index.php?page=quotations');
+    }
+
+    private function workflowService(): QuotationWorkflowService {
+        if ($this->quotationWorkflowService === null) {
+            $this->quotationWorkflowService = new QuotationWorkflowService();
+        }
+
+        return $this->quotationWorkflowService;
     }
 }

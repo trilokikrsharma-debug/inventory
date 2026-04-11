@@ -76,6 +76,20 @@ class CustomerModel extends Model {
         return $res;
     }
 
+    public function setActiveState(int $customerId, bool $isActive): int {
+        $sql = "UPDATE {$this->table} SET is_active = ? WHERE id = ?";
+        $params = [$isActive ? 1 : 0, $customerId];
+        if (Tenant::id() !== null) {
+            $sql .= " AND company_id = ?";
+            $params[] = Tenant::id();
+        }
+        $res = $this->db->query($sql, $params)->rowCount();
+        if ($res > 0) {
+            $this->flushAnalyticCaches();
+        }
+        return $res;
+    }
+
     /**
      * Get customer ledger (tenant-scoped)
      */
@@ -128,12 +142,12 @@ class CustomerModel extends Model {
                 UNION ALL
                 SELECT COALESCE(sr.created_at, CONCAT(sr.return_date, ' 00:00:00')) as txn_at,
                        sr.return_date as date,
-                       COALESCE(NULLIF(sr.return_number, ''), CONCAT('RET-', LPAD(sr.id, 4, '0'))) as reference,
+                       CONCAT('RET-', LPAD(sr.id, 4, '0')) as reference,
                        'Return' as type,
                        0 as debit, sr.total_amount as credit, sr.id
                 FROM sale_returns sr
                 JOIN sales s ON sr.sale_id = s.id
-                WHERE s.customer_id = ? AND sr.deleted_at IS NULL {$tenantFilterS} {$returnDateFilter}
+                WHERE s.customer_id = ? AND sr.deleted_at IS NULL AND sr.status = 'posted' {$tenantFilterS} {$returnDateFilter}
             ) as ledger ORDER BY txn_at ASC, id ASC",
             $params
         )->fetchAll();
@@ -174,7 +188,7 @@ class CustomerModel extends Model {
             "SELECT COALESCE(SUM(sr.total_amount), 0)
              FROM sale_returns sr
              JOIN sales s ON sr.sale_id = s.id
-             WHERE s.customer_id = ? AND sr.deleted_at IS NULL" . $tenantFilterS,
+             WHERE s.customer_id = ? AND sr.deleted_at IS NULL AND sr.status = 'posted'" . $tenantFilterS,
             $returnParams
         )->fetchColumn();
 

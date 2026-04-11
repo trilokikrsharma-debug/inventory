@@ -27,26 +27,26 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
     </a>
 
     <?php if ($isSuperAdmin): ?>
-    <div style="padding:0.25rem 0.5rem;margin:0 0.75rem 0.25rem;text-align:center;">
-        <span style="font-size:0.6rem;background:linear-gradient(135deg,#ffd700,#ff8c00);color:#000;padding:0.2rem 0.6rem;border-radius:4px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">
-            <i class="fas fa-crown" style="font-size:0.55rem;"></i> Super Admin
+    <div class="sidebar-super-admin-banner">
+        <span class="sidebar-super-admin-badge">
+            <i class="fas fa-crown"></i> Super Admin
         </span>
     </div>
     <?php endif; ?>
 
     <?php if (Session::get('_impersonating_from')): ?>
     <?php $tenantCompany = Tenant::company(); ?>
-    <div style="margin:0.25rem 0.75rem 0.5rem;padding:0.5rem 0.6rem;background:linear-gradient(135deg,#ff4757,#ff6b81);border-radius:6px;text-align:center;">
-        <div style="font-size:0.6rem;color:#fff;font-weight:600;margin-bottom:0.3rem;">
+    <div class="sidebar-impersonation-box">
+        <div class="sidebar-impersonation-title">
             <i class="fas fa-eye"></i> Impersonating Tenant
         </div>
-        <div style="font-size:0.55rem;color:rgba(255,255,255,0.85);margin-bottom:0.35rem;">
+        <div class="sidebar-impersonation-name">
             <?= htmlspecialchars($tenantCompany['name'] ?? 'Unknown', ENT_QUOTES) ?>
         </div>
         <a href="<?= APP_URL ?>/index.php?page=platform&action=stop_impersonation"
-           style="display:inline-block;font-size:0.6rem;color:#ff4757;background:#fff;padding:0.2rem 0.6rem;border-radius:4px;font-weight:700;text-decoration:none;"
+           class="sidebar-impersonation-link"
            id="btn-stop-impersonation">
-            <i class="fas fa-arrow-left" style="font-size:0.5rem;"></i> Return to Admin
+            <i class="fas fa-arrow-left"></i> Return to Admin
         </a>
     </div>
     <?php endif; ?>
@@ -55,7 +55,7 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
     <nav class="sidebar-nav">
         <!-- Main -->
         <div class="sidebar-section-title"><span>Main</span></div>
-        <ul style="list-style:none; padding:0; margin:0;">
+        <ul class="sidebar-list">
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'dashboard' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=dashboard">
                     <i class="fas fa-th-large nav-icon"></i>
@@ -67,7 +67,7 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
         <!-- Platform Admin (Super Admins Only) -->
         <?php if ($isSuperAdmin): ?>
         <div class="sidebar-section-title"><span>Platform</span></div>
-        <ul style="list-style:none; padding:0; margin:0;">
+        <ul class="sidebar-list">
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'platform' && $currentAction === 'dashboard' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=platform&action=dashboard">
                     <i class="fas fa-satellite-dish nav-icon text-warning"></i>
@@ -127,7 +127,7 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
 
         <?php if (!$isSuperAdmin): ?>
         <div class="sidebar-section-title"><span>Billing</span></div>
-        <ul style="list-style:none; padding:0; margin:0;">
+        <ul class="sidebar-list">
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'saas_billing' && $currentAction === 'subscribe' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=saas_billing&action=subscribe">
                     <i class="fas fa-crown nav-icon"></i>
@@ -139,7 +139,7 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
 
         <!-- Inventory -->
         <div class="sidebar-section-title"><span>Inventory</span></div>
-        <ul style="list-style:none; padding:0; margin:0;">
+        <ul class="sidebar-list">
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'products' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=products">
                     <i class="fas fa-boxes-stacked nav-icon"></i>
@@ -196,7 +196,7 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
 
         <!-- People -->
         <div class="sidebar-section-title"><span>People</span></div>
-        <ul style="list-style:none; padding:0; margin:0;">
+        <ul class="sidebar-list">
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'customers' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=customers">
                     <i class="fas fa-user-group nav-icon"></i>
@@ -221,7 +221,7 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
 
         <!-- Transactions -->
         <div class="sidebar-section-title"><span>Transactions</span></div>
-        <ul style="list-style:none; padding:0; margin:0;">
+        <ul class="sidebar-list">
             <?php if ($hasQuotationsFeature): ?>
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'quotations' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=quotations">
@@ -261,7 +261,7 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
         <!-- Reports -->
         <?php if ($hasReportsFeature): ?>
         <div class="sidebar-section-title"><span>Reports</span></div>
-        <ul style="list-style:none; padding:0; margin:0;">
+        <ul class="sidebar-list">
             <li class="nav-item">
                 <a class="nav-link <?= ($currentPage === 'reports') ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=reports">
                     <i class="fas fa-chart-pie nav-icon"></i>
@@ -272,8 +272,8 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'insights' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=insights">
                     <i class="fas fa-brain nav-icon"></i>
-                    <span class="nav-text">Smart Insights</span>
-                    <span class="nav-badge bg-info" style="font-size:0.6rem;">NEW</span>
+                    <span class="nav-text">Automated Insights</span>
+                    <span class="nav-badge nav-badge-xs bg-info">NEW</span>
                 </a>
             </li>
             <?php endif; ?>
@@ -283,7 +283,7 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
         <!-- Settings -->
         <?php if (Session::hasPermission('users.view') || Session::hasPermission('settings.manage') || Session::hasPermission('backup.manage') || Session::hasPermission('roles.manage')): ?>
         <div class="sidebar-section-title"><span>System</span></div>
-        <ul style="list-style:none; padding:0; margin:0;">
+        <ul class="sidebar-list">
             <?php if (Session::hasPermission('users.view')): ?>
             <li class="nav-item">
                 <a class="nav-link <?= $currentPage === 'users' ? 'active' : '' ?>" href="<?= APP_URL ?>/index.php?page=users">
@@ -334,9 +334,9 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
         <?php endif; ?>
 
         <?php if (Tenant::isDemo()): ?>
-        <div style="padding:0.75rem;margin:0.5rem;background:rgba(54,185,204,0.1);border:1px solid rgba(54,185,204,0.2);border-radius:0.5rem;text-align:center;">
-            <small style="color:#36b9cc;"><i class="fas fa-flask me-1"></i>Demo Mode</small><br>
-            <a href="<?= APP_URL ?>/signup?from_demo=1" class="btn btn-sm btn-outline-success mt-1" style="font-size:0.7rem;">Sign Up Free</a>
+        <div class="sidebar-demo-box">
+            <small class="sidebar-demo-note"><i class="fas fa-flask me-1"></i>Demo Mode</small><br>
+            <a href="<?= APP_URL ?>/signup?from_demo=1" class="btn btn-sm btn-outline-success mt-1 sidebar-demo-cta">Sign Up Free</a>
         </div>
         <?php endif; ?>
     </nav>

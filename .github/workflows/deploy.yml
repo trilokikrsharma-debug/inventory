@@ -17,10 +17,25 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.2'
-        extensions: pdo_mysql, intl, mbstring
+        extensions: pdo_mysql, intl, mbstring, gd, dom
         tools: composer
 
     - name: Install Dependencies
+      run: composer install --optimize-autoloader
+
+    - name: Run Static Analysis
+      run: composer lint
+
+    - name: Run Code Hygiene Check
+      run: composer cs
+
+    - name: Run Unit Tests
+      run: vendor/bin/phpunit --testsuite Unit --testdox
+
+    - name: Build Assets
+      run: php cli/build_assets.php
+
+    - name: Prepare Production Vendor Tree
       run: composer install --no-dev --optimize-autoloader
 
     - name: Deploy to Deploy Server
@@ -31,4 +46,4 @@ jobs:
         SOURCE: "./"
         REMOTE_HOST: "35.207.217.200"
         REMOTE_USER: "deployer"
-        TARGET: "/var/www/inventory"
+        TARGET: "/var/www/tsalegacy"

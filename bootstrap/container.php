@@ -1,10 +1,10 @@
 <?php
 /**
  * Bootstrap — DI Container Wiring
- * 
+ *
  * Registers all service and repository bindings in the DI Container.
  * Loaded once during application bootstrap before any controller runs.
- * 
+ *
  * Usage in controllers:
  *   $saleService = Container::make('SaleService');
  *   $processor   = Container::make('LineItemProcessor');

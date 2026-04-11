@@ -66,10 +66,10 @@
                 <?php if ($isGst && !empty($data['customer_tax_number'])): ?>GSTIN: <?= Helper::escape($data['customer_tax_number']) ?><?php endif; ?>
             </div>
         </div>
-        <div style="text-align:right;">
+        <div class="text-right">
             <?php if (!empty($data['valid_until'])): ?>
                 <div class="label">Valid Until</div>
-                <div style="font-weight:600;"><?= Helper::formatDate($data['valid_until']) ?></div>
+                <div class="font-semibold"><?= Helper::formatDate($data['valid_until']) ?></div>
             <?php endif; ?>
         </div>
     </div>
@@ -77,17 +77,17 @@
     <table>
         <thead>
             <tr>
-                <th style="width:30px;">#</th>
+                <th class="col-num">#</th>
                 <th>Product</th>
-                <?php if ($showHsnColumn): ?><th style="text-align:left; width:80px;">HSN/SAC</th><?php endif; ?>
-                <th style="text-align:center; width:60px;">Qty</th>
-                <th style="text-align:right; width:90px;">Rate</th>
-                <?php if ($showDiscount): ?><th style="text-align:right; width:70px;">Disc</th><?php endif; ?>
+                <?php if ($showHsnColumn): ?><th class="col-hsn">HSN/SAC</th><?php endif; ?>
+                <th class="col-qty">Qty</th>
+                <th class="col-money-lg">Rate</th>
+                <?php if ($showDiscount): ?><th class="col-money-sm">Disc</th><?php endif; ?>
                 <?php if ($showTaxColumns): ?>
-                <th style="text-align:right; width:60px;">GST %</th>
-                <th style="text-align:right; width:80px;">GST Amt</th>
+                <th class="col-qty">GST %</th>
+                <th class="col-money-md">GST Amt</th>
                 <?php endif; ?>
-                <th style="text-align:right; width:90px;">Total</th>
+                <th class="col-money-lg">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -97,21 +97,21 @@
             <td>
                 <?= Helper::escape($item['product_name'] ?? '') ?>
                 <?php if (!empty($item['sku'])): ?>
-                <br><small style="color:#888;">SKU: <?= Helper::escape($item['sku']) ?></small>
+                <br><small class="sku-note">SKU: <?= Helper::escape($item['sku']) ?></small>
                 <?php endif; ?>
             </td>
             <?php if ($showHsnColumn): ?><td><?= !empty($item['hsn_code']) ? Helper::escape($item['hsn_code']) : '-' ?></td><?php endif; ?>
-            <td style="text-align:center;">
+            <td class="td-center">
                 <?= Helper::formatQty($item['quantity'] ?? 0) ?>
                 <?php if ($showUnit && isset($item['unit_name'])): ?> <?= Helper::escape($item['unit_name']) ?><?php endif; ?>
             </td>
-            <td style="text-align:right;"><?= Helper::formatCurrency($item['unit_price'] ?? 0) ?></td>
-            <?php if ($showDiscount): ?><td style="text-align:right;"><?= (($item['discount'] ?? 0) > 0) ? Helper::formatCurrency($item['discount'] ?? 0) : '-' ?></td><?php endif; ?>
+            <td class="td-right"><?= Helper::formatCurrency($item['unit_price'] ?? 0) ?></td>
+            <?php if ($showDiscount): ?><td class="td-right"><?= (($item['discount'] ?? 0) > 0) ? Helper::formatCurrency($item['discount'] ?? 0) : '-' ?></td><?php endif; ?>
             <?php if ($showTaxColumns): ?>
-            <td style="text-align:right;"><?= $item['tax_rate'] ?? 0 ?>%</td>
-            <td style="text-align:right;"><?= Helper::formatCurrency($item['tax_amount'] ?? 0) ?></td>
+            <td class="td-right"><?= $item['tax_rate'] ?? 0 ?>%</td>
+            <td class="td-right"><?= Helper::formatCurrency($item['tax_amount'] ?? 0) ?></td>
             <?php endif; ?>
-            <td style="text-align:right; font-weight:600;"><?= Helper::formatCurrency($item['total'] ?? 0) ?></td>
+            <td class="td-right td-strong"><?= Helper::formatCurrency($item['total'] ?? 0) ?></td>
         </tr>
         <?php endforeach; endif; ?>
         </tbody>

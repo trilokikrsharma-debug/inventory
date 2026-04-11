@@ -1,10 +1,10 @@
 <?php
 /**
  * CSRF Middleware
- * 
+ *
  * Verifies CSRF tokens on all state-changing requests.
  * Excludes stateless endpoints (API, webhook).
- * 
+ *
  * Extracted from index.php lines 190-193.
  */
 class CsrfMiddleware implements MiddlewareInterface {

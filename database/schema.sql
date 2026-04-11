@@ -169,7 +169,7 @@ CREATE TABLE `products` (
 CREATE TABLE `stock_history` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `product_id` INT UNSIGNED NOT NULL,
-  `type` ENUM('opening','purchase','purchase_return','purchase_edit','purchase_edit_reverse','purchase_cancel','sale','sale_return','sale_edit','sale_edit_reverse','sale_cancel','return','adjustment') NOT NULL,
+  `type` ENUM('opening','purchase','purchase_return','purchase_edit','purchase_edit_reverse','purchase_cancel','sale','sale_return','sale_return_cancel','sale_edit','sale_edit_reverse','sale_cancel','return','adjustment') NOT NULL,
   `reference_id` INT UNSIGNED DEFAULT NULL COMMENT 'ID of purchase/sale/etc.',
   `quantity` DECIMAL(12,3) NOT NULL COMMENT 'positive=in, negative=out',
   `stock_before` DECIMAL(12,3) NOT NULL,
@@ -305,6 +305,9 @@ CREATE TABLE `purchase_return_items` (
   `product_id` INT UNSIGNED NOT NULL,
   `quantity` DECIMAL(12,3) NOT NULL,
   `unit_price` DECIMAL(12,2) NOT NULL,
+  `subtotal` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  `tax_rate` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  `tax_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
   `total` DECIMAL(12,2) NOT NULL,
   FOREIGN KEY (`return_id`) REFERENCES `purchase_returns`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE RESTRICT
@@ -373,12 +376,18 @@ CREATE TABLE `sale_returns` (
   `sale_id` INT UNSIGNED NOT NULL,
   `return_date` DATE NOT NULL,
   `total_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  `status` ENUM('posted','cancelled') NOT NULL DEFAULT 'posted',
   `note` TEXT DEFAULT NULL,
+  `cancel_reason` VARCHAR(500) DEFAULT NULL,
   `created_by` INT UNSIGNED DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `cancelled_at` DATETIME DEFAULT NULL,
+  `cancelled_by` INT UNSIGNED DEFAULT NULL,
   `deleted_at` TIMESTAMP NULL DEFAULT NULL,
   FOREIGN KEY (`sale_id`) REFERENCES `sales`(`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+  FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`cancelled_by`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+  INDEX `idx_sale_returns_status` (`status`, `deleted_at`, `return_date`)
 ) ENGINE=InnoDB;
 
 CREATE TABLE `sale_return_items` (
@@ -387,6 +396,9 @@ CREATE TABLE `sale_return_items` (
   `product_id` INT UNSIGNED NOT NULL,
   `quantity` DECIMAL(12,3) NOT NULL,
   `unit_price` DECIMAL(12,2) NOT NULL,
+  `subtotal` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  `tax_rate` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  `tax_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
   `total` DECIMAL(12,2) NOT NULL,
   FOREIGN KEY (`return_id`) REFERENCES `sale_returns`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE RESTRICT

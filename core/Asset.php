@@ -1,10 +1,10 @@
 <?php
 /**
  * Asset Helper — Versioned & Optimized Static Asset Loading
- * 
+ *
  * Provides URL generation with cache-busting version strings
  * and helpers for preload hints.
- * 
+ *
  * Usage in views:
  *   <link rel="stylesheet" href="<?= Asset::css('style.css') ?>">
  *   <script src="<?= Asset::js('app.js') ?>"></script>

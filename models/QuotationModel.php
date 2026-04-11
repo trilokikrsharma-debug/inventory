@@ -4,12 +4,6 @@
  */
 class QuotationModel extends Model {
     protected $table = 'quotations';
-    /**
-     * Cached products table columns for optional HSN compatibility.
-     *
-     * @var array<string, bool>|null
-     */
-    private static $productColumnMap = null;
 
     public function getAllWithCustomer($search = '', $fromDate = '', $toDate = '', $status = '', $page = 1, $perPage = RECORDS_PER_PAGE) {
         $offset = ($page - 1) * $perPage;
@@ -39,11 +33,8 @@ class QuotationModel extends Model {
              WHERE " . implode(' AND ', $where), $params
         )->fetch();
         if ($quote) {
-            $hsnSelect = $this->productColumnExists('hsn_code')
-                ? ", p.hsn_code as hsn_code"
-                : ", NULL as hsn_code";
             $quote['items'] = $this->db->query(
-                "SELECT qi.*, p.name as product_name, p.sku, u.short_name as unit_name{$hsnSelect}
+                "SELECT qi.*, p.name as product_name, p.sku, p.hsn_code as hsn_code, u.short_name as unit_name
                  FROM quotation_items qi
                  LEFT JOIN products p ON qi.product_id = p.id
                  LEFT JOIN units u ON p.unit_id = u.id
@@ -142,7 +133,7 @@ class QuotationModel extends Model {
             if ($ownTransaction) $db->commit();
             if (!$last) return 'QUO-0001';
             preg_match('/(\d+)$/', $last, $m);
-            return 'QUO-' . str_pad((int)($m[1] ?? 0) + 1, 4, '0', STR_PAD_LEFT);
+            return 'QUO-' . str_pad((string) ((int)($m[1] ?? 0) + 1), 4, '0', STR_PAD_LEFT);
         } catch (\Exception $e) {
             if ($ownTransaction && $db->getConnection()->inTransaction()) $db->rollback();
             throw $e;
@@ -159,23 +150,4 @@ class QuotationModel extends Model {
         )->fetch();
     }
 
-    /**
-     * Check products table column existence with cached schema lookup.
-     */
-    private function productColumnExists(string $column): bool {
-        if (self::$productColumnMap === null) {
-            self::$productColumnMap = [];
-            try {
-                $rows = $this->db->query("SHOW COLUMNS FROM products")->fetchAll();
-                foreach ($rows as $row) {
-                    if (!empty($row['Field'])) {
-                        self::$productColumnMap[$row['Field']] = true;
-                    }
-                }
-            } catch (Throwable $e) {
-                self::$productColumnMap = [];
-            }
-        }
-        return !empty(self::$productColumnMap[$column]);
-    }
 }

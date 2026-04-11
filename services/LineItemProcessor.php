@@ -1,11 +1,11 @@
 <?php
 /**
  * Line Item Processor Service
- * 
+ *
  * Shared service that handles line item parsing, validation, and calculation
  * for Sales, Purchases, and Quotations. Eliminates the ~30-line loop
  * that was duplicated across 6 controller methods.
- * 
+ *
  * Usage:
  *   $processor = new LineItemProcessor();
  *   $items  = $processor->parseFromPost($_POST);
@@ -14,10 +14,10 @@
 class LineItemProcessor {
     /**
      * Parse POST arrays into validated, structured item arrays.
-     * 
+     *
      * Expects POST data containing parallel arrays:
      *   product_id[], quantity[], unit_price[], item_discount[], item_tax_rate[]
-     * 
+     *
      * @param  array $post       Raw POST data ($_POST or Request::all())
      * @param  string $prefix    Optional prefix for field names (e.g., 'item_')
      * @return array             Array of validated item structs
@@ -70,7 +70,7 @@ class LineItemProcessor {
 
     /**
      * Calculate aggregate totals from an array of parsed items.
-     * 
+     *
      * @param  array $items  Parsed items from parseFromPost()
      * @return array         ['subtotal' => float, 'total_tax' => float, 'grand_total' => float]
      */
@@ -94,7 +94,7 @@ class LineItemProcessor {
     /**
      * Reconcile items for an edit operation.
      * Determines which items to add, update, or remove.
-     * 
+     *
      * @param  array $newItems      New items from form submission
      * @param  array $existingItems Current items from database
      * @param  string $idKey        Key for item ID in existing items
@@ -132,7 +132,7 @@ class LineItemProcessor {
 
     /**
      * Validate a single item's values.
-     * 
+     *
      * @throws \InvalidArgumentException
      */
     private function validateItem(float $qty, float $price, float $disc, float $taxRate, int $index): void {

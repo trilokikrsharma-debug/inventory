@@ -111,8 +111,20 @@ if (!empty($user['full_name'])) {
         gap: 0.6rem;
         color: var(--text-primary, #2d3436);
     }
+    .profile-card-title-icon-primary {
+        color: #4e73df;
+    }
+    .profile-card-title-icon-success {
+        color: #28a745;
+    }
+    .profile-card-title-icon-info {
+        color: #17a2b8;
+    }
     .profile-card .card-content {
         padding: 1.5rem;
+    }
+    .profile-edit-card-hidden {
+        display: none;
     }
 
     .info-row {
@@ -170,6 +182,40 @@ if (!empty($user['full_name'])) {
         font-size: 0.95rem;
         font-weight: 600;
         color: var(--text-primary, #2d3436);
+    }
+    .info-value-subtle {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        font-weight: 400;
+        margin-left: 0.5rem;
+    }
+    .profile-disabled-field {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .status-indicator.status-active {
+        color: #28a745;
+    }
+    .status-indicator.status-inactive {
+        color: #dc3545;
+    }
+    .status-indicator .fa-circle {
+        font-size: 0.5rem;
+        vertical-align: middle;
+    }
+    .quick-actions-title {
+        font-weight: 700;
+        color: var(--text-secondary, #636e72);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.75rem;
+        padding-left: 0.25rem;
     }
 
     .quick-action-card {
@@ -340,10 +386,10 @@ if (!empty($user['full_name'])) {
         <div class="profile-card animate-in delay-1" id="profileViewCard">
             <div class="card-head">
                 <h5>
-                    <i class="fas fa-user-circle" style="color: #4e73df;"></i>
+                    <i class="fas fa-user-circle profile-card-title-icon-primary"></i>
                     Personal Information
                 </h5>
-                <button type="button" class="btn-edit-profile" onclick="toggleEditMode()">
+                <button type="button" class="btn-edit-profile" id="profileEditToggleBtn">
                     <i class="fas fa-pen"></i> Edit
                 </button>
             </div>
@@ -383,7 +429,7 @@ if (!empty($user['full_name'])) {
                         <div class="info-value">
                             <?php if (!empty($user['last_login'])): ?>
                                 <?= date('d M Y, h:i A', strtotime($user['last_login'])) ?>
-                                <span style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 400; margin-left: 0.5rem;">
+                                <span class="info-value-subtle">
                                     (<?= Helper::timeAgo($user['last_login']) ?>)
                                 </span>
                             <?php else: ?>
@@ -396,10 +442,10 @@ if (!empty($user['full_name'])) {
         </div>
 
         <!-- Edit Mode (Hidden by default) -->
-        <div class="profile-card animate-in delay-1" id="profileEditCard" style="display: none;">
+        <div class="profile-card profile-edit-card-hidden animate-in delay-1" id="profileEditCard">
             <div class="card-head">
                 <h5>
-                    <i class="fas fa-pen-to-square" style="color: #28a745;"></i>
+                    <i class="fas fa-pen-to-square profile-card-title-icon-success"></i>
                     Edit Profile
                 </h5>
             </div>
@@ -416,7 +462,7 @@ if (!empty($user['full_name'])) {
                             <label class="form-label">Username</label>
                             <input type="text" class="form-control" 
                                    value="<?= Helper::escape($user['username'] ?? '') ?>" disabled
-                                   style="opacity: 0.6; cursor: not-allowed;">
+                                   class="profile-disabled-field">
                             <small class="text-muted">Username cannot be changed</small>
                         </div>
                         <div class="col-md-6">
@@ -434,7 +480,7 @@ if (!empty($user['full_name'])) {
                         <button type="submit" class="btn-save-profile">
                             <i class="fas fa-check"></i> Save Changes
                         </button>
-                        <button type="button" class="btn-cancel" onclick="toggleEditMode()">
+                        <button type="button" class="btn-cancel" id="profileCancelEditBtn">
                             Cancel
                         </button>
                     </div>
@@ -449,7 +495,7 @@ if (!empty($user['full_name'])) {
         <div class="profile-card animate-in delay-2">
             <div class="card-head">
                 <h5>
-                    <i class="fas fa-info-circle" style="color: #17a2b8;"></i>
+                    <i class="fas fa-info-circle profile-card-title-icon-info"></i>
                     Account Details
                 </h5>
             </div>
@@ -474,9 +520,9 @@ if (!empty($user['full_name'])) {
                         <div class="info-label">Status</div>
                         <div class="info-value">
                             <?php if (($user['is_active'] ?? 0) == 1): ?>
-                                <span style="color: #28a745;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle;"></i> Active</span>
+                                <span class="status-indicator status-active"><i class="fas fa-circle"></i> Active</span>
                             <?php else: ?>
-                                <span style="color: #dc3545;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle;"></i> Inactive</span>
+                                <span class="status-indicator status-inactive"><i class="fas fa-circle"></i> Inactive</span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -495,7 +541,7 @@ if (!empty($user['full_name'])) {
 
         <!-- Quick Actions -->
         <div class="animate-in delay-3">
-            <h6 style="font-weight: 700; color: var(--text-secondary, #636e72); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.75rem; padding-left: 0.25rem;">
+            <h6 class="quick-actions-title">
                 Quick Actions
             </h6>
             <div class="d-grid gap-2">
@@ -533,7 +579,7 @@ if (!empty($user['full_name'])) {
     </div>
 </div>
 
-<script>
+<script nonce="<?= $cspNonce ?? '' ?>">
 function toggleEditMode() {
     const viewCard = document.getElementById('profileViewCard');
     const editCard = document.getElementById('profileEditCard');
@@ -548,4 +594,7 @@ function toggleEditMode() {
         editCard.querySelector('input[name="full_name"]').focus();
     }
 }
+
+document.getElementById('profileEditToggleBtn')?.addEventListener('click', toggleEditMode);
+document.getElementById('profileCancelEditBtn')?.addEventListener('click', toggleEditMode);
 </script>

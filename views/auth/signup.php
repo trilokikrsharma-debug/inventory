@@ -108,6 +108,20 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
         .divider { display: flex; align-items: center; margin: 2rem 0; }
         .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .divider span { padding: 0 1rem; color: #475569; font-size: 0.75rem; text-transform: uppercase; font-weight: 600; letter-spacing: 1px; }
+        .signup-alert {
+            font-size: 0.85rem;
+            border-radius: 0.5rem;
+        }
+        .signup-form-note {
+            color: #6c757d;
+            font-size: 0.75rem;
+        }
+        .signup-input-addon-button {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.1);
+            color: #858796;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -120,7 +134,7 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
         </div>
 
         <?php if (!empty($error)): ?>
-        <div class="alert alert-danger py-2" style="font-size:0.85rem;border-radius:0.5rem;">
+        <div class="alert alert-danger py-2 signup-alert">
             <i class="fas fa-exclamation-circle me-1"></i> <?= Helper::escape($error) ?>
             <?php if (!empty($errors)): ?>
                 <ul class="mb-0 mt-2 ps-3 small">
@@ -211,7 +225,7 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
                     pattern="[a-z0-9_]{3,40}"
                     autocomplete="username"
                 >
-                <div class="form-text" style="color:#6c757d;font-size:0.75rem;">Lowercase letters, numbers, and underscores only.</div>
+                <div class="form-text signup-form-note">Lowercase letters, numbers, and underscores only.</div>
                 <div class="invalid-feedback"><?= Helper::escape($errors['username'] ?? 'Username must be 3-40 lowercase characters.') ?></div>
             </div>
 
@@ -226,7 +240,7 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
                     maxlength="40"
                     pattern="[A-Za-z0-9_-]{4,40}"
                 >
-                <div class="form-text" style="color:#6c757d;font-size:0.75rem;">If someone invited you, enter their code.</div>
+                <div class="form-text signup-form-note">If someone invited you, enter their code.</div>
                 <div class="invalid-feedback"><?= Helper::escape($errors['referral_code'] ?? 'Referral code format is invalid.') ?></div>
             </div>
 
@@ -245,10 +259,9 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
                             autocomplete="new-password"
                         >
                         <button
-                            class="input-group-text"
+                            class="input-group-text signup-input-addon-button"
                             type="button"
                             data-toggle-target="signupPassword"
-                            style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1);color:#858796;cursor:pointer;"
                             aria-label="Toggle password visibility"
                         >
                             <i class="fas fa-eye"></i>
@@ -270,10 +283,9 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
                             autocomplete="new-password"
                         >
                         <button
-                            class="input-group-text"
+                            class="input-group-text signup-input-addon-button"
                             type="button"
                             data-toggle-target="signupConfirmPassword"
-                            style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.1);color:#858796;cursor:pointer;"
                             aria-label="Toggle confirm password visibility"
                         >
                             <i class="fas fa-eye"></i>
@@ -282,7 +294,7 @@ $minPasswordLength = defined('PASSWORD_MIN_LENGTH') ? max(6, (int)PASSWORD_MIN_L
                     <div class="invalid-feedback"><?= Helper::escape($errors['confirm_password'] ?? 'Passwords must match.') ?></div>
                 </div>
             </div>
-            <div class="form-text mb-4" style="color:#6c757d;font-size:0.75rem;">
+            <div class="form-text mb-4 signup-form-note">
                 Use at least <?= (int)$minPasswordLength ?> characters. Include uppercase + number if your security policy requires it.
             </div>
 

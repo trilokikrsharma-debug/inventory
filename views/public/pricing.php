@@ -80,30 +80,30 @@ if (class_exists('Session') && Session::isLoggedIn()) {
 <!-- PRICING HERO -->
 <section class="pricing-hero">
     <div class="hero-bg"></div>
-    <div class="mx-sm" style="position:relative;z-index:1">
-        <a href="<?= htmlspecialchars($backLink, ENT_QUOTES) ?>" class="back-link" style="display:inline-flex;align-items:center;margin-bottom:16px">
-            <i class="fas <?= $backIcon ?>" style="margin-right:6px"></i><?= htmlspecialchars($backText, ENT_QUOTES) ?>
+    <div class="mx-sm rel-z1">
+        <a href="<?= htmlspecialchars($backLink, ENT_QUOTES) ?>" class="back-link back-link-inline">
+            <i class="fas <?= $backIcon ?> icon-gap-6"></i><?= htmlspecialchars($backText, ENT_QUOTES) ?>
         </a>
         <div class="badge"><span class="dot"></span><i class="fas fa-rocket"></i> Launch Pricing For Early Customers</div>
-        <h1 style="font-size:clamp(2rem,5vw,3.2rem);font-weight:900;color:var(--w);line-height:1.08;margin-bottom:14px">Simple monthly pricing.<br><span class="gt">Cheap enough to start now.</span></h1>
-        <p style="font-size:1.02rem;color:var(--mt);max-width:660px;margin:0 auto 24px;line-height:1.72">Pick a low-risk plan, start billing immediately, and upgrade only when your team or catalog actually grows.</p>
+        <h1 class="hero-title-xl">Simple monthly pricing.<br><span class="gt">Cheap enough to start now.</span></h1>
+        <p class="hero-copy-lg">Pick a low-risk plan, start billing immediately, and upgrade only when your team or catalog actually grows.</p>
     </div>
 </section>
 
 <!-- LAUNCH STRIP -->
-<section class="sec" style="padding-top:0;padding-bottom:36px">
+<section class="sec sec-tight-top sec-tight-36">
     <div class="mx-sm">
         <div class="launch-strip rv">
             <div class="launch-item">
-                <strong><i class="fas fa-coins" style="margin-right:6px;color:var(--ac)"></i>Low entry pricing</strong>
+                <strong><i class="fas fa-coins icon-gap-6 title-accent"></i>Low entry pricing</strong>
                 <p>Built for new shops and growing SMEs that want fast adoption, not heavy upfront software cost.</p>
             </div>
             <div class="launch-item">
-                <strong><i class="fas fa-chart-line" style="margin-right:6px;color:var(--ac)"></i>Upgrade only when needed</strong>
+                <strong><i class="fas fa-chart-line icon-gap-6 title-accent"></i>Upgrade only when needed</strong>
                 <p>Limits are based on users and products, so the jump feels tied to actual growth.</p>
             </div>
             <div class="launch-item">
-                <strong><i class="fas fa-play-circle" style="margin-right:6px;color:var(--ac)"></i>Try before committing</strong>
+                <strong><i class="fas fa-play-circle icon-gap-6 title-accent"></i>Try before committing</strong>
                 <p>Start with the demo or trial flow first and move to a paid plan only when operations stabilize.</p>
             </div>
         </div>
@@ -111,14 +111,14 @@ if (class_exists('Session') && Session::isLoggedIn()) {
 </section>
 
 <!-- DEMO CALLOUT -->
-<section class="sec" style="padding-top:0;padding-bottom:36px">
+<section class="sec sec-tight-top sec-tight-36">
     <div class="mx-sm">
         <div class="demo-callout rv">
             <div>
                 <strong>Live demo runs on the enterprise showcase setup</strong>
-                <p>Try bulk import, AI insights, API access, backup, and HR-ready workflows before you commit.</p>
+                <p>Try bulk import, automated insights, API access, backup, and HR-ready workflows before you commit.</p>
             </div>
-            <a href="<?= APP_URL ?>/demo" class="btn-p" style="min-width:180px;white-space:nowrap">
+            <a href="<?= APP_URL ?>/demo" class="btn-p minw-180-nowrap">
                 <i class="fas fa-play-circle"></i>Open Demo
             </a>
         </div>
@@ -126,7 +126,7 @@ if (class_exists('Session') && Session::isLoggedIn()) {
 </section>
 
 <!-- PRICING CARDS -->
-<section class="sec sec-alt" id="plans" style="padding-top:48px">
+<section class="sec sec-alt sec-tight-48" id="plans">
     <div class="mx-sm">
         <div class="sec-hd rv"><div class="sec-tag"><i class="fas fa-tags"></i> Plans</div><h2 class="sec-t">Choose the right plan for your business</h2><p class="sec-s">Plans are updated in real time. Start small and upgrade as your team and catalog grow.</p></div>
         <?php if (!empty($plans)): ?>
@@ -145,16 +145,16 @@ if (class_exists('Session') && Session::isLoggedIn()) {
                 ?>
                 <div class="p-card <?= $isFeatured ? 'pop' : '' ?> rv">
                     <?php if ($isFeatured): ?><div class="pop-badge">⚡ MOST POPULAR</div><?php endif; ?>
-                    <div class="p-name" <?= $isFeatured ? 'style="color:var(--pl)"' : '' ?>><?= htmlspecialchars($plan['name'] ?? 'Plan', ENT_QUOTES) ?></div>
+                    <div class="p-name<?= $isFeatured ? ' mob-cta-link' : '' ?>"><?= htmlspecialchars($plan['name'] ?? 'Plan', ENT_QUOTES) ?></div>
                     <div class="p-price">
                         <?php if ($offer !== null && $offer > 0 && $offer < $price): ?>
-                            <span style="font-size:.9rem;text-decoration:line-through;color:var(--mt)">₹<?= number_format($price) ?></span><br>
+                            <span class="ft-meta ft-meta-strike">₹<?= number_format($price) ?></span><br>
                         <?php endif; ?>
                         ₹<?= number_format($effectivePrice) ?><sub>/<?= htmlspecialchars($billing, ENT_QUOTES) ?></sub>
                     </div>
                     <p class="p-desc">
                         <?= htmlspecialchars(!empty($plan['description']) ? $plan['description'] : 'Built for reliable daily business operations.', ENT_QUOTES) ?>
-                        <br><small style="color:var(--mt);text-transform:uppercase;font-size:.68rem;letter-spacing:.06em">Valid <?= $days ?> days · approx ₹<?= number_format($monthlyEquivalent, 0) ?>/month value</small>
+                        <br><small class="ft-meta ft-meta-validity">Valid <?= $days ?> days · approx ₹<?= number_format($monthlyEquivalent, 0) ?>/month value</small>
                     </p>
                     <div class="limit-row">
                         <div class="limit-box"><strong><?= number_format($limits['users']) ?></strong><span>Users Included</span></div>
@@ -165,17 +165,17 @@ if (class_exists('Session') && Session::isLoggedIn()) {
                         <li><span class="ck"><i class="fas fa-check-circle"></i></span><?= htmlspecialchars($label, ENT_QUOTES) ?></li>
                         <?php endforeach; ?>
                         <?php foreach ($features['disabled'] as $label): ?>
-                        <li><span class="cx"><i class="fas fa-times-circle"></i></span><span style="opacity:.5"><?= htmlspecialchars($label, ENT_QUOTES) ?></span></li>
+                        <li><span class="cx"><i class="fas fa-times-circle"></i></span><span class="ft-muted-disabled"><?= htmlspecialchars($label, ENT_QUOTES) ?></span></li>
                         <?php endforeach; ?>
                     </ul>
-                    <a href="<?= $pricingCtaHref ?>" class="btn-plan <?= $isFeatured ? 'btn-p' : 'btn-g' ?>" style="width:100%;justify-content:center"><?= htmlspecialchars($pricingCtaText, ENT_QUOTES) ?></a>
+                    <a href="<?= $pricingCtaHref ?>" class="btn-plan <?= $isFeatured ? 'btn-p' : 'btn-g' ?> w-full-center"><?= htmlspecialchars($pricingCtaText, ENT_QUOTES) ?></a>
                 </div>
             <?php endforeach; ?>
         </div>
         <?php else: ?>
-        <div class="mx-xs" style="text-align:center;padding:40px 0">
-            <div class="card" style="border-color:rgba(245,158,11,.3)">
-                <p style="color:var(--mt)"><i class="fas fa-info-circle" style="margin-right:6px;color:#f59e0b"></i>No active pricing plans are available right now. Please contact support.</p>
+        <div class="mx-xs text-center empty-state-pad-40">
+            <div class="card empty-card-warning">
+                <p class="ft-intro"><i class="fas fa-info-circle icon-gap-6 icon-warn"></i>No active pricing plans are available right now. Please contact support.</p>
             </div>
         </div>
         <?php endif; ?>
@@ -183,12 +183,12 @@ if (class_exists('Session') && Session::isLoggedIn()) {
 </section>
 
 <!-- TRUST NOTE -->
-<section class="sec" style="padding-top:36px;padding-bottom:36px">
-    <div class="mx-xs" style="text-align:center">
-        <p style="color:var(--mt);font-size:.9rem;line-height:1.7;margin-bottom:14px">
-            <i class="fas fa-shield-alt" style="margin-right:4px;color:var(--ac)"></i>All plans include secure session handling, CSRF protection, and billing audit trails.
+<section class="sec sec-pad-36">
+    <div class="mx-xs text-center">
+        <p class="muted-note">
+            <i class="fas fa-shield-alt icon-gap-4 title-accent"></i>All plans include secure session handling, CSRF protection, and billing audit trails.
         </p>
-        <a href="<?= APP_URL ?>/demo" class="btn-g" style="min-height:40px;font-size:.85rem"><i class="fas fa-play-circle"></i>Try Free Demo</a>
+        <a href="<?= APP_URL ?>/demo" class="btn-g btn-demo-compact"><i class="fas fa-play-circle"></i>Try Free Demo</a>
     </div>
 </section>
 
@@ -196,7 +196,7 @@ if (class_exists('Session') && Session::isLoggedIn()) {
 
 <script nonce="<?= $_nonce ?>">
 document.getElementById('hamburger').addEventListener('click',function(){document.getElementById('mobMenu').classList.toggle('open')});
-function clM(){document.getElementById('mobMenu').classList.remove('open')}
+document.querySelectorAll('#mobMenu a').forEach(function(el){el.addEventListener('click',function(){document.getElementById('mobMenu').classList.remove('open')})});
 var revEls=document.querySelectorAll('.rv');
 if('IntersectionObserver' in window){
 var ob=new IntersectionObserver(function(e){e.forEach(function(el){if(el.isIntersecting){el.target.classList.add('vis');ob.unobserve(el.target)}})},{threshold:.08,rootMargin:'0px 0px -20px 0px'});

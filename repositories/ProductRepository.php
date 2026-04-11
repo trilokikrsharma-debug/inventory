@@ -4,7 +4,7 @@
  */
 class ProductRepository extends BaseRepository {
     protected string $table = 'products';
-    
+
     /**
      * Deduct stock securely
      */
@@ -14,7 +14,7 @@ class ProductRepository extends BaseRepository {
             [$quantity, $productId, Tenant::id()]
         )->rowCount() > 0;
     }
-    
+
     /**
      * Add stock securely
      */
@@ -24,7 +24,7 @@ class ProductRepository extends BaseRepository {
             [$quantity, $productId, Tenant::id()]
         )->rowCount() > 0;
     }
-    
+
     /**
      * Get product stock details
      */
@@ -34,7 +34,7 @@ class ProductRepository extends BaseRepository {
             [$productId, Tenant::id()]
         )->fetch() ?: null;
     }
-    
+
     /**
      * Log stock history
      */

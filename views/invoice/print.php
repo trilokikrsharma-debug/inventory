@@ -15,6 +15,9 @@
     $signatureLabel = $company['invoice_signature_label'] ?? 'Authorised Signatory';
     $signatureImage = trim((string)($company['invoice_signature_image'] ?? ''));
     $sealImage = trim((string)($company['invoice_seal_image'] ?? ''));
+    $companyLogoSrc = Helper::uploadedImageSrc($company['company_logo'] ?? '');
+    $signatureImageSrc = Helper::uploadedImageSrc($signatureImage);
+    $sealImageSrc = Helper::uploadedImageSrc($sealImage);
     $showSignatureImage = !isset($company['invoice_show_signature']) || !empty($company['invoice_show_signature']);
     $showSealImage = !isset($company['invoice_show_seal']) || !empty($company['invoice_show_seal']);
     $footerText = $company['invoice_footer_text'] ?? '';
@@ -193,6 +196,65 @@
         .badge-unpaid { background: #f8d7da; color: #721c24; }
         .badge-partial { background: #fff3cd; color: #856404; }
         .badge-returned { background: #cfe2ff; color: #084298; }
+        .print-bar {
+            text-align: center;
+            padding: 12px;
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .print-bar-btn {
+            padding: 8px 24px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .print-bar-btn-primary {
+            border: none;
+            background: #4e73df;
+            color: #fff;
+        }
+        .print-bar-link {
+            padding: 8px 24px;
+            cursor: pointer;
+            border: none;
+            background: #1cc88a;
+            color: #fff;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+        .print-bar-btn-secondary {
+            border: 1px solid #ccc;
+            background: #fff;
+        }
+        .invoice-date-subtitle {
+            margin-top: 0;
+        }
+        .invoice-status-wrap {
+            margin-top: 5px;
+        }
+        .col-num { width: 30px; }
+        .col-hsn { text-align: left; width: 80px; }
+        .col-qty { text-align: center; width: 60px; }
+        .col-money-sm { text-align: right; width: 70px; }
+        .col-money-md { text-align: right; width: 80px; }
+        .col-money-lg { text-align: right; width: 90px; }
+        .td-center { text-align: center; }
+        .td-right { text-align: right; }
+        .td-strong { font-weight: 600; }
+        .text-returned { color: #fd7e14; }
+        .text-paid { color: #28a745; }
+        .text-due { color: #dc3545; font-weight: 600; }
+        .footer-note {
+            margin-bottom: 8px;
+            color: #666;
+        }
 
         @media print {
             body { margin: 0; }
@@ -204,14 +266,14 @@
 <body>
 <?php if (!$forPdf): ?>
 <!-- Print Bar -->
-<div class="no-print" style="text-align:center; padding:12px; background:#f0f0f0; display:flex; justify-content:center; gap:10px;">
-    <button id="btnPrint" style="padding:8px 24px; cursor:pointer; border:none; background:#4e73df; color:#fff; border-radius:6px; font-size:13px; font-weight:600;">
+<div class="no-print print-bar">
+    <button id="btnPrint" class="print-bar-btn print-bar-btn-primary">
         Print Invoice
     </button>
-    <a href="<?= APP_URL ?>/index.php?page=invoice&action=download&type=<?= urlencode($type) ?>&id=<?= $docId ?>" style="padding:8px 24px; cursor:pointer; border:none; background:#1cc88a; color:#fff; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center;">
+    <a href="<?= APP_URL ?>/index.php?page=invoice&action=download&type=<?= urlencode($type) ?>&id=<?= $docId ?>" class="print-bar-link">
         Download PDF
     </a>
-    <button id="btnClose" style="padding:8px 24px; cursor:pointer; border:1px solid #ccc; background:#fff; border-radius:6px; font-size:13px;">
+    <button id="btnClose" class="print-bar-btn print-bar-btn-secondary">
         Close
     </button>
 </div>
@@ -221,8 +283,8 @@
     <!-- ===== HEADER ===== -->
     <div class="header">
         <div class="company-block">
-            <?php if ((!isset($company['invoice_show_logo']) || !empty($company['invoice_show_logo'])) && !empty($company['company_logo'])): ?>
-                <img src="<?= APP_URL ?>/<?= Helper::escape($company['company_logo']) ?>" alt="Company Logo" class="company-logo">
+            <?php if ((!isset($company['invoice_show_logo']) || !empty($company['invoice_show_logo'])) && $companyLogoSrc !== ''): ?>
+                <img src="<?= Helper::escape($companyLogoSrc) ?>" alt="Company Logo" class="company-logo">
             <?php endif; ?>
             <h1><?= Helper::escape($company['company_name'] ?? APP_NAME) ?></h1>
             <div class="company-details">
@@ -251,14 +313,14 @@
         <div class="invoice-block">
             <div class="invoice-title"><?= Helper::escape($invoiceTitle) ?></div>
             <?php if (!empty($company['invoice_subtitle'])): ?>
-            <div class="invoice-date" style="margin-top:0;"><?= Helper::escape($company['invoice_subtitle']) ?></div>
+            <div class="invoice-date invoice-date-subtitle"><?= Helper::escape($company['invoice_subtitle']) ?></div>
             <?php endif; ?>
             <div class="invoice-number"><?= Helper::escape($data['invoice_number'] ?? $data['reference_number'] ?? '') ?></div>
             <div class="invoice-date">
                 Date: <?= Helper::formatDate($data[$type === 'sale' ? 'sale_date' : 'purchase_date'] ?? date('Y-m-d')) ?>
             </div>
             <?php if ($showPaymentStatusBadge): ?>
-            <div style="margin-top:5px;">
+            <div class="invoice-status-wrap">
                 <span class="badge badge-<?= Helper::escape($displayStatus) ?>"><?= strtoupper(Helper::escape($displayStatus)) ?></span>
             </div>
             <?php endif; ?>
@@ -293,21 +355,21 @@
     <table>
         <thead>
             <tr>
-                <th style="width:30px;">#</th>
+                <th class="col-num">#</th>
                 <th>Product</th>
-                <?php if ($showHsnColumn): ?><th style="text-align:left; width:80px;">HSN/SAC</th><?php endif; ?>
-                <th style="text-align:center; width:60px;">Qty</th>
-                <th style="text-align:right; width:90px;">Rate</th>
+                <?php if ($showHsnColumn): ?><th class="col-hsn">HSN/SAC</th><?php endif; ?>
+                <th class="col-qty">Qty</th>
+                <th class="col-money-lg">Rate</th>
                 <?php if ($isTaxEnabled && $isGst): ?>
-                <?php if ($showDiscount): ?><th style="text-align:right; width:70px;">Disc</th><?php endif; ?>
-                <th style="text-align:right; width:60px;">GST %</th>
-                <th style="text-align:right; width:80px;">GST Amt</th>
+                <?php if ($showDiscount): ?><th class="col-money-sm">Disc</th><?php endif; ?>
+                <th class="col-qty">GST %</th>
+                <th class="col-money-md">GST Amt</th>
                 <?php elseif ($isTaxEnabled && !$isGst): ?>
-                <?php if ($showDiscount): ?><th style="text-align:right; width:70px;">Disc</th><?php endif; ?>
+                <?php if ($showDiscount): ?><th class="col-money-sm">Disc</th><?php endif; ?>
                 <?php else: ?>
-                <?php if ($showDiscount): ?><th style="text-align:right; width:70px;">Disc</th><?php endif; ?>
+                <?php if ($showDiscount): ?><th class="col-money-sm">Disc</th><?php endif; ?>
                 <?php endif; ?>
-                <th style="text-align:right; width:90px;">Total</th>
+                <th class="col-money-lg">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -316,21 +378,21 @@
             <td><?= $i ?></td>
             <td><?= Helper::escape($item['product_name'] ?? '') ?></td>
             <?php if ($showHsnColumn): ?><td><?= !empty($item['hsn_code']) ? Helper::escape($item['hsn_code']) : '-' ?></td><?php endif; ?>
-            <td style="text-align:center;">
+            <td class="td-center">
                 <?= Helper::formatQty($item['quantity'] ?? 0) ?>
                 <?php if ($showUnit && isset($item['unit_name'])): ?> <?= Helper::escape($item['unit_name']) ?><?php endif; ?>
             </td>
-            <td style="text-align:right;"><?= $formatMoney($item['unit_price'] ?? 0) ?></td>
+            <td class="td-right"><?= $formatMoney($item['unit_price'] ?? 0) ?></td>
             <?php if ($isTaxEnabled && $isGst): ?>
-            <?php if ($showDiscount): ?><td style="text-align:right;"><?= (($item['discount'] ?? 0) > 0) ? $formatMoney($item['discount'] ?? 0) : '-' ?></td><?php endif; ?>
-            <td style="text-align:right;"><?= $item['tax_rate'] ?? 0 ?>%</td>
-            <td style="text-align:right;"><?= $formatMoney($item['tax_amount'] ?? 0) ?></td>
+            <?php if ($showDiscount): ?><td class="td-right"><?= (($item['discount'] ?? 0) > 0) ? $formatMoney($item['discount'] ?? 0) : '-' ?></td><?php endif; ?>
+            <td class="td-right"><?= $item['tax_rate'] ?? 0 ?>%</td>
+            <td class="td-right"><?= $formatMoney($item['tax_amount'] ?? 0) ?></td>
             <?php elseif ($isTaxEnabled && !$isGst): ?>
-            <?php if ($showDiscount): ?><td style="text-align:right;"><?= (($item['discount'] ?? 0) > 0) ? $formatMoney($item['discount'] ?? 0) : '-' ?></td><?php endif; ?>
+            <?php if ($showDiscount): ?><td class="td-right"><?= (($item['discount'] ?? 0) > 0) ? $formatMoney($item['discount'] ?? 0) : '-' ?></td><?php endif; ?>
             <?php else: ?>
-            <?php if ($showDiscount): ?><td style="text-align:right;"><?= (($item['discount'] ?? 0) > 0) ? $formatMoney($item['discount'] ?? 0) : '-' ?></td><?php endif; ?>
+            <?php if ($showDiscount): ?><td class="td-right"><?= (($item['discount'] ?? 0) > 0) ? $formatMoney($item['discount'] ?? 0) : '-' ?></td><?php endif; ?>
             <?php endif; ?>
-            <td style="text-align:right; font-weight:600;"><?= $formatMoney($item['total'] ?? 0) ?></td>
+            <td class="td-right td-strong"><?= $formatMoney($item['total'] ?? 0) ?></td>
         </tr>
         <?php endforeach; endif; ?>
         </tbody>
@@ -383,13 +445,13 @@
                         <?php endif; ?>
                         <tr class="total-row"><td>Grand Total</td><td><?= $formatMoney($grandTotal) ?></td></tr>
                         <?php if ($type === 'sale' && $returnedAmount > 0): ?>
-                        <tr><td>Returned</td><td style="color:#fd7e14;">-<?= $formatMoney($returnedAmount) ?></td></tr>
+                        <tr><td>Returned</td><td class="text-returned">-<?= $formatMoney($returnedAmount) ?></td></tr>
                         <tr><td>Net Total</td><td><?= $formatMoney($effectiveTotal) ?></td></tr>
                         <?php endif; ?>
                         <?php if ($showPaidDue): ?>
-                        <tr><td>Paid</td><td style="color:#28a745;"><?= $formatMoney($displayPaid) ?></td></tr>
+                        <tr><td>Paid</td><td class="text-paid"><?= $formatMoney($displayPaid) ?></td></tr>
                         <?php if ($displayDue > 0): ?>
-                        <tr><td>Balance Due</td><td style="color:#dc3545; font-weight:600;"><?= $formatMoney($displayDue) ?></td></tr>
+                        <tr><td>Balance Due</td><td class="text-due"><?= $formatMoney($displayDue) ?></td></tr>
                         <?php endif; ?>
                         <?php endif; ?>
                     </tbody>
@@ -442,13 +504,13 @@
                     <?php endif; ?>
                     <tr class="total-row"><td>Grand Total</td><td><?= $formatMoney($grandTotal) ?></td></tr>
                     <?php if ($type === 'sale' && $returnedAmount > 0): ?>
-                    <tr><td>Returned</td><td style="color:#fd7e14;">-<?= $formatMoney($returnedAmount) ?></td></tr>
+                    <tr><td>Returned</td><td class="text-returned">-<?= $formatMoney($returnedAmount) ?></td></tr>
                     <tr><td>Net Total</td><td><?= $formatMoney($effectiveTotal) ?></td></tr>
                     <?php endif; ?>
                     <?php if ($showPaidDue): ?>
-                    <tr><td>Paid</td><td style="color:#28a745;"><?= $formatMoney($displayPaid) ?></td></tr>
+                    <tr><td>Paid</td><td class="text-paid"><?= $formatMoney($displayPaid) ?></td></tr>
                     <?php if ($displayDue > 0): ?>
-                    <tr><td>Balance Due</td><td style="color:#dc3545; font-weight:600;"><?= $formatMoney($displayDue) ?></td></tr>
+                    <tr><td>Balance Due</td><td class="text-due"><?= $formatMoney($displayDue) ?></td></tr>
                     <?php endif; ?>
                     <?php endif; ?>
                 </tbody>
@@ -467,13 +529,13 @@
 
     <!-- ===== SIGNATURE ===== -->
     <div class="signature-section">
-        <?php if (($showSealImage && $sealImage !== '') || ($showSignatureImage && $signatureImage !== '')): ?>
+        <?php if (($showSealImage && $sealImageSrc !== '') || ($showSignatureImage && $signatureImageSrc !== '')): ?>
         <div class="signature-media">
-            <?php if ($showSealImage && $sealImage !== ''): ?>
-            <img src="<?= APP_URL ?>/<?= Helper::escape($sealImage) ?>" alt="Seal" class="seal-image">
+            <?php if ($showSealImage && $sealImageSrc !== ''): ?>
+            <img src="<?= Helper::escape($sealImageSrc) ?>" alt="Seal" class="seal-image">
             <?php endif; ?>
-            <?php if ($showSignatureImage && $signatureImage !== ''): ?>
-            <img src="<?= APP_URL ?>/<?= Helper::escape($signatureImage) ?>" alt="Signature" class="signature-image">
+            <?php if ($showSignatureImage && $signatureImageSrc !== ''): ?>
+            <img src="<?= Helper::escape($signatureImageSrc) ?>" alt="Signature" class="signature-image">
             <?php endif; ?>
         </div>
         <?php endif; ?>
@@ -485,7 +547,7 @@
     <!-- ===== FOOTER ===== -->
     <div class="footer">
         <?php if (!empty($data['note'])): ?>
-        <p style="margin-bottom:8px; color:#666;"><?= Helper::escape($company['invoice_notes_label'] ?? 'Notes') ?>: <?= Helper::escape($data['note']) ?></p>
+        <p class="footer-note"><?= Helper::escape($company['invoice_notes_label'] ?? 'Notes') ?>: <?= Helper::escape($data['note']) ?></p>
         <?php endif; ?>
         <?php if (!empty($footerText)): ?>
         <p><?= Helper::escape($footerText) ?></p>

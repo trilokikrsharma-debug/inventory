@@ -6,6 +6,7 @@ class SaaSPlanController extends Controller {
     protected $allowedActions = ['index', 'create', 'edit', 'delete', 'toggle'];
 
     private SaaSPlan $planModel;
+    private ?SaaSPlanAdminService $planAdminService = null;
 
     public function __construct() {
         $this->requireSuperAdmin();
@@ -15,7 +16,7 @@ class SaaSPlanController extends Controller {
     public function index() {
         $plans = [];
         try {
-            $plans = $this->planModel->listForAdmin();
+            $plans = $this->workflowService()->listPlans();
         } catch (\Throwable $e) {
             Logger::error('Failed to load SaaS plans', ['error' => $e->getMessage()]);
             $this->setFlash(
@@ -37,12 +38,7 @@ class SaaSPlanController extends Controller {
                 return;
             }
 
-            try {
-                $result = $this->planModel->createPlan($this->post());
-            } catch (\Throwable $e) {
-                Logger::error('Failed to create SaaS plan', ['error' => $e->getMessage()]);
-                $result = ['success' => false, 'errors' => ['Unable to create plan right now.']];
-            }
+            $result = $this->workflowService()->createPlan($this->post());
             if (!$result['success']) {
                 $this->setFlash('error', implode(' ', $result['errors'] ?? ['Failed to create plan.']));
                 $this->redirect('index.php?page=saas_plans&action=create');
@@ -71,7 +67,7 @@ class SaaSPlanController extends Controller {
         }
 
         try {
-            $plan = $this->planModel->find($id);
+            $plan = $this->workflowService()->loadPlan($id);
         } catch (\Throwable $e) {
             Logger::error('Failed to load SaaS plan', ['id' => $id, 'error' => $e->getMessage()]);
             $plan = null;
@@ -88,12 +84,7 @@ class SaaSPlanController extends Controller {
                 return;
             }
 
-            try {
-                $result = $this->planModel->updatePlan($id, $this->post());
-            } catch (\Throwable $e) {
-                Logger::error('Failed to update SaaS plan', ['id' => $id, 'error' => $e->getMessage()]);
-                $result = ['success' => false, 'errors' => ['Unable to update plan right now.']];
-            }
+            $result = $this->workflowService()->updatePlan($id, $this->post());
             if (!$result['success']) {
                 $this->setFlash('error', implode(' ', $result['errors'] ?? ['Failed to update plan.']));
                 $this->redirect('index.php?page=saas_plans&action=edit&id=' . $id);
@@ -124,12 +115,7 @@ class SaaSPlanController extends Controller {
         }
 
         $id = (int)$this->post('id');
-        try {
-            $result = $this->planModel->deletePlan($id);
-        } catch (\Throwable $e) {
-            Logger::error('Failed to delete SaaS plan', ['id' => $id, 'error' => $e->getMessage()]);
-            $result = ['success' => false, 'message' => 'Failed to delete plan.'];
-        }
+        $result = $this->workflowService()->deletePlan($id);
         if (!empty($result['success'])) {
             $this->logActivity('SaaS plan deleted/disabled', 'saas_plans', $id, $result['message'] ?? null);
             $this->setFlash('success', $result['message'] ?? 'Plan updated.');
@@ -150,27 +136,23 @@ class SaaSPlanController extends Controller {
         }
 
         $id = (int)$this->post('id');
-        try {
-            $plan = $this->planModel->find($id);
-        } catch (\Throwable $e) {
-            Logger::error('Failed to toggle SaaS plan', ['id' => $id, 'error' => $e->getMessage()]);
-            $plan = null;
-        }
-        if (!$plan) {
+        $result = $this->workflowService()->toggleStatus($id);
+        if (!$result) {
             $this->setFlash('error', 'Plan not found.');
             $this->redirect('index.php?page=saas_plans');
             return;
         }
 
-        $nextStatus = ($plan['status'] ?? 'inactive') === 'active' ? 'inactive' : 'active';
-        $this->planModel->update($id, [
-            'status' => $nextStatus,
-            'is_active' => $nextStatus === 'active' ? 1 : 0,
-            'updated_at' => SaaSBillingHelper::now(),
-        ]);
-
-        $this->logActivity('SaaS plan status changed', 'saas_plans', $id, 'Status: ' . $nextStatus);
+        $this->logActivity('SaaS plan status changed', 'saas_plans', $id, 'Status: ' . $result['status']);
         $this->setFlash('success', 'Plan status updated.');
         $this->redirect('index.php?page=saas_plans');
+    }
+
+    private function workflowService(): SaaSPlanAdminService {
+        if ($this->planAdminService === null) {
+            $this->planAdminService = new SaaSPlanAdminService($this->planModel);
+        }
+
+        return $this->planAdminService;
     }
 }

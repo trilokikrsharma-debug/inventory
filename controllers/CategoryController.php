@@ -5,6 +5,7 @@
 class CategoryController extends Controller {
 
     protected $allowedActions = ['index', 'create', 'edit', 'delete', 'fetch'];
+    private ?CatalogLookupService $catalogLookupService = null;
 
     public function index() {
         $this->requireAuth();
@@ -22,11 +23,7 @@ class CategoryController extends Controller {
         if ($this->isPost()) {
             $this->validateCSRF();
             $categoryModel = new CategoryModel();
-            $categoryModel->create([
-                'name'        => $this->sanitize($this->post('name')),
-                'description' => $this->sanitize($this->post('description')),
-                'is_active'   => $this->post('is_active', 1),
-            ]);
+            $categoryModel->create($this->lookupService()->buildNamedPayload($this->post(), true));
             $this->setFlash('success', 'Category created successfully.');
             $this->redirect('index.php?page=categories');
         }
@@ -39,11 +36,7 @@ class CategoryController extends Controller {
 
         if ($this->isPost()) {
             $this->validateCSRF();
-            $categoryModel->update($id, [
-                'name'        => $this->sanitize($this->post('name')),
-                'description' => $this->sanitize($this->post('description')),
-                'is_active'   => $this->post('is_active', 1),
-            ]);
+            $categoryModel->update($id, $this->lookupService()->buildNamedPayload($this->post(), true));
             $this->setFlash('success', 'Category updated successfully.');
             $this->redirect('index.php?page=categories');
         }
@@ -67,5 +60,13 @@ class CategoryController extends Controller {
         $id = (int)parent::get('id');
         $category = (new CategoryModel())->find($id);
         $this->json($category ?: ['error' => 'Not found']);
+    }
+
+    private function lookupService(): CatalogLookupService {
+        if ($this->catalogLookupService === null) {
+            $this->catalogLookupService = new CatalogLookupService();
+        }
+
+        return $this->catalogLookupService;
     }
 }

@@ -96,9 +96,9 @@ $sections = is_array($sections ?? null) ? $sections : [];
         <div class="mx-xs">
             <div class="crumbs"><a href="<?= APP_URL ?>/">Home</a><span>/</span><a href="<?= APP_URL ?>/blog">Blog</a><span>/</span><span><?= Helper::escape((string)($heading ?? APP_NAME)) ?></span></div>
             <div class="badge"><i class="fas fa-book-open"></i> Business Software Guide</div>
-            <h1 style="font-size:clamp(2rem,5vw,3.2rem);font-weight:900;color:var(--w);line-height:1.08;margin-bottom:16px"><?= Helper::escape((string)($heading ?? APP_NAME)) ?></h1>
-            <p style="font-size:1.02rem;line-height:1.8;color:var(--mt)"><?= Helper::escape((string)($excerpt ?? '')) ?></p>
-            <div style="margin-top:16px;color:var(--mt);font-size:.85rem">Published <?= Helper::escape((string)($publishedDate ?? date('Y-m-d'))) ?> · For Indian SMEs</div>
+            <h1 class="hero-title-xl hero-title-gap-16"><?= Helper::escape((string)($heading ?? APP_NAME)) ?></h1>
+            <p class="hero-copy-wide"><?= Helper::escape((string)($excerpt ?? '')) ?></p>
+            <div class="article-meta">Published <?= Helper::escape((string)($publishedDate ?? date('Y-m-d'))) ?> · For Indian SMEs</div>
         </div>
     </section>
     <article class="article-body">
@@ -124,7 +124,7 @@ $sections = is_array($sections ?? null) ? $sections : [];
 
 <script nonce="<?= $_nonce ?>">
 document.getElementById('hamburger').addEventListener('click',function(){document.getElementById('mobMenu').classList.toggle('open')});
-function clM(){document.getElementById('mobMenu').classList.remove('open')}
+document.querySelectorAll('#mobMenu a').forEach(function(el){el.addEventListener('click',function(){document.getElementById('mobMenu').classList.remove('open')})});
 var revEls=document.querySelectorAll('.rv');
 if('IntersectionObserver' in window){
 var ob=new IntersectionObserver(function(e){e.forEach(function(el){if(el.isIntersecting){el.target.classList.add('vis');ob.unobserve(el.target)}})},{threshold:.08,rootMargin:'0px 0px -20px 0px'});

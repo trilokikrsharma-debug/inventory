@@ -1,8 +1,8 @@
 <?php
 /**
  * Tenant Dashboard Controller
- * 
- * SaaS usage dashboard for MSME owners. 
+ *
+ * SaaS usage dashboard for MSME owners.
  * Allows them to view current plan, usage limits, and billing history.
  */
 class TenantDashboardController extends Controller {
@@ -16,7 +16,7 @@ class TenantDashboardController extends Controller {
         $this->requireAuth();
         // Ideally enforce that only the 'admin' or 'billing' role can see this page
         // For MVP, we pass it if they have auth
-        
+
         $tenantId = Tenant::id();
         $db = Database::getInstance();
 
@@ -25,7 +25,7 @@ class TenantDashboardController extends Controller {
             "SELECT t.*, p.name as plan_name, p.max_users, p.price, p.offer_price, p.billing_cycle, p.billing_type, p.duration_days, p.features
              FROM companies t 
              LEFT JOIN saas_plans p ON t.saas_plan_id = p.id 
-             WHERE t.id = ?", 
+             WHERE t.id = ?",
             [$tenantId]
         )->fetch();
 

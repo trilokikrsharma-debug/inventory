@@ -127,9 +127,9 @@ $canTransferStock = !empty($canTransferStock);
                             <table class="table table-sm align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:58%">Product</th>
-                                        <th style="width:22%">Available</th>
-                                        <th style="width:16%">Qty</th>
+                                        <th class="warehouse-transfer-col-product">Product</th>
+                                        <th class="warehouse-transfer-col-available">Available</th>
+                                        <th class="warehouse-transfer-col-qty">Qty</th>
                                         <th class="text-end"> </th>
                                     </tr>
                                 </thead>

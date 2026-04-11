@@ -872,7 +872,8 @@ class HrController extends Controller {
         $endDate = trim((string)$this->post('end_date', ''));
         $reason = trim((string)$this->post('reason', ''));
 
-        if ($employeeId <= 0 || !(new HrEmployee())->find($employeeId)) {
+        $employee = $employeeId > 0 ? (new HrEmployee())->find($employeeId) : null;
+        if ($employeeId <= 0 || !$employee) {
             throw new \RuntimeException('Please select a valid employee.');
         }
         if (!in_array($leaveType, ['casual', 'sick', 'earned', 'unpaid', 'other'], true)) {
@@ -1155,7 +1156,7 @@ class HrController extends Controller {
             $leaveDays = (int)($approvedLeaveDays[(int)$employee['id']] ?? 0);
             $attendance = round((float)($attendanceUnits[(int)$employee['id']] ?? 0), 2);
             $attendanceGap = max(0.0, $daysInMonth - ($attendance + $leaveDays));
-            $deductionAmount = $salary > 0 && $daysInMonth > 0 ? round(($salary / $daysInMonth) * $attendanceGap, 2) : 0.0;
+            $deductionAmount = $salary > 0 ? round(($salary / $daysInMonth) * $attendanceGap, 2) : 0.0;
             $statutory = HrStatutoryPayrollService::calculate($salary, $policy);
             $netSalary = max(0, round($salary - $deductionAmount - (float)$statutory['statutory_deduction_amount'], 2));
 

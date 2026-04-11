@@ -1,7 +1,7 @@
 <?php
 /**
  * Sale Repository
- * 
+ *
  * Data access logic for Sales and related tables.
  */
 class SaleRepository extends BaseRepository {
@@ -55,7 +55,7 @@ class SaleRepository extends BaseRepository {
             );
         }
     }
-    
+
     /**
      * Find a sale with its customer details
      */
@@ -64,17 +64,17 @@ class SaleRepository extends BaseRepository {
              FROM sales s 
              LEFT JOIN customers c ON s.customer_id = c.id
              WHERE s.id = ? AND s.deleted_at IS NULL";
-        
+
         $params = [$id];
-             
+
         if(Tenant::id() !== null) {
             $query .= " AND s.company_id = ?";
             $params[] = Tenant::id();
         }
-        
+
         return $this->db->query($query, $params)->fetch() ?: null;
     }
-    
+
     /**
      * Find items for a sale
      */
@@ -87,47 +87,47 @@ class SaleRepository extends BaseRepository {
             [$saleId]
         )->fetchAll();
     }
-    
+
     /**
      * Fetch paginated sales list eager loading customer
      */
     public function paginatedList(array $filters, int $page, int $perPage = 20): array {
         $where = ["s.deleted_at IS NULL"];
         $params = [];
-        
+
         if (Tenant::id() !== null) {
             $where[] = "s.company_id = ?";
             $params[] = Tenant::id();
         }
-        
+
         if (!empty($filters['search'])) {
             $where[] = "(s.invoice_number LIKE ? OR c.name LIKE ?)";
             $params[] = "%{$filters['search']}%";
             $params[] = "%{$filters['search']}%";
         }
-        
+
         if (!empty($filters['customer_id'])) {
             $where[] = "s.customer_id = ?";
             $params[] = (int)$filters['customer_id'];
         }
-        
+
         if (!empty($filters['from_date']) && !empty($filters['to_date'])) {
             $where[] = "s.sale_date BETWEEN ? AND ?";
             $params[] = $filters['from_date'];
             $params[] = $filters['to_date'];
         }
-        
+
         $whereStr = implode(' AND ', $where);
-        
+
         $countQuery = "SELECT COUNT(*) FROM sales s LEFT JOIN customers c ON s.customer_id = c.id WHERE {$whereStr}";
         $total = $this->db->query($countQuery, $params)->fetchColumn();
-        
+
         $totalPages = ceil($total / $perPage);
         $offset = ($page - 1) * $perPage;
-        
+
         $dataQuery = "SELECT s.*, c.name as customer_name FROM sales s LEFT JOIN customers c ON s.customer_id = c.id WHERE {$whereStr} ORDER BY s.sale_date DESC, s.id DESC LIMIT {$perPage} OFFSET {$offset}";
         $data = $this->db->query($dataQuery, $params)->fetchAll();
-        
+
         return [
             'data'         => $data,
             'total'        => $total,

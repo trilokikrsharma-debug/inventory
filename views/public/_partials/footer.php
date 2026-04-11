@@ -10,9 +10,9 @@ $_logoUrl = $logoUrl ?? rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
     <div class="mx">
         <div class="ft-grid">
             <div>
-                <a href="<?= APP_URL ?>/" class="logo" style="margin-bottom:10px"><img src="<?= htmlspecialchars($_logoUrl, ENT_QUOTES) ?>" alt="TSA Legacy" style="height:32px"></a>
-                <p style="color:var(--mt);font-size:.78rem;line-height:1.6;margin:10px 0">Cloud-native business management platform built for Indian SMEs.</p>
-                <p style="color:var(--mt);font-size:.72rem"><i class="fas fa-map-marker-alt" style="margin-right:4px"></i>India-based Startup</p>
+                <a href="<?= APP_URL ?>/" class="logo ft-logo"><img src="<?= htmlspecialchars($_logoUrl, ENT_QUOTES) ?>" alt="TSA Legacy"></a>
+                <p class="ft-intro">Cloud-native business management platform built for Indian SMEs.</p>
+                <p class="ft-meta icon-gap-4"><i class="fas fa-map-marker-alt"></i>India-based Startup</p>
             </div>
             <div>
                 <div class="ft-title">Product</div>
@@ -36,16 +36,16 @@ $_logoUrl = $logoUrl ?? rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
             <div>
                 <div class="ft-title">Contact</div>
                 <div class="ft-links">
-                    <a href="mailto:triloki@tsalegacy.com"><i class="fas fa-envelope" style="margin-right:4px"></i>triloki@tsalegacy.com</a>
-                    <span style="color:var(--mt);font-size:.78rem"><i class="fas fa-building" style="margin-right:4px"></i>TSA Legacy Ventures</span>
-                    <span style="color:var(--mt);font-size:.78rem"><i class="fas fa-certificate" style="margin-right:4px"></i>MSME / Udyam Registered</span>
-                    <span style="color:var(--mt);font-size:.78rem"><i class="fas fa-flag" style="margin-right:4px"></i>Made with ❤️ in India</span>
+                    <a href="mailto:triloki@tsalegacy.com" class="icon-gap-4"><i class="fas fa-envelope"></i>triloki@tsalegacy.com</a>
+                    <span class="ft-meta ft-contact-item icon-gap-4"><i class="fas fa-building"></i>TSA Legacy Ventures</span>
+                    <span class="ft-meta ft-contact-item icon-gap-4"><i class="fas fa-certificate"></i>MSME / Udyam Registered</span>
+                    <span class="ft-meta ft-contact-item icon-gap-4"><i class="fas fa-flag"></i>Made with ❤️ in India</span>
                 </div>
             </div>
         </div>
         <div class="ft-bar">
             <p class="ft-copy">© 2025–<?= date('Y') ?> TSA Legacy Ventures. All rights reserved.</p>
-            <div style="display:flex;align-items:center;gap:8px"><span class="ft-copy">Powered by</span><span style="color:var(--mt);font-size:.75rem;font-weight:600"><i class="fab fa-google" style="margin-right:3px"></i>Google Cloud</span></div>
+            <div class="ft-inline"><span class="ft-copy">Powered by</span><span class="ft-cloud"><i class="fab fa-google"></i>Google Cloud</span></div>
         </div>
     </div>
 </footer>

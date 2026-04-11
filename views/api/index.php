@@ -22,7 +22,7 @@ $availableScopes = is_array($availableScopes ?? null) ? $availableScopes : [];
             <div class="small mb-2">For security reasons it will not be shown again after you leave this page.</div>
             <div class="d-flex flex-wrap align-items-center gap-2">
                 <code class="flex-grow-1 p-2 border rounded bg-light text-break"><?= htmlspecialchars($newToken) ?></code>
-                <button type="button" class="btn btn-outline-success btn-sm" onclick="navigator.clipboard.writeText('<?= htmlspecialchars($newToken, ENT_QUOTES) ?>')">
+                <button type="button" class="btn btn-outline-success btn-sm" id="copyApiTokenBtn" data-token="<?= htmlspecialchars($newToken, ENT_QUOTES) ?>">
                     <i class="fas fa-copy me-1"></i>Copy
                 </button>
             </div>
@@ -137,7 +137,7 @@ $availableScopes = is_array($availableScopes ?? null) ? $availableScopes : [];
                                         <form action="<?= APP_URL ?>/index.php?page=api&action=revoke" method="POST" class="d-inline">
                                             <?= CSRF::field() ?>
                                             <input type="hidden" name="token_id" value="<?= (int)$token['id'] ?>">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Revoke this API token?')">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger js-confirm-revoke-token" data-confirm-message="Revoke this API token?">
                                                 <i class="fas fa-ban me-1"></i>Revoke
                                             </button>
                                         </form>
@@ -166,7 +166,7 @@ $availableScopes = is_array($availableScopes ?? null) ? $availableScopes : [];
     </div>
 </div>
 
-<script>
+<script nonce="<?= $cspNonce ?? '' ?>">
 document.addEventListener('DOMContentLoaded', function () {
     var fullAccess = document.getElementById('scope_all');
     var scopeInputs = Array.prototype.slice.call(document.querySelectorAll('.api-scope-checkbox'));
@@ -200,5 +200,21 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     syncStateFromFullAccess();
+
+    var copyButton = document.getElementById('copyApiTokenBtn');
+    if (copyButton) {
+        copyButton.addEventListener('click', function () {
+            navigator.clipboard.writeText(copyButton.dataset.token || '');
+        });
+    }
+
+    document.querySelectorAll('.js-confirm-revoke-token').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            var message = button.dataset.confirmMessage || 'Revoke this API token?';
+            if (!window.confirm(message)) {
+                event.preventDefault();
+            }
+        });
+    });
 });
 </script>

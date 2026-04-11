@@ -180,7 +180,7 @@ class SaaSBillingHelper {
             ],
         ];
 
-        $allowed = $defaults[$slug] ?? [];
+        $allowed = $defaults[$slug];
         foreach (self::featureAliases($feature) as $alias) {
             if (in_array($alias, $allowed, true)) {
                 return true;
@@ -219,7 +219,7 @@ class SaaSBillingHelper {
         }
 
         if (self::planHasFeature($plan, 'sale_returns')) {
-            array_push($permissions, 'returns.view', 'returns.create');
+            array_push($permissions, 'returns.view', 'returns.create', 'returns.cancel');
         }
 
         if (self::planHasFeature($plan, 'backup_restore')) {

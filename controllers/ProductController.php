@@ -1,18 +1,13 @@
 <?php
 /**
  * Product Controller
- * 
+ *
  * Full CRUD for products with stock management.
  */
 class ProductController extends Controller {
-
-    protected $allowedActions = ['index', 'create', 'edit', 'view_product', 'delete', 'search', 'import', 'download_template'];
-    /**
-     * Cached products table columns for optional-field compatibility.
-     *
-     * @var array<string, bool>|null
-     */
-    private static $productColumnMap = null;
+    protected $allowedActions = ['index', 'create', 'edit', 'view_product', 'delete', 'archive', 'restore', 'search', 'import', 'download_template'];
+    private ?ProductWorkflowService $productWorkflowService = null;
+    private ?AccountingLifecycleService $accountingLifecycleService = null;
 
     private function warehouseFeatureEnabled(): bool {
         return !Session::isSuperAdmin()
@@ -41,10 +36,10 @@ class ProductController extends Controller {
 
     public function create() {
         $this->requirePermission('products.create');
-        
+
         if ($this->isPost()) {
             $this->validateCSRF();
-            
+
             // Enterprise validation
             $v = Validator::make($_POST, [
                 'name'           => 'required|string|min:2|max:200',
@@ -58,7 +53,7 @@ class ProductController extends Controller {
                 'opening_stock'  => 'nullable|numeric|min:0',
                 'low_stock_alert'=> 'nullable|integer|min:0',
             ]);
-            
+
             if ($v->fails()) {
                 $categories = (new CategoryModel())->allActive();
                 $brands = (new BrandModel())->allActive();
@@ -90,27 +85,7 @@ class ProductController extends Controller {
 
             $productModel = new ProductModel();
             try {
-                $data = [
-                    'name'           => $this->sanitize($this->post('name')),
-                    'sku'            => $this->sanitize($this->post('sku')) ?: null,
-                    'barcode'        => $this->sanitize($this->post('barcode')) ?: null,
-                    'category_id'    => $this->post('category_id') ?: null,
-                    'brand_id'       => $this->post('brand_id') ?: null,
-                    'unit_id'        => $this->post('unit_id') ?: null,
-                    'purchase_price' => (float)$this->post('purchase_price', 0),
-                    'selling_price'  => (float)$this->post('selling_price', 0),
-                    'mrp'            => $this->post('mrp') !== '' ? (float)$this->post('mrp') : null,
-                    'tax_rate'       => $this->post('tax_rate') !== '' ? (float)$this->post('tax_rate') : null,
-                    'opening_stock'  => (float)$this->post('opening_stock', 0),
-                    'current_stock'  => (float)$this->post('opening_stock', 0),
-                    'low_stock_alert'=> $this->post('low_stock_alert') !== '' ? (int)$this->post('low_stock_alert') : null,
-                    'description'    => $this->sanitize($this->post('description')),
-                    'is_active'      => $this->post('is_active', 1),
-                ];
-                $data = $this->appendOptionalProductFields($data, [
-                    'hsn_code' => $this->normalizeHsnCode((string)$this->post('hsn_code', '')),
-                    'custom_fields' => $this->extractCustomFieldsPayload(),
-                ]);
+                $data = $this->workflowService()->buildPayload($_POST, Session::isSuperAdmin() || Tenant::canUse('custom_fields'));
             } catch (\RuntimeException $e) {
                 $this->setFlash('error', $e->getMessage());
                 $this->redirect('index.php?page=products&action=create');
@@ -202,7 +177,11 @@ class ProductController extends Controller {
                                     : 'Import would exceed your current product limit. Please upgrade your plan.'
                             );
                         } else {
-                            $imported = $this->persistImportedProducts($validRows);
+                            $imported = $this->workflowService()->persistImportedProducts(
+                                $validRows,
+                                (int)(Session::get('user')['id'] ?? 0),
+                                $this->warehouseFeatureEnabled()
+                            );
                             $this->setFlash('success', 'Imported ' . $imported . ' product(s) successfully.');
                             $analysis['imported_count'] = $imported;
                         }
@@ -262,25 +241,8 @@ class ProductController extends Controller {
             }
 
             try {
-                $data = [
-                    'name'           => $this->sanitize($this->post('name')),
-                    'sku'            => $this->sanitize($this->post('sku')) ?: null,
-                    'barcode'        => $this->sanitize($this->post('barcode')) ?: null,
-                    'category_id'    => $this->post('category_id') ?: null,
-                    'brand_id'       => $this->post('brand_id') ?: null,
-                    'unit_id'        => $this->post('unit_id') ?: null,
-                    'purchase_price' => (float)$this->post('purchase_price', 0),
-                    'selling_price'  => (float)$this->post('selling_price', 0),
-                    'mrp'            => $this->post('mrp') !== '' ? (float)$this->post('mrp') : null,
-                    'tax_rate'       => $this->post('tax_rate') !== '' ? (float)$this->post('tax_rate') : null,
-                    'low_stock_alert'=> $this->post('low_stock_alert') !== '' ? (int)$this->post('low_stock_alert') : null,
-                    'description'    => $this->sanitize($this->post('description')),
-                    'is_active'      => $this->post('is_active', 1),
-                ];
-                $data = $this->appendOptionalProductFields($data, [
-                    'hsn_code' => $this->normalizeHsnCode((string)$this->post('hsn_code', '')),
-                    'custom_fields' => $this->extractCustomFieldsPayload(),
-                ]);
+                $data = $this->workflowService()->buildPayload($_POST, Session::isSuperAdmin() || Tenant::canUse('custom_fields'));
+                unset($data['opening_stock']);
             } catch (\RuntimeException $e) {
                 $this->setFlash('error', $e->getMessage());
                 $this->redirect('index.php?page=products&action=edit&id=' . $id);
@@ -363,37 +325,58 @@ class ProductController extends Controller {
         $this->requirePermission('products.delete');
         if (!$this->isPost()) { $this->redirect('index.php?page=products'); }
         $this->validateCSRF();
-        
+
         $id = (int)$this->post('id');
-        $productModel = new ProductModel();
-        $product = $productModel->find($id);
-        
-        if ($product) {
-            $db = Database::getInstance();
-            $tenantJoin = Tenant::id() !== null ? " AND s.company_id = ?" : "";
-            $tenantJoinP = Tenant::id() !== null ? " AND p.company_id = ?" : "";
-            $params = [$id];
-            if (Tenant::id() !== null) $params[] = Tenant::id();
-            $params[] = $id;
-            if (Tenant::id() !== null) $params[] = Tenant::id();
-            $linked = $db->query(
-                "SELECT 
-                    (SELECT COUNT(*) FROM sale_items si JOIN sales s ON si.sale_id = s.id WHERE si.product_id = ? AND s.deleted_at IS NULL{$tenantJoin}) +
-                    (SELECT COUNT(*) FROM purchase_items pi JOIN purchases p ON pi.purchase_id = p.id WHERE pi.product_id = ? AND p.deleted_at IS NULL{$tenantJoinP}) as total",
-                $params
-            )->fetchColumn();
-
-            if ($linked > 0) {
-                $this->setFlash('error', 'Cannot delete product: it is used in active sales or purchases.');
-                $this->redirect('index.php?page=products');
-                return;
-            }
-
-            $productModel->delete($id);
-            $this->logActivity('Deleted product: ' . $product['name'], 'products', $id);
-            $this->setFlash('success', 'Product deleted successfully.');
+        try {
+            $result = $this->lifecycleService()->retireOrDeleteProduct($id);
+        } catch (\InvalidArgumentException $e) {
+            $this->setFlash('error', $e->getMessage());
+            $this->redirect('index.php?page=products');
+            return;
         }
-        
+
+        if ($result['action'] === 'archived') {
+            $this->logActivity('Archived product: ' . $result['record']['name'], 'products', $id, json_encode($result['usage']));
+            $this->setFlash('success', 'Product archived because it is referenced in transactions. Historical records remain intact.');
+        } else {
+            $this->logActivity('Deleted product: ' . $result['record']['name'], 'products', $id);
+            $this->setFlash('success', 'Unused product deleted successfully.');
+        }
+
+        $this->redirect('index.php?page=products');
+    }
+
+    public function archive() {
+        $this->requirePermission('products.delete');
+        if (!$this->isPost()) { $this->redirect('index.php?page=products'); }
+        $this->validateCSRF();
+
+        $id = (int)$this->post('id');
+        try {
+            $result = $this->lifecycleService()->setProductArchived($id, true);
+            $this->logActivity('Archived product: ' . $result['record']['name'], 'products', $id);
+            $this->setFlash('success', 'Product archived successfully.');
+        } catch (\InvalidArgumentException $e) {
+            $this->setFlash('error', $e->getMessage());
+        }
+
+        $this->redirect('index.php?page=products');
+    }
+
+    public function restore() {
+        $this->requirePermission('products.delete');
+        if (!$this->isPost()) { $this->redirect('index.php?page=products'); }
+        $this->validateCSRF();
+
+        $id = (int)$this->post('id');
+        try {
+            $result = $this->lifecycleService()->setProductArchived($id, false);
+            $this->logActivity('Restored product: ' . $result['record']['name'], 'products', $id);
+            $this->setFlash('success', 'Product restored successfully.');
+        } catch (\InvalidArgumentException $e) {
+            $this->setFlash('error', $e->getMessage());
+        }
+
         $this->redirect('index.php?page=products');
     }
 
@@ -417,56 +400,6 @@ class ProductController extends Controller {
             }
         }
         $this->json($results);
-    }
-
-    /**
-     * Normalize and sanitize HSN/SAC code.
-     */
-    private function normalizeHsnCode(string $value): ?string {
-        $value = strtoupper(trim($value));
-        return $value !== '' ? $this->sanitize($value) : null;
-    }
-
-    /**
-     * Append only fields that exist in current products schema.
-     */
-    private function appendOptionalProductFields(array $data, array $optionalFields): array {
-        foreach ($optionalFields as $field => $value) {
-            if ($this->productColumnExists($field)) {
-                $data[$field] = $value;
-            }
-        }
-        return $data;
-    }
-
-    /**
-     * Check product table column existence with cached schema lookup.
-     */
-    private function productColumnExists(string $column): bool {
-        if (self::$productColumnMap === null) {
-            self::$productColumnMap = [];
-            try {
-                $rows = Database::getInstance()->query("SHOW COLUMNS FROM products")->fetchAll();
-                foreach ($rows as $row) {
-                    if (!empty($row['Field'])) {
-                        self::$productColumnMap[$row['Field']] = true;
-                    }
-                }
-            } catch (Throwable $e) {
-                self::$productColumnMap = [];
-            }
-        }
-        return !empty(self::$productColumnMap[$column]);
-    }
-
-    private function extractCustomFieldsPayload(): ?string {
-        if (!$this->productColumnExists('custom_fields')) {
-            return null;
-        }
-        if (!(Session::isSuperAdmin() || Tenant::canUse('custom_fields'))) {
-            return null;
-        }
-        return CustomFieldService::encodeFromInput((string)$this->post('custom_fields_json', ''));
     }
 
     private function customFieldsPretty($raw): string {
@@ -497,60 +430,19 @@ class ProductController extends Controller {
         return (int)$warehouses[0]['id'];
     }
 
-    /**
-     * @param array<int, array<string, mixed>> $rows
-     */
-    private function persistImportedProducts(array $rows): int {
-        $db = Database::getInstance();
-        $productModel = new ProductModel();
-        $userId = (int)(Session::get('user')['id'] ?? 0);
-        $created = 0;
-
-        $db->beginTransaction();
-        try {
-            foreach ($rows as $row) {
-                $data = (array)($row['normalized'] ?? []);
-                $payload = [
-                    'name' => $this->sanitize((string)($data['name'] ?? '')),
-                    'sku' => $this->sanitize((string)($data['sku'] ?? '')) ?: null,
-                    'barcode' => $this->sanitize((string)($data['barcode'] ?? '')) ?: null,
-                    'category_id' => !empty($data['category_id']) ? (int)$data['category_id'] : null,
-                    'brand_id' => !empty($data['brand_id']) ? (int)$data['brand_id'] : null,
-                    'unit_id' => !empty($data['unit_id']) ? (int)$data['unit_id'] : null,
-                    'purchase_price' => (float)($data['purchase_price'] ?? 0),
-                    'selling_price' => (float)($data['selling_price'] ?? 0),
-                    'mrp' => $data['mrp'] !== null ? (float)$data['mrp'] : null,
-                    'tax_rate' => $data['tax_rate'] !== null ? (float)$data['tax_rate'] : null,
-                    'opening_stock' => (float)($data['opening_stock'] ?? 0),
-                    'current_stock' => (float)($data['current_stock'] ?? 0),
-                    'low_stock_alert' => $data['low_stock_alert'] !== null ? (int)$data['low_stock_alert'] : null,
-                    'description' => $this->sanitize((string)($data['description'] ?? '')) ?: null,
-                    'is_active' => !empty($data['is_active']) ? 1 : 0,
-                ];
-                $payload = $this->appendOptionalProductFields($payload, [
-                    'hsn_code' => $this->normalizeHsnCode((string)($data['hsn_code'] ?? '')),
-                ]);
-
-                $productId = (int)$productModel->create($payload);
-                $created++;
-
-                if ($payload['opening_stock'] > 0) {
-                    $db->query(
-                        "INSERT INTO stock_history (company_id, product_id, type, quantity, stock_before, stock_after, note, created_by) VALUES (?, ?, 'opening', ?, 0, ?, 'Opening stock entry (bulk import)', ?)",
-                        [Tenant::id() ?? 1, $productId, $payload['opening_stock'], $payload['opening_stock'], $userId > 0 ? $userId : null]
-                    );
-
-                    if ($this->warehouseFeatureEnabled()) {
-                        $productModel->allocateOpeningStock($productId, null, (float)$payload['opening_stock']);
-                    }
-                }
-            }
-            $db->commit();
-        } catch (\Throwable $e) {
-            $db->rollback();
-            throw $e;
+    private function workflowService(): ProductWorkflowService {
+        if ($this->productWorkflowService === null) {
+            $this->productWorkflowService = new ProductWorkflowService();
         }
 
-        return $created;
+        return $this->productWorkflowService;
+    }
+
+    private function lifecycleService(): AccountingLifecycleService {
+        if ($this->accountingLifecycleService === null) {
+            $this->accountingLifecycleService = new AccountingLifecycleService();
+        }
+
+        return $this->accountingLifecycleService;
     }
 }

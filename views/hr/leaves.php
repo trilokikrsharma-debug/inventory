@@ -153,7 +153,7 @@ $employeeId = (int)($employeeId ?? 0);
                                     <?php endif; ?>
                                 </td>
                                 <td><span class="badge <?= $statusClass ?>"><?= Helper::escape(ucfirst($finalStatus)) ?></span></td>
-                                <td class="text-wrap" style="max-width:220px;"><?= Helper::escape($request['reason'] ?? '-') ?></td>
+                                <td class="text-wrap text-wrap-220"><?= Helper::escape($request['reason'] ?? '-') ?></td>
                                 <td class="text-end">
                                     <?php if ($finalStatus === 'pending' && $managerStatus === 'pending'): ?>
                                     <div class="d-inline-flex gap-1">

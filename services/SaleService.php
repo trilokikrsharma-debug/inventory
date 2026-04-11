@@ -1,7 +1,7 @@
 <?php
 /**
  * Sale Service
- * 
+ *
  * Orchestrates the complex business logic for creating and managing sales.
  */
 class SaleService {
@@ -11,9 +11,9 @@ class SaleService {
     private StockService $stockService;
 
     public function __construct(
-        Database $db, 
-        SaleRepository $saleRepo, 
-        CustomerRepository $customerRepo, 
+        Database $db,
+        SaleRepository $saleRepo,
+        CustomerRepository $customerRepo,
         StockService $stockService
     ) {
         $this->db = $db;
@@ -48,10 +48,10 @@ class SaleService {
                 }
 
                 $this->stockService->deduct(
-                    $item['product_id'], 
-                    $item['quantity'], 
-                    'sale', 
-                    $userId, 
+                    $item['product_id'],
+                    $item['quantity'],
+                    'sale',
+                    $userId,
                     $saleId
                 );
             }
@@ -77,7 +77,7 @@ class SaleService {
             ]);
 
             Logger::audit('sale_created', 'sales', $saleId, [
-                'total' => $data['grand_total'], 
+                'total' => $data['grand_total'],
                 'items' => count($items)
             ]);
 

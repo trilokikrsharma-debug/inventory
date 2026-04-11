@@ -24,6 +24,8 @@ class SaaSBillingController extends Controller {
     private PromoCode $promoModel;
     private Referral $referralModel;
     private TenantSubscription $subscriptionModel;
+    private ?BillingCheckoutService $billingCheckoutService = null;
+    private ?BillingLifecycleService $billingLifecycleService = null;
     private const RATE_PROMO_MAX = 40;
     private const RATE_PROMO_WINDOW = 60;
     private const RATE_CHECKOUT_MAX = 15;
@@ -36,6 +38,16 @@ class SaaSBillingController extends Controller {
         $this->promoModel = new PromoCode();
         $this->referralModel = new Referral();
         $this->subscriptionModel = new TenantSubscription();
+        $this->billingCheckoutService = new BillingCheckoutService(
+            $this->planModel,
+            $this->promoModel,
+            $this->subscriptionModel
+        );
+        $this->billingLifecycleService = new BillingLifecycleService(
+            $this->subscriptionModel,
+            $this->promoModel,
+            $this->referralModel
+        );
     }
 
     /**
@@ -296,7 +308,7 @@ class SaaSBillingController extends Controller {
 
             $captured = SaaSBillingHelper::money(((float)($payment['amount'] ?? 0)) / 100);
 
-            $finalize = $this->subscriptionModel->markPaymentSuccess(
+            $finalize = $this->lifecycleService()->finalizePaymentSuccess(
                 $localSubscriptionId,
                 $razorpayPaymentId,
                 $razorpayOrderId !== '' ? $razorpayOrderId : null,
@@ -310,22 +322,6 @@ class SaaSBillingController extends Controller {
             }
 
             $updated = $finalize['subscription'] ?? $this->subscriptionModel->find($localSubscriptionId);
-            if (!empty($updated['promo_code_id'])) {
-                $this->promoModel->registerUsage(
-                    (int)$updated['promo_code_id'],
-                    (int)$updated['company_id'],
-                    (int)$updated['id'],
-                    (float)$updated['discount_amount'],
-                    (float)$updated['amount']
-                );
-            }
-
-            $this->referralModel->markSuccessfulAfterPayment(
-                (int)$updated['company_id'],
-                (int)$updated['id'],
-                (float)$updated['amount']
-            );
-
             $this->logActivity('SaaS payment verified', 'saas_billing', $localSubscriptionId, 'Payment ID: ' . $razorpayPaymentId);
 
             $this->json([
@@ -456,35 +452,7 @@ class SaaSBillingController extends Controller {
         }
 
         try {
-            switch ($event) {
-                case 'payment.captured':
-                    $this->handlePaymentCapturedWebhook($paymentEntity);
-                    break;
-
-                case 'subscription.activated':
-                    $this->handleSubscriptionStatusWebhook($subscriptionEntity, 'active');
-                    break;
-
-                case 'subscription.charged':
-                    $this->handleSubscriptionChargedWebhook($subscriptionEntity, $paymentEntity);
-                    break;
-
-                case 'subscription.cancelled':
-                    $this->handleSubscriptionStatusWebhook($subscriptionEntity, 'cancelled');
-                    break;
-
-                case 'subscription.completed':
-                    $this->handleSubscriptionStatusWebhook($subscriptionEntity, 'completed');
-                    break;
-
-                case 'subscription.halted':
-                    $this->handleSubscriptionStatusWebhook($subscriptionEntity, 'halted');
-                    break;
-
-                default:
-                    Logger::info('Unhandled Razorpay webhook event', ['event' => $event]);
-                    break;
-            }
+            $this->lifecycleService()->processWebhookEvent($event, $paymentEntity, $subscriptionEntity);
 
             $this->subscriptionModel->markWebhookProcessed($eventUnique, 'processed');
             echo json_encode(['success' => true, 'message' => 'Webhook processed.']);
@@ -503,268 +471,37 @@ class SaaSBillingController extends Controller {
      * Build server-trusted checkout session and gateway payload.
      */
     private function buildCheckoutSession(int $companyId, int $planId, string $promoCode = ''): array {
-        if ($planId <= 0) {
-            return ['success' => false, 'message' => 'Plan id is required.'];
-        }
-
-        $plan = $this->planModel->findActive($planId);
-        if (!$plan) {
-            return ['success' => false, 'message' => 'Plan not found or inactive.'];
-        }
-
-        $baseAmount = $this->planModel->checkoutPrice($plan);
-        $discountAmount = 0.00;
-        $finalAmount = max(SaaSBillingHelper::MIN_PAYABLE, $baseAmount);
-        $promo = null;
-
-        if ($promoCode !== '') {
-            $promoCheck = $this->promoModel->validateForCheckout($promoCode, $companyId, $plan, $baseAmount);
-            if (!$promoCheck['success']) {
-                return ['success' => false, 'message' => $promoCheck['message'] ?? 'Promo validation failed.'];
-            }
-            $promo = $promoCheck['promo'];
-            $discountAmount = (float)$promoCheck['discount_amount'];
-            $finalAmount = (float)$promoCheck['final_amount'];
-        }
-
-        $pending = $this->subscriptionModel->createPendingCheckout(
+        return $this->checkoutService()->buildCheckoutSession(
             $companyId,
-            $plan,
-            $baseAmount,
-            $discountAmount,
-            $finalAmount,
-            $promo
-        );
-        if (!$pending['success']) {
-            return $pending;
-        }
-
-        $api = $this->razorpay();
-        if (!$api) {
-            $this->subscriptionModel->markPaymentFailed(
-                (int)$pending['subscription_id'],
-                'Razorpay key/secret not configured'
-            );
-            return ['success' => false, 'message' => 'Payment gateway is not configured.'];
-        }
-
-        $billingType = (string)($plan['billing_type'] ?? 'monthly');
-        $gatewayMode = 'order';
-        $checkoutPayload = null;
-
-        try {
-            $canUseSubscriptionGateway =
-                in_array($billingType, ['monthly', 'yearly'], true) &&
-                !empty($plan['razorpay_plan_id']) &&
-                empty($promo) &&
-                abs($finalAmount - $baseAmount) <= 0.01;
-
-            if ($canUseSubscriptionGateway) {
-                $gatewayMode = 'subscription';
-                $totalCount = $billingType === 'yearly' ? 5 : 60;
-                $subscription = $api->subscription->create([
-                    'plan_id' => (string)$plan['razorpay_plan_id'],
-                    'customer_notify' => 1,
-                    'quantity' => 1,
-                    'total_count' => $totalCount,
-                    'notes' => [
-                        'local_subscription_id' => (string)$pending['subscription_id'],
-                        'company_id' => (string)$companyId,
-                        'plan_id' => (string)$plan['id'],
-                    ],
-                ]);
-
-                $this->subscriptionModel->attachGatewayReference(
-                    (int)$pending['subscription_id'],
-                    null,
-                    (string)$subscription['id'],
-                    'subscription'
-                );
-
-                $checkoutPayload = [
-                    'key' => RAZORPAY_KEY,
-                    'name' => APP_NAME,
-                    'description' => $plan['name'] . ' Plan',
-                    'subscription_id' => (string)$subscription['id'],
-                    'notes' => [
-                        'local_subscription_id' => (string)$pending['subscription_id'],
-                    ],
-                    'theme' => ['color' => '#0d6efd'],
-                ];
-            } else {
-                $gatewayMode = 'order';
-                $order = $api->order->create([
-                    'receipt' => (string)$pending['order_code'],
-                    'amount' => SaaSBillingHelper::toPaise($finalAmount),
-                    'currency' => 'INR',
-                    'notes' => [
-                        'local_subscription_id' => (string)$pending['subscription_id'],
-                        'company_id' => (string)$companyId,
-                        'plan_id' => (string)$plan['id'],
-                    ],
-                ]);
-
-                $this->subscriptionModel->attachGatewayReference(
-                    (int)$pending['subscription_id'],
-                    (string)$order['id'],
-                    null,
-                    'order'
-                );
-
-                $checkoutPayload = [
-                    'key' => RAZORPAY_KEY,
-                    'name' => APP_NAME,
-                    'description' => $plan['name'] . ' Plan',
-                    'order_id' => (string)$order['id'],
-                    'amount' => SaaSBillingHelper::toPaise($finalAmount),
-                    'currency' => 'INR',
-                    'notes' => [
-                        'local_subscription_id' => (string)$pending['subscription_id'],
-                    ],
-                    'theme' => ['color' => '#0d6efd'],
-                ];
-            }
-
-            $user = Session::get('user') ?? [];
-            $checkoutPayload['prefill'] = [
-                'name' => (string)($user['full_name'] ?? $user['name'] ?? ''),
-                'email' => (string)($user['email'] ?? ''),
-                'contact' => (string)($user['phone'] ?? ''),
-            ];
-
-            return [
-                'success' => true,
-                'message' => 'Checkout created successfully.',
-                'gateway_mode' => $gatewayMode,
-                'local_subscription_id' => (int)$pending['subscription_id'],
-                'plan' => [
-                    'id' => (int)$plan['id'],
-                    'name' => (string)$plan['name'],
-                    'billing_type' => (string)$plan['billing_type'],
-                ],
-                'pricing' => [
-                    'base_amount' => SaaSBillingHelper::money($baseAmount),
-                    'discount_amount' => SaaSBillingHelper::money($discountAmount),
-                    'final_amount' => SaaSBillingHelper::money($finalAmount),
-                    'promo_code' => $promo['code'] ?? null,
-                ],
-                'checkout' => $checkoutPayload,
-            ];
-        } catch (\Throwable $e) {
-            $this->subscriptionModel->markPaymentFailed(
-                (int)$pending['subscription_id'],
-                'Gateway creation failed: ' . $e->getMessage()
-            );
-            Logger::error('Gateway checkout creation failed', [
-                'company_id' => $companyId,
-                'plan_id' => $planId,
-                'gateway_mode' => $gatewayMode,
-                'error' => $e->getMessage(),
-            ]);
-            return ['success' => false, 'message' => 'Could not initiate Razorpay checkout.'];
-        }
-    }
-
-    private function handlePaymentCapturedWebhook(array $paymentEntity): void {
-        $paymentId = (string)($paymentEntity['id'] ?? '');
-        if ($paymentId === '') {
-            return;
-        }
-
-        $orderId = (string)($paymentEntity['order_id'] ?? '');
-        $subscriptionId = (string)($paymentEntity['subscription_id'] ?? '');
-        $amount = SaaSBillingHelper::money(((float)($paymentEntity['amount'] ?? 0)) / 100);
-
-        $local = $this->subscriptionModel->findByGatewayIds($orderId ?: null, $subscriptionId ?: null);
-        if (!$local) {
-            Logger::security('Webhook payment captured with no local subscription', [
-                'payment_id' => $paymentId,
-                'order_id' => $orderId,
-                'gateway_subscription_id' => $subscriptionId,
-            ]);
-            return;
-        }
-
-        $result = $this->subscriptionModel->markPaymentSuccess(
-            (int)$local['id'],
-            $paymentId,
-            $orderId !== '' ? $orderId : null,
-            $subscriptionId !== '' ? $subscriptionId : null,
-            $amount,
-            'webhook'
-        );
-
-        if (!empty($result['success'])) {
-            $updated = $result['subscription'] ?? $local;
-            if (!empty($updated['promo_code_id'])) {
-                $this->promoModel->registerUsage(
-                    (int)$updated['promo_code_id'],
-                    (int)$updated['company_id'],
-                    (int)$updated['id'],
-                    (float)$updated['discount_amount'],
-                    (float)$updated['amount']
-                );
-            }
-            $this->referralModel->markSuccessfulAfterPayment(
-                (int)$updated['company_id'],
-                (int)$updated['id'],
-                (float)$updated['amount']
-            );
-        }
-    }
-
-    private function handleSubscriptionChargedWebhook(array $subscriptionEntity, array $paymentEntity): void {
-        $gatewaySubId = (string)($subscriptionEntity['id'] ?? $paymentEntity['subscription_id'] ?? '');
-        $orderId = (string)($paymentEntity['order_id'] ?? '');
-        $paymentId = (string)($paymentEntity['id'] ?? '');
-        if ($gatewaySubId === '' || $paymentId === '') {
-            return;
-        }
-
-        $amount = SaaSBillingHelper::money(((float)($paymentEntity['amount'] ?? 0)) / 100);
-        $local = $this->subscriptionModel->findByGatewayIds($orderId ?: null, $gatewaySubId);
-        if (!$local) {
-            Logger::warning('subscription.charged webhook with missing local subscription', [
-                'gateway_subscription_id' => $gatewaySubId,
-                'payment_id' => $paymentId,
-            ]);
-            return;
-        }
-
-        $this->subscriptionModel->markPaymentSuccess(
-            (int)$local['id'],
-            $paymentId,
-            $orderId !== '' ? $orderId : null,
-            $gatewaySubId,
-            $amount,
-            'webhook'
+            $planId,
+            $promoCode,
+            $this->razorpay(),
+            Session::get('user') ?? []
         );
     }
 
-    private function handleSubscriptionStatusWebhook(array $subscriptionEntity, string $status): void {
-        $gatewaySubId = (string)($subscriptionEntity['id'] ?? '');
-        if ($gatewaySubId === '') {
-            return;
-        }
-
-        $this->subscriptionModel->updateStatusByGatewaySubscription($gatewaySubId, $status);
-        $local = $this->subscriptionModel->findByGatewayIds(null, $gatewaySubId);
-        if (!$local) {
-            return;
-        }
-
-        if (in_array($status, ['cancelled', 'halted', 'completed'], true)) {
-            $companyStatus = $status === 'completed' ? 'inactive' : 'inactive';
-            Database::getInstance()->query(
-                "UPDATE companies SET subscription_status = ?, updated_at = ? WHERE id = ?",
-                [$companyStatus, SaaSBillingHelper::now(), (int)$local['company_id']]
-            );
-        } elseif ($status === 'active') {
-            Database::getInstance()->query(
-                "UPDATE companies SET subscription_status = 'active', updated_at = ? WHERE id = ?",
-                [SaaSBillingHelper::now(), (int)$local['company_id']]
+    private function checkoutService(): BillingCheckoutService {
+        if ($this->billingCheckoutService === null) {
+            $this->billingCheckoutService = new BillingCheckoutService(
+                $this->planModel,
+                $this->promoModel,
+                $this->subscriptionModel
             );
         }
+
+        return $this->billingCheckoutService;
+    }
+
+    private function lifecycleService(): BillingLifecycleService {
+        if ($this->billingLifecycleService === null) {
+            $this->billingLifecycleService = new BillingLifecycleService(
+                $this->subscriptionModel,
+                $this->promoModel,
+                $this->referralModel
+            );
+        }
+
+        return $this->billingLifecycleService;
     }
 
     private function ensureTenantAuth(bool $jsonOnFail = false): bool {

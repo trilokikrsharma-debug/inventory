@@ -1,12 +1,12 @@
 <?php
 /**
  * Session Middleware
- * 
+ *
  * Starts the session and enforces session security:
  * - Idle timeout validation
  * - Fingerprint validation (anti-hijacking)
  * - Periodic session ID rotation
- * 
+ *
  * Extracted from index.php lines 142-159.
  */
 class SessionMiddleware implements MiddlewareInterface {

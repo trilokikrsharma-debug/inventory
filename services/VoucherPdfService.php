@@ -1,13 +1,13 @@
-﻿<?php
+<?php
 /**
  * Voucher PDF Service - Universal Document Generator
- * 
+ *
  * Generates professional A4 PDFs for all business documents:
  *   - Sales Invoice (INV), Purchase Invoice (PUR)
  *   - Payment Receipt (REC), Payment Voucher (PAY)
  *   - Sales Return Credit Note (SRN), Quotation (QTN)
  *   - Customer / Supplier Statements
- * 
+ *
  * Usage:
  *   VoucherPdfService::download('sale', $id);
  *   VoucherPdfService::stream('purchase', $id);

@@ -1,6 +1,20 @@
 ﻿<?php $flash = Session::getFlash(); ?>
-<div class="container d-flex justify-content-center align-items-center" style="min-height:80vh;">
-    <div class="card shadow-sm" style="max-width:420px; width:100%;">
+<style>
+    .two-factor-shell {
+        min-height: 80vh;
+    }
+    .two-factor-card {
+        max-width: 420px;
+        width: 100%;
+    }
+    .two-factor-verify-input {
+        letter-spacing: 10px;
+        font-size: 28px;
+        font-weight: bold;
+    }
+</style>
+<div class="container d-flex justify-content-center align-items-center two-factor-shell">
+    <div class="card shadow-sm two-factor-card">
         <div class="card-header bg-primary text-white text-center">
             <i class="fas fa-key fa-2x mb-2"></i>
             <h5 class="mb-0">Two-Factor Verification</h5>
@@ -21,7 +35,7 @@
                     <input type="text" name="otp_code" class="form-control form-control-lg text-center"
                            maxlength="6" pattern="[0-9]{6}" placeholder="000000"
                            autocomplete="one-time-code" inputmode="numeric" required autofocus
-                           style="letter-spacing:10px; font-size:28px; font-weight:bold;">
+                           class="form-control form-control-lg text-center two-factor-verify-input">
                 </div>
 
                 <button type="submit" class="btn btn-primary w-100 mb-3">

@@ -1,19 +1,21 @@
 <?php
 /**
  * Authentication Controller
- * 
+ *
  * Handles login/logout functionality.
  * Includes persistent IP-based rate limiting with exponential backoff.
  */
 class AuthController extends Controller {
-
     protected $allowedActions = ['index', 'resetPassword'];
-
+    private AuthRateLimitService $rateLimitService;
     // Rate limit settings (configurable)
     private const MAX_ATTEMPTS = 5;          // Lockout after this many failures
     private const BASE_LOCKOUT_SECONDS = 60; // Initial lockout: 1 minute
     private const MAX_LOCKOUT_SECONDS = 900; // Max lockout: 15 minutes
-    private const ATTEMPT_WINDOW = 600;      // Reset counter after 10 min of no attempts
+
+    public function __construct() {
+        $this->rateLimitService = new AuthRateLimitService();
+    }
 
     public function index() {
         // If already logged in, redirect to dashboard
@@ -24,17 +26,15 @@ class AuthController extends Controller {
             }
             $this->redirect('dashboard');
         }
-
         // Handle login POST
         if ($this->isPost()) {
             $username = $this->sanitize($this->post('username'));
             $password = $this->post('password');
             $rememberMe = RememberMeService::shouldRememberFromRequest();
-
             $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
             // ── Tenant-Aware IP+Username Rate Limiting ──
-            $rateData = $this->getRateLimit($ip, $username);
+            $rateData = $this->rateLimitService->get($ip, $username);
 
             // Check if currently locked out
             if ($rateData['lockout_until'] > time()) {
@@ -54,10 +54,9 @@ class AuthController extends Controller {
             $userModel = new UserModel();
             $loginTenantId = $this->resolveLoginTenantId();
             $user = $userModel->authenticate($username, $password, $loginTenantId);
-
             if ($user) {
                 // Successful login — clear rate limit data
-                $this->clearRateLimit($ip, $username);
+                $this->rateLimitService->clear($ip, $username);
 
                 // ── RBAC: Determine super-admin status first (before company check) ──
                 // Platform super-admins are set directly in DB and may have no company_id.
@@ -118,7 +117,6 @@ class AuthController extends Controller {
                 // Failed login — update rate limit with exponential backoff
                 $rateData['attempts'] = ($rateData['attempts'] ?? 0) + 1;
                 $rateData['last_attempt'] = time();
-
                 if ($rateData['attempts'] >= self::MAX_ATTEMPTS) {
                     // Exponential backoff: 1 min, 2 min, 4 min, 8 min... capped at MAX_LOCKOUT
                     $escalation = max(0, $rateData['attempts'] - self::MAX_ATTEMPTS);
@@ -132,7 +130,7 @@ class AuthController extends Controller {
                     Helper::securityLog('LOGIN_FAILED', "Failed attempt {$rateData['attempts']} for User: $username from $ip");
                 }
 
-                $this->setRateLimit($ip, $username, $rateData);
+                $this->rateLimitService->put($ip, $username, $rateData);
 
                 $error = 'Invalid username or password.';
                 $this->renderPartial('auth.login', ['error' => $error, 'username' => $username]);
@@ -152,87 +150,6 @@ class AuthController extends Controller {
         Session::setFlash('error', 'Self-service password reset is not enabled. Please contact your administrator.');
         $this->redirect('index.php?page=login');
     }
-
-    // =========================================================
-    // Persistent Rate Limiting (file-based, per-IP)
-    // =========================================================
-
-    /**
-     * Get rate limit data for an IP + Username combination.
-     * Uses file-based storage in the cache directory.
-     * Ensure shared-offices aren't globally blocked on false passwords.
-     *
-     * @param string $ip
-     * @param string $username
-     * @return array
-     */
-    private function getRateLimit($ip, $username) {
-        $default = ['attempts' => 0, 'lockout_until' => 0, 'last_attempt' => 0];
-        $file = $this->getRateLimitFile($ip, $username);
-
-        if (!file_exists($file)) return $default;
-
-        $data = @file_get_contents($file);
-        if ($data === false) return $default;
-
-        $parsed = @json_decode($data, true);
-        if (!is_array($parsed)) {
-            @unlink($file);
-            return $default;
-        }
-
-        // Auto-expire: if last attempt was beyond the window, reset
-        if (time() - ($parsed['last_attempt'] ?? 0) > self::ATTEMPT_WINDOW) {
-            @unlink($file);
-            return $default;
-        }
-
-        return array_merge($default, $parsed);
-    }
-
-    /**
-     * Save rate limit data for an IP + Username.
-     *
-     * @param string $ip
-     * @param string $username
-     * @param array $data
-     */
-    private function setRateLimit($ip, $username, $data) {
-        $file = $this->getRateLimitFile($ip, $username);
-        @file_put_contents($file, json_encode($data), LOCK_EX);
-    }
-
-    /**
-     * Clear rate limit on successful login.
-     *
-     * @param string $ip
-     * @param string $username
-     */
-    private function clearRateLimit($ip, $username) {
-        $file = $this->getRateLimitFile($ip, $username);
-        if (file_exists($file)) {
-            @unlink($file);
-        }
-    }
-
-    /**
-     * Get the file path for a rate limit record.
-     * Uses SHA256 of IP + Username + Tenant to prevent directory traversal and shared-IP blocking.
-     *
-     * @param string $ip
-     * @param string $username
-     * @return string
-     */
-    private function getRateLimitFile($ip, $username) {
-        $dir = defined('BASE_PATH') ? BASE_PATH . '/cache' : __DIR__ . '/../cache';
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-        $tenantId = class_exists('Tenant') ? (Tenant::id() ?? 0) : 0;
-        $key = hash('sha256', $tenantId . '_' . $ip . '_' . strtolower(trim($username)));
-        return $dir . '/ratelimit_' . $key . '.json';
-    }
-
     /**
      * Start the pending 2FA flow without creating a fully authorized session.
      */

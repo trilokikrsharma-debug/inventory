@@ -5,8 +5,8 @@
  * Super admin only — manages RBAC roles and their permission assignments.
  */
 class RoleController extends Controller {
-
     protected $allowedActions = ['index', 'create', 'edit', 'delete'];
+    private ?RolePermissionService $rolePermissionService = null;
 
     /**
      * List all roles with user count
@@ -100,7 +100,8 @@ class RoleController extends Controller {
                 $roleId = $db->getConnection()->lastInsertId();
 
                 // Save permissions
-                $this->savePermissions($db, (int)$roleId);
+                $permIds = $this->post('permissions', []);
+                $this->permissionService($db)->replaceRolePermissions((int)$roleId, is_array($permIds) ? $permIds : []);
 
                 $db->commit();
 
@@ -117,7 +118,7 @@ class RoleController extends Controller {
         }
 
         // GET: show create form
-        $permissions = $this->getGroupedPermissions($db);
+        $permissions = $this->permissionService($db)->groupedPermissions();
         $this->view('roles.create', [
             'pageTitle'   => 'Create Role',
             'permissions' => $permissions,
@@ -186,7 +187,8 @@ class RoleController extends Controller {
 
                 // Don't touch permissions for super admin roles — they bypass checks anyway
                 if (!$role['is_super_admin']) {
-                    $this->savePermissions($db, $id);
+                    $permIds = $this->post('permissions', []);
+                    $this->permissionService($db)->replaceRolePermissions($id, is_array($permIds) ? $permIds : []);
                 }
 
                 $db->commit();
@@ -208,11 +210,11 @@ class RoleController extends Controller {
         }
 
         // GET: show edit form
-        $permissions    = $this->getGroupedPermissions($db);
+        $permissions    = $this->permissionService($db)->groupedPermissions();
         $rolePermRaw = $db->query(
             "SELECT permission_id FROM role_permissions WHERE role_id = ?", [$id]
         )->fetchAll(\PDO::FETCH_COLUMN);
-        
+
         // Normalize: if the DB wrapper ignored FETCH_COLUMN and returned associative arrays, extract the column
         $rolePermIds = [];
         if (!empty($rolePermRaw) && is_array($rolePermRaw)) {
@@ -223,7 +225,7 @@ class RoleController extends Controller {
                 $rolePermIds = $rolePermRaw;
             }
         }
-        
+
         // Sanitize: Array keys must be int or string for array_flip
         $rolePermIds = array_filter($rolePermIds, 'is_scalar');
         $rolePermIdsMap = array_flip($rolePermIds);
@@ -316,94 +318,11 @@ class RoleController extends Controller {
         $this->redirect('index.php?page=roles');
     }
 
-    // =========================================================
-    // Helpers
-    // =========================================================
-
-    /**
-     * Get all permissions grouped by module for the checkbox grid.
-     *
-     * @return array ['sales' => [['id'=>1, 'name'=>'sales.view', ...], ...], ...]
-     */
-    private function getGroupedPermissions($db) {
-        $all = $db->query("SELECT * FROM permissions ORDER BY module ASC, id ASC")->fetchAll();
-        $grouped = [];
-        foreach ($all as $p) {
-            if (!$this->isPermissionAvailableForTenant($p)) {
-                continue;
-            }
-            $grouped[$p['module']][] = $p;
-        }
-        return $grouped;
-    }
-
-    /**
-     * Save permission assignments from form submission.
-     * Replaces ALL permissions for the role (delete + re-insert in transaction).
-     *
-     * @param Database $db Active database instance (must be in a transaction)
-     * @param int $roleId
-     */
-    private function savePermissions($db, $roleId) {
-        // Delete existing
-        $db->query("DELETE FROM role_permissions WHERE role_id = ?", [$roleId]);
-
-        // Insert selected
-        $permIds = $this->post('permissions', []);
-        if (!is_array($permIds)) return;
-
-        // Validate that all submitted IDs actually exist
-        if (!empty($permIds)) {
-            $placeholders = implode(',', array_fill(0, count($permIds), '?'));
-            $validIds = $db->query(
-                "SELECT id FROM permissions WHERE id IN ($placeholders)",
-                array_map('intval', $permIds)
-            )->fetchAll(\PDO::FETCH_COLUMN);
-
-            $allowedPermissionIds = $this->getAllowedPermissionIds($db);
-            $validIds = array_filter($validIds, function ($permissionId) use ($allowedPermissionIds) {
-                return isset($allowedPermissionIds[(int)$permissionId]);
-            });
-
-            foreach ($validIds as $pid) {
-                $db->query(
-                    "INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)",
-                    [$roleId, $pid]
-                );
-            }
-        }
-    }
-
-    private function isPermissionAvailableForTenant(array $permission): bool {
-        if (Session::isSuperAdmin() || Tenant::id() === null) {
-            return true;
+    private function permissionService($db = null): RolePermissionService {
+        if ($this->rolePermissionService === null || $db !== null) {
+            $this->rolePermissionService = new RolePermissionService($db);
         }
 
-        $name = (string)($permission['name'] ?? '');
-        if (str_starts_with($name, 'quotations.')) {
-            return Tenant::canUse('quotations');
-        }
-        if (str_starts_with($name, 'returns.')) {
-            return Tenant::canUse('sale_returns');
-        }
-        if ($name === 'backup.manage') {
-            return Tenant::canUse('backup_restore');
-        }
-        if ($name === 'reports.view') {
-            return Tenant::canUse('basic_reports') || Tenant::canUse('advanced_reports');
-        }
-
-        return true;
-    }
-
-    private function getAllowedPermissionIds($db): array {
-        $allowed = [];
-        $rows = $db->query("SELECT id, name FROM permissions ORDER BY id ASC")->fetchAll();
-        foreach ($rows as $row) {
-            if ($this->isPermissionAvailableForTenant($row)) {
-                $allowed[(int)$row['id']] = true;
-            }
-        }
-        return $allowed;
+        return $this->rolePermissionService;
     }
 }

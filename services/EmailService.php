@@ -1,10 +1,10 @@
 <?php
 /**
  * Email Service — Queue-Based Email Delivery
- * 
+ *
  * Dispatches emails through the job queue for async processing.
  * Uses PHP's mail() function or SMTP (configurable).
- * 
+ *
  * Usage:
  *   EmailService::send('user@email.com', 'Subject', '<h1>Body</h1>');
  *   EmailService::sendInvoice($saleId, 'customer@email.com');

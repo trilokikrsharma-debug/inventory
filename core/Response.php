@@ -1,7 +1,7 @@
 <?php
 /**
  * Response — HTTP Response Abstraction
- * 
+ *
  * Provides a clean interface for sending HTTP responses
  * instead of calling header() and echo directly.
  */

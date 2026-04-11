@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <small>Date: <?= Helper::formatDate($sale['sale_date']) ?></small>
                     </div>
                 </div>
-                <div class="row mb-4 py-3" style="border-top:2px solid var(--border-color);border-bottom:2px solid var(--border-color);">
+                <div class="row mb-4 py-3 sale-summary-band">
                     <div class="col-6"><strong>Bill To:</strong><br><?= Helper::escape($sale['customer_name']) ?><br><small class="text-muted"><?= Helper::escape($sale['customer_phone'] ?? '') ?><br><?= Helper::escape($sale['customer_address'] ?? '') ?></small></div>
                     <div class="col-6 text-end">
                         <?php if (!empty($sale['warehouse_name'])): ?>

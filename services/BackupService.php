@@ -21,8 +21,9 @@ class BackupService {
 
     public static function resolveBackupRoot(): string {
         $candidates = [
-            BASE_PATH . '/uploads/backups',
+            defined('BACKUP_PATH') ? BACKUP_PATH : dirname(dirname(BASE_PATH)) . '/inventory_backups',
             dirname(dirname(BASE_PATH)) . '/inventory_backups',
+            BASE_PATH . '/uploads/backups',
             rtrim(sys_get_temp_dir(), '\\/') . '/invenbill_backups',
         ];
 
@@ -67,9 +68,6 @@ class BackupService {
             $existingTables = $pdo->query("SHOW TABLES")->fetchAll(\PDO::FETCH_COLUMN);
             foreach (self::$tenantTables as $table) {
                 if (!in_array($table, $existingTables, true)) {
-                    continue;
-                }
-                if (!self::tableHasColumn($pdo, $table, 'company_id')) {
                     continue;
                 }
 
@@ -291,15 +289,6 @@ class BackupService {
         ]);
 
         return self::verifyIntegrity($filePath);
-    }
-
-    private static function tableHasColumn(\PDO $pdo, string $table, string $column): bool {
-        $stmt = $pdo->prepare(
-            "SELECT COUNT(*) FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?"
-        );
-        $stmt->execute([$table, $column]);
-        return (int)$stmt->fetchColumn() > 0;
     }
 
     private static function writeManifest(string $filePath, array $meta): void {

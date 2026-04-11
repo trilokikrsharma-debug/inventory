@@ -1,10 +1,10 @@
 <?php
 /**
  * Rate Limiter Middleware
- * 
+ *
  * Enforces per-IP rate limiting (120 requests/minute).
  * Also configures structured logging level based on environment.
- * 
+ *
  * Extracted from index.php lines 168-188.
  */
 class RateLimitMiddleware implements MiddlewareInterface {

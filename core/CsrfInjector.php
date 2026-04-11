@@ -1,17 +1,17 @@
 <?php
 /**
  * CSRF Injector
- * 
+ *
  * Auto-injects CSRF tokens into HTML output:
  * 1. Hidden fields in POST/PUT/DELETE/PATCH forms
  * 2. Meta tag in <head> for JavaScript usage
- * 
+ *
  * Extracted from index.php lines 323-352.
  */
 class CsrfInjector {
     /**
      * Inject CSRF tokens into the output HTML.
-     * 
+     *
      * @param  string $output  Raw HTML output from output buffer
      * @return string          HTML with CSRF tokens injected
      */

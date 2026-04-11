@@ -40,13 +40,14 @@
                         <th>Customer</th>
                         <th>Amount</th>
                         <th>Date</th>
+                        <th>Status</th>
                         <th>Reason</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                 <?php if (empty($returns['data'])): ?>
-                    <tr><td colspan="8" class="text-center py-5 text-muted"><i class="fas fa-undo fa-2x mb-2 opacity-25 d-block"></i>No returns found.</td></tr>
+                    <tr><td colspan="9" class="text-center py-5 text-muted"><i class="fas fa-undo fa-2x mb-2 opacity-25 d-block"></i>No returns found.</td></tr>
                 <?php else: $i = ($returns['page'] - 1) * $returns['perPage']; foreach ($returns['data'] as $r): $i++; ?>
                 <tr>
                     <td><?= $i ?></td>
@@ -55,7 +56,8 @@
                     <td><?= Helper::escape($r['customer_name'] ?? '-') ?></td>
                     <td class="fw-bold text-danger"><?= Helper::formatCurrency($r['total_amount']) ?></td>
                     <td><?= Helper::formatDate($r['return_date']) ?></td>
-                    <td class="text-wrap" style="max-width: 240px;"><small class="text-muted"><?= Helper::escape($r['note'] ?? '') ?></small></td>
+                    <td><?= ($r['status'] ?? 'posted') === 'cancelled' ? '<span class="badge bg-danger">Cancelled</span>' : '<span class="badge bg-success">Posted</span>' ?></td>
+                    <td class="text-wrap text-wrap-240"><small class="text-muted"><?= Helper::escape($r['note'] ?? '') ?></small></td>
                     <td>
                         <div class="action-btns">
                         <a href="<?= APP_URL ?>/index.php?page=sale_returns&action=detail&id=<?= $r['id'] ?>" class="btn btn-sm btn-outline-primary btn-icon"><i class="fas fa-eye"></i></a>

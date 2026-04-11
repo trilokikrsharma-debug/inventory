@@ -6,6 +6,7 @@ class PromoCodeController extends Controller {
     protected $allowedActions = ['index', 'create', 'edit', 'delete', 'toggle'];
 
     private PromoCode $promoModel;
+    private ?PromoCodeAdminService $promoAdminService = null;
 
     public function __construct() {
         $this->requireSuperAdmin();
@@ -13,7 +14,7 @@ class PromoCodeController extends Controller {
     }
 
     public function index() {
-        $promos = $this->promoModel->listForAdmin();
+        $promos = $this->workflowService()->listPromos();
 
         $this->view('platform.promos', [
             'pageTitle' => 'Promo Codes',
@@ -28,7 +29,7 @@ class PromoCodeController extends Controller {
                 return;
             }
 
-            $result = $this->promoModel->createPromo($this->post());
+            $result = $this->workflowService()->createPromo($this->post());
             if (!$result['success']) {
                 $this->setFlash('error', implode(' ', $result['errors'] ?? ['Failed to create promo code.']));
                 $this->redirect('index.php?page=promos&action=create');
@@ -56,7 +57,7 @@ class PromoCodeController extends Controller {
             return;
         }
 
-        $promo = $this->promoModel->find($id);
+        $promo = $this->workflowService()->loadPromo($id);
         if (!$promo) {
             $this->setFlash('error', 'Promo code not found.');
             $this->redirect('index.php?page=promos');
@@ -69,7 +70,7 @@ class PromoCodeController extends Controller {
                 return;
             }
 
-            $result = $this->promoModel->updatePromo($id, $this->post());
+            $result = $this->workflowService()->updatePromo($id, $this->post());
             if (!$result['success']) {
                 $this->setFlash('error', implode(' ', $result['errors'] ?? ['Failed to update promo code.']));
                 $this->redirect('index.php?page=promos&action=edit&id=' . $id);
@@ -100,7 +101,7 @@ class PromoCodeController extends Controller {
         }
 
         $id = (int)$this->post('id');
-        $result = $this->promoModel->deletePromo($id);
+        $result = $this->workflowService()->deletePromo($id);
         if (!empty($result['success'])) {
             $this->logActivity('Promo deleted/disabled', 'promo_codes', $id, $result['message'] ?? null);
             $this->setFlash('success', $result['message'] ?? 'Promo updated.');
@@ -121,22 +122,23 @@ class PromoCodeController extends Controller {
         }
 
         $id = (int)$this->post('id');
-        $promo = $this->promoModel->find($id);
-        if (!$promo) {
+        $result = $this->workflowService()->toggleStatus($id);
+        if (!$result) {
             $this->setFlash('error', 'Promo code not found.');
             $this->redirect('index.php?page=promos');
             return;
         }
 
-        $nextStatus = ($promo['status'] ?? 'inactive') === 'active' ? 'inactive' : 'active';
-        $this->promoModel->update($id, [
-            'status' => $nextStatus,
-            'updated_at' => SaaSBillingHelper::now(),
-        ]);
-
-        $this->logActivity('Promo status changed', 'promo_codes', $id, 'Status: ' . $nextStatus);
+        $this->logActivity('Promo status changed', 'promo_codes', $id, 'Status: ' . $result['status']);
         $this->setFlash('success', 'Promo status updated.');
         $this->redirect('index.php?page=promos');
     }
-}
 
+    private function workflowService(): PromoCodeAdminService {
+        if ($this->promoAdminService === null) {
+            $this->promoAdminService = new PromoCodeAdminService($this->promoModel);
+        }
+
+        return $this->promoAdminService;
+    }
+}

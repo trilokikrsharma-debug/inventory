@@ -5,6 +5,7 @@
 class SupplierController extends Controller {
 
     protected $allowedActions = ['index', 'create', 'edit', 'view_supplier', 'delete', 'import', 'download_template'];
+    private ?SupplierWorkflowService $supplierWorkflowService = null;
 
     public function index() {
         $this->requirePermission('suppliers.view');
@@ -37,7 +38,7 @@ class SupplierController extends Controller {
                     } elseif (empty($validRows)) {
                         $this->setFlash('error', 'No valid rows were found to import.');
                     } else {
-                        $imported = $this->persistImportedContacts($validRows);
+                        $imported = $this->workflowService()->persistImportedContacts($validRows);
                         $this->setFlash('success', 'Imported ' . $imported . ' supplier(s) successfully.');
                     }
                 }
@@ -72,7 +73,7 @@ class SupplierController extends Controller {
         $this->requirePermission('suppliers.create');
         if ($this->isPost()) {
             $this->validateCSRF();
-            
+
             // Enterprise validation
             $v = Validator::make($_POST, [
                 'name'            => 'required|string|min:2|max:100',
@@ -85,26 +86,15 @@ class SupplierController extends Controller {
                 'tax_number'      => 'nullable|string|max:50',
                 'opening_balance' => 'nullable|numeric|min:0',
             ]);
-            
+
             if ($v->fails()) {
                 $this->setFlash('error', $v->firstError());
                 $this->view('suppliers.create', ['pageTitle' => 'Add Supplier']);
                 return;
             }
-            
+
             $clean = $v->validated();
-            $data = [
-                'name'            => $clean['name'],
-                'email'           => $clean['email'] ?: null,
-                'phone'           => $clean['phone'] ?: null,
-                'address'         => $clean['address'] ?? '',
-                'city'            => $clean['city'] ?? '',
-                'state'           => $clean['state'] ?? '',
-                'zip'             => $clean['zip'] ?? '',
-                'tax_number'      => $clean['tax_number'] ?? '',
-                'opening_balance' => (float)($clean['opening_balance'] ?? 0),
-                'current_balance' => (float)($clean['opening_balance'] ?? 0),
-            ];
+            $data = $this->workflowService()->buildPayload($clean, true);
             $supplierId = (new SupplierModel())->create($data);
             $this->logActivity('Created supplier: ' . $data['name'], 'suppliers', $supplierId, 'Opening balance: ' . $data['opening_balance']);
             Logger::audit('supplier_created', 'suppliers', $supplierId, ['name' => $data['name'], 'balance' => $data['opening_balance']]);
@@ -125,16 +115,7 @@ class SupplierController extends Controller {
 
         if ($this->isPost()) {
             $this->validateCSRF();
-            $supplierModel->update($id, [
-                'name' => $this->sanitize($this->post('name')),
-                'email' => $this->sanitize($this->post('email')) ?: null,
-                'phone' => $this->sanitize($this->post('phone')) ?: null,
-                'address' => $this->sanitize($this->post('address')),
-                'city' => $this->sanitize($this->post('city')),
-                'state' => $this->sanitize($this->post('state')),
-                'zip' => $this->sanitize($this->post('zip')),
-                'tax_number' => $this->sanitize($this->post('tax_number')),
-            ]);
+            $supplierModel->update($id, $this->workflowService()->buildPayload($this->post(), false));
             $this->logActivity('Updated supplier: ' . $this->sanitize($this->post('name')), 'suppliers', $id);
             $this->setFlash('success', 'Supplier updated successfully.');
             $this->redirect('index.php?page=suppliers');
@@ -193,29 +174,11 @@ class SupplierController extends Controller {
         $this->redirect('index.php?page=suppliers');
     }
 
-    /**
-     * @param array<int, array<string, mixed>> $rows
-     */
-    private function persistImportedContacts(array $rows): int {
-        $model = new SupplierModel();
-        $count = 0;
-        foreach ($rows as $row) {
-            $data = (array)($row['normalized'] ?? []);
-            $model->create([
-                'name' => $this->sanitize((string)($data['name'] ?? '')),
-                'email' => !empty($data['email']) ? $this->sanitize((string)$data['email']) : null,
-                'phone' => !empty($data['phone']) ? $this->sanitize((string)$data['phone']) : null,
-                'address' => $this->sanitize((string)($data['address'] ?? '')),
-                'city' => $this->sanitize((string)($data['city'] ?? '')),
-                'state' => $this->sanitize((string)($data['state'] ?? '')),
-                'zip' => $this->sanitize((string)($data['zip'] ?? '')),
-                'tax_number' => !empty($data['tax_number']) ? strtoupper($this->sanitize((string)$data['tax_number'])) : '',
-                'opening_balance' => (float)($data['opening_balance'] ?? 0),
-                'current_balance' => (float)($data['current_balance'] ?? 0),
-                'is_active' => !empty($data['is_active']) ? 1 : 0,
-            ]);
-            $count++;
+    private function workflowService(): SupplierWorkflowService {
+        if ($this->supplierWorkflowService === null) {
+            $this->supplierWorkflowService = new SupplierWorkflowService();
         }
-        return $count;
+
+        return $this->supplierWorkflowService;
     }
 }

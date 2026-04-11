@@ -1,7 +1,7 @@
 <?php
 /**
  * Dependency Injection Container
- * 
+ *
  * Maps interfaces/class names to concrete instances or factories.
  * Supports singletons and transient instances.
  */

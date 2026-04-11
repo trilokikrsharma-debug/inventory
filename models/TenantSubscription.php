@@ -6,8 +6,6 @@ class TenantSubscription extends Model {
     protected $table = 'tenant_subscriptions';
     protected $tenantScoped = false;
     protected $softDelete = false;
-    private ?bool $requiresSubscriptionIdSeed = null;
-    private ?array $companyColumns = null;
 
     /**
      * Get latest subscription for company.
@@ -265,8 +263,6 @@ class TenantSubscription extends Model {
             $subscriptionType = in_array((string)$plan['billing_type'], ['monthly', 'yearly'], true)
                 ? 'recurring'
                 : 'one_time';
-            $razorpaySubscriptionSeed = $this->subscriptionIdSeedValue();
-
             $db->query(
                 "INSERT INTO tenant_subscriptions
                 (
@@ -280,7 +276,7 @@ class TenantSubscription extends Model {
                 (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, NULL, NULL, ?, ?)",
                 [
                     $companyId,
-                    $razorpaySubscriptionSeed,
+                    null,
                     (int)$plan['id'],
                     $subscriptionType,
                     $orderCode,
@@ -509,33 +505,26 @@ class TenantSubscription extends Model {
 
             $companySet = [
                 "saas_plan_id = ?",
+                "plan = ?",
                 "subscription_status = 'active'",
                 "updated_at = ?",
             ];
             $companyParams = [
                 (int)$sub['plan_id'],
+                $legacyPlanAlias,
                 SaaSBillingHelper::now(),
             ];
 
-            if ($this->companyHasColumn('plan')) {
-                $companySet[] = "plan = ?";
-                $companyParams[] = $legacyPlanAlias;
+            $planMaxUsers = (int)($planMeta['max_users'] ?? 0);
+            if ($planMaxUsers > 0) {
+                $companySet[] = "max_users = ?";
+                $companyParams[] = $planMaxUsers;
             }
 
-            if ($this->companyHasColumn('max_users')) {
-                $planMaxUsers = (int)($planMeta['max_users'] ?? 0);
-                if ($planMaxUsers > 0) {
-                    $companySet[] = "max_users = ?";
-                    $companyParams[] = $planMaxUsers;
-                }
-            }
-
-            if ($this->companyHasColumn('max_products')) {
-                $planMaxProducts = (int)($planMeta['max_products'] ?? 0);
-                if ($planMaxProducts > 0) {
-                    $companySet[] = "max_products = ?";
-                    $companyParams[] = $planMaxProducts;
-                }
+            $planMaxProducts = (int)($planMeta['max_products'] ?? 0);
+            if ($planMaxProducts > 0) {
+                $companySet[] = "max_products = ?";
+                $companyParams[] = $planMaxProducts;
             }
 
             $companyParams[] = (int)$sub['company_id'];
@@ -860,71 +849,6 @@ class TenantSubscription extends Model {
                 'error' => $e->getMessage(),
             ]);
         }
-    }
-
-    /**
-     * Legacy schema compatibility:
-     * old tenant_subscriptions schemas had razorpay_subscription_id as NOT NULL without a default.
-     * For order-mode checkout, we must seed an empty string instead of NULL.
-     */
-    private function subscriptionIdSeedValue(): ?string {
-        return $this->requiresSubscriptionIdSeedValue() ? '' : null;
-    }
-
-    private function requiresSubscriptionIdSeedValue(): bool {
-        if ($this->requiresSubscriptionIdSeed !== null) {
-            return $this->requiresSubscriptionIdSeed;
-        }
-
-        try {
-            $column = $this->db->query(
-                "SELECT IS_NULLABLE, COLUMN_DEFAULT
-                 FROM information_schema.COLUMNS
-                 WHERE TABLE_SCHEMA = DATABASE()
-                   AND TABLE_NAME = ?
-                   AND COLUMN_NAME = 'razorpay_subscription_id'
-                 LIMIT 1",
-                [$this->table]
-            )->fetch();
-
-            if (!$column) {
-                $this->requiresSubscriptionIdSeed = false;
-                return false;
-            }
-
-            $isNullable = strtoupper((string)($column['IS_NULLABLE'] ?? 'YES')) === 'YES';
-            $hasDefault = array_key_exists('COLUMN_DEFAULT', $column) && $column['COLUMN_DEFAULT'] !== null;
-            $this->requiresSubscriptionIdSeed = !$isNullable && !$hasDefault;
-            return $this->requiresSubscriptionIdSeed;
-        } catch (\Throwable $e) {
-            $this->requiresSubscriptionIdSeed = false;
-            return false;
-        }
-    }
-
-    private function companyHasColumn(string $column): bool {
-        if ($this->companyColumns === null) {
-            $this->companyColumns = [];
-            try {
-                $rows = $this->db->query(
-                    "SELECT COLUMN_NAME
-                     FROM information_schema.COLUMNS
-                     WHERE TABLE_SCHEMA = DATABASE()
-                       AND TABLE_NAME = 'companies'"
-                )->fetchAll();
-                foreach ($rows as $row) {
-                    $name = (string)($row['COLUMN_NAME'] ?? '');
-                    if ($name !== '') {
-                        $this->companyColumns[$name] = true;
-                    }
-                }
-            } catch (\Throwable $e) {
-                // Fail-open: avoid breaking payment success in restricted environments.
-                $this->companyColumns = [];
-            }
-        }
-
-        return !empty($this->companyColumns[$column]);
     }
 
     private function legacyPlanAliasFromPlan(array $plan): string {

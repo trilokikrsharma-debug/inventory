@@ -1,10 +1,10 @@
 <?php
 /**
  * Redis Session Handler
- * 
+ *
  * Replaces PHP's default file-based sessions with Redis storage.
  * Provides: multi-server support, configurable TTL, session locking.
- * 
+ *
  * To enable, call RedisSessionHandler::register() before Session::start().
  * Falls back silently to file sessions if Redis is unavailable.
  */
@@ -24,7 +24,7 @@ class RedisSessionHandler implements \SessionHandlerInterface {
      * Safe to call even without Redis — silently falls back.
      */
     public static function register(): bool {
-        if (!defined('REDIS_ENABLED') || !REDIS_ENABLED || !extension_loaded('redis')) {
+        if (!REDIS_ENABLED || !extension_loaded('redis')) {
             return false;
         }
 
@@ -37,14 +37,14 @@ class RedisSessionHandler implements \SessionHandlerInterface {
             );
             if (!$connected) return false;
 
-            $password = defined('REDIS_PASSWORD') ? REDIS_PASSWORD : null;
+            $password = REDIS_PASSWORD;
             if ($password) $redis->auth($password);
 
             // Use a different DB from cache to avoid flush conflicts
-            $db = defined('REDIS_DB') ? REDIS_DB + 1 : 1;
+            $db = REDIS_DB + 1;
             $redis->select($db);
 
-            $ttl = defined('SESSION_LIFETIME') ? SESSION_LIFETIME : 7200;
+            $ttl = SESSION_LIFETIME;
             $handler = new self($redis, $ttl);
 
             session_set_save_handler($handler, true);

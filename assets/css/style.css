@@ -259,6 +259,66 @@
     color: #e74a3b;
 }
 
+.is-hidden {
+    display: none !important;
+}
+
+.is-dimmed {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.navbar-chevron {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+.avatar-sm-fixed {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+}
+
+.text-wrap-220 {
+    max-width: 220px;
+}
+
+.text-wrap-240 {
+    max-width: 240px;
+}
+
+.product-image-preview {
+    max-height: 200px;
+}
+
+.product-image-thumb {
+    max-height: 100px;
+}
+
+.sale-summary-band {
+    border-top: 2px solid var(--border-color);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.system-log-console {
+    max-height: 400px;
+    overflow-y: auto;
+    background: #111;
+    color: #0f0;
+}
+
+.warehouse-transfer-col-product {
+    width: 58%;
+}
+
+.warehouse-transfer-col-available {
+    width: 22%;
+}
+
+.warehouse-transfer-col-qty {
+    width: 16%;
+}
+
 /* Dark mode: List group */
 [data-theme="dark"] .list-group-item {
     background-color: var(--bg-card);
@@ -689,6 +749,77 @@ a:hover {
 .sidebar-nav {
     padding: 0.75rem 0;
 }
+.sidebar-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.sidebar-super-admin-banner {
+    padding: 0.25rem 0.5rem;
+    margin: 0 0.75rem 0.25rem;
+    text-align: center;
+}
+.sidebar-super-admin-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.6rem;
+    background: linear-gradient(135deg,#ffd700,#ff8c00);
+    color: #000;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+.sidebar-super-admin-badge .fa-crown {
+    font-size: 0.55rem;
+}
+.sidebar-impersonation-box {
+    margin: 0.25rem 0.75rem 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: linear-gradient(135deg,#ff4757,#ff6b81);
+    border-radius: 6px;
+    text-align: center;
+}
+.sidebar-impersonation-title {
+    font-size: 0.6rem;
+    color: #fff;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+}
+.sidebar-impersonation-name {
+    font-size: 0.55rem;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 0.35rem;
+}
+.sidebar-impersonation-link {
+    display: inline-block;
+    font-size: 0.6rem;
+    color: #ff4757;
+    background: #fff;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-weight: 700;
+    text-decoration: none;
+}
+.sidebar-impersonation-link .fa-arrow-left {
+    font-size: 0.5rem;
+}
+.sidebar-demo-box {
+    padding: 0.75rem;
+    margin: 0.5rem;
+    background: rgba(54,185,204,0.1);
+    border: 1px solid rgba(54,185,204,0.2);
+    border-radius: 0.5rem;
+    text-align: center;
+}
+.sidebar-demo-note {
+    color: #36b9cc;
+}
+.sidebar-demo-cta {
+    font-size: 0.7rem;
+}
 
 .sidebar-section-title {
     padding: 0.75rem 1.25rem 0.4rem;
@@ -763,6 +894,9 @@ a:hover {
     border-radius: 50px;
     font-weight: 600;
     transition: opacity 0.2s;
+}
+.nav-badge.nav-badge-xs {
+    font-size: 0.6rem;
 }
 
 /* -- Sidebar Collapsed Tooltips -- */
@@ -3633,6 +3767,12 @@ td[colspan] i.d-block {
 .sales-items-table th:first-child,
 .sales-items-table td:first-child {
     min-width: 240px;
+}
+.sales-items-table .col-product {
+    width: 30%;
+}
+.sales-entry-hidden {
+    display: none;
 }
 
 .sales-items-table th:nth-child(2),

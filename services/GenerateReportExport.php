@@ -17,7 +17,7 @@ class GenerateReportExport {
 
         [$headers, $rows] = self::buildRows($reportType, $filters, $maxRows);
 
-        $exportsDir = BASE_PATH . '/uploads/exports/company_' . $companyId;
+        $exportsDir = UPLOAD_PATH . '/exports/company_' . $companyId;
         if (!is_dir($exportsDir) && !mkdir($exportsDir, 0755, true) && !is_dir($exportsDir)) {
             throw new \RuntimeException('Could not create export directory.');
         }
@@ -42,9 +42,10 @@ class GenerateReportExport {
         if ($jobId > 0) {
             $ttl = defined('CACHE_TTL_EXPORT_STATUS') ? (int)CACHE_TTL_EXPORT_STATUS : 86400;
             $token = bin2hex(random_bytes(20));
+            $exportService = new ReportExportService();
 
             Cache::set(
-                'c' . $companyId . '_report_export_' . $jobId,
+                $exportService->resultCacheKey($companyId, $jobId),
                 [
                     'status' => 'ready',
                     'token' => $token,
@@ -56,7 +57,7 @@ class GenerateReportExport {
             );
 
             Cache::set(
-                'c' . $companyId . '_report_export_token_' . $token,
+                $exportService->tokenCacheKey($companyId, $token),
                 [
                     'name' => $filename,
                     'path' => $filePath,
@@ -84,6 +85,7 @@ class GenerateReportExport {
         return match ($reportType) {
             'sales' => self::salesRows($filters, $maxRows),
             'purchases' => self::purchaseRows($filters, $maxRows),
+            'tax_summary' => self::taxSummaryRows($filters),
             'stock' => self::stockRows($filters, $maxRows),
             'warehouse_transfers' => self::warehouseTransferRows($filters, $maxRows),
             'payroll_finance' => self::payrollFinanceRows($filters),
@@ -172,6 +174,58 @@ class GenerateReportExport {
             'Due Amount',
             'Payment Status',
         ], $rows];
+    }
+
+    private static function taxSummaryRows(array $filters): array {
+        $fromDate = self::normalizeDate((string)($filters['from_date'] ?? ''), date('Y-m-01'));
+        $toDate = self::normalizeDate((string)($filters['to_date'] ?? ''), date('Y-m-d'));
+        [$fromDate, $toDate] = self::normalizeRange($fromDate, $toDate);
+        $settings = (new SettingsModel())->getSettings();
+        $report = (new TaxReportService())->buildReport($fromDate, $toDate, $settings);
+        $summary = $report['summary'] ?? [];
+
+        $rows = [
+            ['Period', $fromDate . ' to ' . $toDate],
+            ['GST Enabled In Settings', !empty($report['gst_enabled']) ? 'Yes' : 'No'],
+            ['Sales Taxable Turnover', (float)($summary['sales_taxable'] ?? 0)],
+            ['Posted Return Taxable Adjustment', (float)($summary['sales_return_taxable'] ?? 0)],
+            ['Non-GST / Zero-Tax Sales', (float)($summary['sales_non_gst'] ?? 0)],
+            ['Output CGST', (float)($summary['output_cgst'] ?? 0)],
+            ['Output SGST', (float)($summary['output_sgst'] ?? 0)],
+            ['Output IGST', (float)($summary['output_igst'] ?? 0)],
+            ['Total Output Tax', (float)($summary['output_tax'] ?? 0)],
+            ['Purchase Taxable Value', (float)($summary['purchase_taxable'] ?? 0)],
+            ['Purchase Return Taxable Adjustment', (float)($summary['purchase_return_taxable'] ?? 0)],
+            ['Input Tax', (float)($summary['input_tax'] ?? 0)],
+            ['Net Tax Payable', (float)($summary['net_tax_payable'] ?? 0)],
+            [],
+            ['Sales Breakdown'],
+            ['Rate %', 'GST Type', 'Voucher Count', 'Taxable Amount', 'Tax Amount'],
+        ];
+
+        foreach (($report['sales_breakdown'] ?? []) as $row) {
+            $rows[] = [
+                (float)($row['tax_rate'] ?? 0),
+                $row['gst_type'] ?? '',
+                (int)($row['voucher_count'] ?? 0),
+                (float)($row['taxable_amount'] ?? 0),
+                (float)($row['tax_amount'] ?? 0),
+            ];
+        }
+
+        $rows[] = [];
+        $rows[] = ['Purchase Breakdown'];
+        $rows[] = ['Rate %', 'Voucher Count', 'Taxable Amount', 'Tax Amount'];
+        foreach (($report['purchase_breakdown'] ?? []) as $row) {
+            $rows[] = [
+                (float)($row['tax_rate'] ?? 0),
+                (int)($row['voucher_count'] ?? 0),
+                (float)($row['taxable_amount'] ?? 0),
+                (float)($row['tax_amount'] ?? 0),
+            ];
+        }
+
+        return [['Metric', 'Value', 'Voucher Count', 'Taxable Amount', 'Tax Amount'], $rows];
     }
 
     private static function stockRows(array $filters, int $maxRows): array {

@@ -1,6 +1,21 @@
 ﻿<?php $flash = Session::getFlash(); ?>
-<div class="container d-flex justify-content-center align-items-center" style="min-height:80vh;">
-    <div class="card shadow-sm" style="max-width:420px; width:100%;">
+<style>
+    .two-factor-shell {
+        min-height: 80vh;
+    }
+    .two-factor-card {
+        max-width: 420px;
+        width: 100%;
+    }
+    .two-factor-recovery-input {
+        letter-spacing: 3px;
+        font-size: 20px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+</style>
+<div class="container d-flex justify-content-center align-items-center two-factor-shell">
+    <div class="card shadow-sm two-factor-card">
         <div class="card-header bg-warning text-dark text-center">
             <i class="fas fa-life-ring fa-2x mb-2"></i>
             <h5 class="mb-0">Recovery Code</h5>
@@ -21,7 +36,7 @@
                     <input type="text" name="recovery_code" class="form-control form-control-lg text-center"
                            maxlength="9" placeholder="XXXX-XXXX"
                            autocomplete="off" required autofocus
-                           style="letter-spacing:3px; font-size:20px; font-weight:bold; text-transform:uppercase;">
+                           class="form-control form-control-lg text-center two-factor-recovery-input">
                 </div>
 
                 <button type="submit" class="btn btn-warning w-100 mb-3">

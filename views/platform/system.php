@@ -59,7 +59,7 @@
         <h6 class="m-0 font-weight-bold text-warning font-monospace"><i class="fas fa-bug me-2"></i> /logs/error.log (TAIL 50)</h6>
     </div>
     <div class="card-body p-0">
-        <div class="p-3 font-monospace small" style="max-height: 400px; overflow-y: auto; background:#111; color:#0f0;">
+        <div class="p-3 font-monospace small system-log-console">
             <?php if(empty($errorLogs)): ?>
                 No errors trapped.
             <?php else: ?>

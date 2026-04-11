@@ -1,12 +1,12 @@
 <?php
 /**
  * CSRF Protection Class
- * 
+ *
  * Generates and validates CSRF tokens to prevent
  * Cross-Site Request Forgery attacks.
  */
 class CSRF {
-    
+
     /**
      * Generate a new CSRF token
      */

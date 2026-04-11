@@ -33,7 +33,7 @@
             <div class="card mb-3 sales-entry-card">
                 <div class="card-header"><h6><i class="fas fa-list me-2"></i>Items</h6><button type="button" class="btn btn-sm btn-primary" id="addItemBtn"><i class="fas fa-plus me-1"></i>Add</button></div>
                 <div class="card-body p-0"><div class="table-responsive"><table class="table mb-0 sales-items-table" id="itemsTable">
-                    <thead><tr><th style="width:30%">Product</th><th>Qty</th><th>Price</th><th>Disc</th>
+                    <thead><tr><th class="col-product">Product</th><th>Qty</th><th>Price</th><th>Disc</th>
                         <?php if((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])): ?>
                         <th>Tax%</th>
                         <?php endif; ?>
@@ -68,9 +68,9 @@
                     <hr>
                     <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Subtotal</span><span class="sales-entry-summary-value" id="summarySubtotal">₹0.00</span></div>
                     <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Tax</span><span class="sales-entry-summary-value" id="summaryTax">Rs.0.00</span></div>
-                    <div class="sales-entry-summary-line mb-2" id="summaryCgstRow" style="display:none;"><span class="sales-entry-summary-label">CGST</span><span class="sales-entry-summary-value" id="summaryCgst">Rs.0.00</span></div>
-                    <div class="sales-entry-summary-line mb-2" id="summarySgstRow" style="display:none;"><span class="sales-entry-summary-label">SGST</span><span class="sales-entry-summary-value" id="summarySgst">Rs.0.00</span></div>
-                    <div class="sales-entry-summary-line mb-2" id="summaryIgstRow" style="display:none;"><span class="sales-entry-summary-label">IGST</span><span class="sales-entry-summary-value" id="summaryIgst">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2 sales-entry-hidden" id="summaryCgstRow"><span class="sales-entry-summary-label">CGST</span><span class="sales-entry-summary-value" id="summaryCgst">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2 sales-entry-hidden" id="summarySgstRow"><span class="sales-entry-summary-label">SGST</span><span class="sales-entry-summary-value" id="summarySgst">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2 sales-entry-hidden" id="summaryIgstRow"><span class="sales-entry-summary-label">IGST</span><span class="sales-entry-summary-value" id="summaryIgst">Rs.0.00</span></div>
                     <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Discount</span><span class="sales-entry-summary-value" id="summaryDiscount">-Rs.0.00</span></div>
                     <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Freight</span><span class="sales-entry-summary-value" id="summaryFreight">Rs.0.00</span></div>
                     <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Loading</span><span class="sales-entry-summary-value" id="summaryLoading">Rs.0.00</span></div>
@@ -105,6 +105,15 @@ const autoRoundOffEnabled = " . (!empty($settings['auto_round_off_rupee']) ? 'tr
 const taxCalculationEnabled = currentTaxStatus && currentGstStatus;
 const APP = '" . APP_URL . "';
 document.getElementById('addItemBtn').addEventListener('click', addItem);
+document.getElementById('itemsBody').addEventListener('click', function(e) {
+    const removeBtn = e.target.closest('.js-remove-item-row');
+    if (!removeBtn) return;
+    const row = removeBtn.closest('tr');
+    if (row) {
+        row.remove();
+        calc();
+    }
+});
 
 document.addEventListener('keydown', function(e) {
     if (e.altKey && e.key === 'a') {
@@ -128,7 +137,7 @@ function addItem() {
         <td><input type=\"number\" name=\"item_discount[]\" class=\"form-control form-control-sm disc\" step=\"0.01\" value=\"0\" min=\"0\"></td>
         ` + taxColHtml + `
         <td class=\"fw-bold row-total\">₹0.00</td>
-        <td><button type=\"button\" class=\"btn btn-sm btn-outline-danger btn-icon\" onclick=\"this.closest('tr').remove();calc();\"><i class=\"fas fa-times\"></i></button></td>
+        <td><button type=\"button\" class=\"btn btn-sm btn-outline-danger btn-icon js-remove-item-row\"><i class=\"fas fa-times\"></i></button></td>
     `;
     document.getElementById('itemsBody').appendChild(row);
     

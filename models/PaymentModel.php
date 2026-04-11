@@ -280,7 +280,7 @@ class PaymentModel extends Model {
         $tenantFilter = $cid !== null ? " AND company_id = ?" : "";
         $salesSql = "SELECT s.id, s.grand_total, COALESCE(SUM(sr.total_amount), 0) as returned_total
                      FROM sales s
-                     LEFT JOIN sale_returns sr ON sr.sale_id = s.id AND sr.deleted_at IS NULL";
+                     LEFT JOIN sale_returns sr ON sr.sale_id = s.id AND sr.deleted_at IS NULL AND sr.status = 'posted'";
         $salesParams = [];
         if ($cid !== null) {
             $salesSql .= " AND sr.company_id = ?";

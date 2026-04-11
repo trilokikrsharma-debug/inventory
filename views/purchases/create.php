@@ -39,7 +39,7 @@
                 <div class="card-header"><h6><i class="fas fa-list me-2"></i>Items</h6><button type="button" class="btn btn-sm btn-primary" id="addItemBtn"><i class="fas fa-plus me-1"></i>Add Item</button></div>
                 <div class="card-body p-0">
                     <div class="table-responsive"><table class="table mb-0 sales-items-table" id="itemsTable">
-                        <thead><tr><th style="width:30%">Product</th><th>Qty</th><th>Price</th><th>Discount</th><?php if((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])): ?><th>Tax %</th><?php endif; ?><th>Total</th><th></th></tr></thead>
+                        <thead><tr><th class="col-product">Product</th><th>Qty</th><th>Price</th><th>Discount</th><?php if((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])): ?><th>Tax %</th><?php endif; ?><th>Total</th><th></th></tr></thead>
                         <tbody id="itemsBody"></tbody>
                         <tfoot>
                             <tr><td colspan="<?= ((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])) ? 5 : 4 ?>" class="text-end fw-bold">Subtotal:</td><td class="fw-bold" id="subtotalDisplay">₹0.00</td><td></td></tr>
@@ -89,6 +89,15 @@ const currentGstStatus = " . ((!isset($settings['enable_gst']) || $settings['ena
 const taxCalculationEnabled = currentTaxStatus && currentGstStatus;
 const APP = '" . APP_URL . "';
 document.getElementById('addItemBtn').addEventListener('click', addItem);
+document.getElementById('itemsBody').addEventListener('click', function(e) {
+    const removeBtn = e.target.closest('.js-remove-item-row');
+    if (!removeBtn) return;
+    const row = removeBtn.closest('tr');
+    if (row) {
+        row.remove();
+        calc();
+    }
+});
 
 document.addEventListener('keydown', function(e) {
     if (e.altKey && e.key === 'a') {
@@ -112,7 +121,7 @@ function addItem() {
         <td><input type=\"number\" name=\"item_discount[]\" class=\"form-control form-control-sm disc\" step=\"0.01\" value=\"0\"></td>
         ` + taxColHtml + `
         <td class=\"fw-bold row-total\">₹0.00</td>
-        <td><button type=\"button\" class=\"btn btn-sm btn-outline-danger btn-icon\" onclick=\"this.closest('tr').remove();calc();\"><i class=\"fas fa-times\"></i></button></td>
+        <td><button type=\"button\" class=\"btn btn-sm btn-outline-danger btn-icon js-remove-item-row\"><i class=\"fas fa-times\"></i></button></td>
     `;
     document.getElementById('itemsBody').appendChild(row);
     

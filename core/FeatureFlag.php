@@ -1,10 +1,10 @@
 <?php
 /**
  * Feature Flags System — Gradual Rollout & Tenant Control
- * 
+ *
  * Controls feature visibility per-tenant and globally.
  * Supports percentage rollouts and plan-based gating.
- * 
+ *
  * Usage:
  *   if (FeatureFlag::isEnabled('webhooks')) {
  *       // Allow webhook dispatch for this tenant
@@ -12,7 +12,6 @@
  */
 class FeatureFlag {
 
-    private static $cache = null;
     private static $overrides = null;
 
     /**
@@ -83,7 +82,7 @@ class FeatureFlag {
             [$companyId, $feature, $enabled ? 1 : 0, $enabled ? 1 : 0]
         );
         self::$overrides = null; // Clear cache
-        
+
         Logger::audit('feature_flag_changed', 'feature_flags', null, [
             'feature' => $feature, 'enabled' => $enabled, 'company_id' => $companyId
         ]);

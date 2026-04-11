@@ -1,13 +1,13 @@
 <?php
 /**
  * Tenant Resolution & Context
- * 
+ *
  * Singleton that holds the current tenant (company) context for the request.
  * Resolved once after authentication, then used throughout the request lifecycle.
- * 
+ *
  * SECURITY: company_id is ONLY sourced from the authenticated user's session.
  * It CANNOT be overridden via URL parameters, POST data, or headers.
- * 
+ *
  * Usage:
  *   Tenant::id()       → int|null  (current company_id)
  *   Tenant::company()  → array|null (full company row)
@@ -20,12 +20,11 @@ class Tenant {
     private static $resolved = false;
     private static $currentPlan = null;
     private static bool $planResolved = false;
-    private static $columnCache = [];
 
     /**
      * Resolve tenant from authenticated session.
      * Called once per request from index.php after Session::start().
-     * 
+     *
      * @return void
      */
     public static function resolve() {
@@ -79,7 +78,7 @@ class Tenant {
 
     /**
      * Get current company ID. Returns null if not resolved.
-     * 
+     *
      * @return int|null
      */
     public static function id() {
@@ -89,7 +88,7 @@ class Tenant {
     /**
      * Get current company ID, throwing if not resolved.
      * Use this in contexts where a tenant MUST exist.
-     * 
+     *
      * @return int
      * @throws \RuntimeException if no tenant is resolved
      */
@@ -102,7 +101,7 @@ class Tenant {
 
     /**
      * Get full company record.
-     * 
+     *
      * @return array|null
      */
     public static function company() {
@@ -111,7 +110,7 @@ class Tenant {
 
     /**
      * Check if current tenant is a demo company.
-     * 
+     *
      * @return bool
      */
     public static function isDemo() {
@@ -148,24 +147,12 @@ class Tenant {
         try {
             $db = Database::getInstance();
 
-            if (self::companyHasColumn('subdomain')) {
-                $row = $db->query(
-                    "SELECT * FROM companies WHERE subdomain = ? LIMIT 1",
-                    [$identifier]
-                )->fetch();
-                if ($row) {
-                    return $row;
-                }
-            }
-
-            if (self::companyHasColumn('slug')) {
-                $row = $db->query(
-                    "SELECT * FROM companies WHERE slug = ? LIMIT 1",
-                    [$identifier]
-                )->fetch();
-                if ($row) {
-                    return $row;
-                }
+            $row = $db->query(
+                "SELECT * FROM companies WHERE subdomain = ? OR slug = ? LIMIT 1",
+                [$identifier, $identifier]
+            )->fetch();
+            if ($row) {
+                return $row;
             }
         } catch (\Throwable $e) {
             error_log('[TENANT] Host resolution failed: ' . $e->getMessage());
@@ -214,7 +201,7 @@ class Tenant {
 
     /**
      * Get company plan.
-     * 
+     *
      * Canonical values: starter / professional / enterprise.
      *
      * @return string|null
@@ -345,7 +332,7 @@ class Tenant {
 
     /**
      * Check if a feature is allowed by the current plan.
-     * 
+     *
      * @param string $feature Feature key
      * @param int|null $currentUsage Optional current usage count for quota-style features.
      * @param int $increment Optional delta to reserve/use.
@@ -565,7 +552,7 @@ class Tenant {
 
     /**
      * Set tenant context manually (used during signup/login).
-     * 
+     *
      * @param int        $companyId
      * @param array|null $company  Optional pre-loaded company row
      */
@@ -686,11 +673,11 @@ class Tenant {
 
         if ($baseDomain !== '' && str_ends_with($host, '.' . $baseDomain)) {
             $prefix = substr($host, 0, -1 * (strlen($baseDomain) + 1));
-            $parts = array_values(array_filter(explode('.', $prefix), 'strlen'));
+            $parts = array_values(array_filter(explode('.', $prefix), static fn (string $part): bool => $part !== ''));
             return self::normalizeTenantIdentifier($parts[0] ?? '');
         }
 
-        $parts = array_values(array_filter(explode('.', $host), 'strlen'));
+        $parts = array_values(array_filter(explode('.', $host), static fn (string $part): bool => $part !== ''));
         if (count($parts) < 3) {
             return null;
         }
@@ -710,56 +697,6 @@ class Tenant {
     private static function companyTenantIdentifier(array $company): string {
         $candidate = (string)($company['subdomain'] ?? $company['slug'] ?? '');
         return self::normalizeTenantIdentifier($candidate);
-    }
-
-    private static function companyHasColumn(string $column): bool {
-        $column = strtolower(trim($column));
-        $cacheKey = 'companies.' . $column;
-        if (array_key_exists($cacheKey, self::$columnCache)) {
-            return (bool)self::$columnCache[$cacheKey];
-        }
-
-        try {
-            $db = Database::getInstance();
-            $row = $db->query(
-                "SELECT COUNT(*) AS cnt
-                 FROM information_schema.COLUMNS
-                 WHERE TABLE_SCHEMA = DATABASE()
-                   AND TABLE_NAME = 'companies'
-                   AND COLUMN_NAME = ?",
-                [$column]
-            )->fetch();
-            self::$columnCache[$cacheKey] = !empty($row['cnt']);
-        } catch (\Throwable $e) {
-            self::$columnCache[$cacheKey] = false;
-        }
-
-        return (bool)self::$columnCache[$cacheKey];
-    }
-
-    private static function subscriptionHasColumn(string $column): bool {
-        $column = strtolower(trim($column));
-        $cacheKey = 'tenant_subscriptions.' . $column;
-        if (array_key_exists($cacheKey, self::$columnCache)) {
-            return (bool)self::$columnCache[$cacheKey];
-        }
-
-        try {
-            $db = Database::getInstance();
-            $row = $db->query(
-                "SELECT COUNT(*) AS cnt
-                 FROM information_schema.COLUMNS
-                 WHERE TABLE_SCHEMA = DATABASE()
-                   AND TABLE_NAME = 'tenant_subscriptions'
-                   AND COLUMN_NAME = ?",
-                [$column]
-            )->fetch();
-            self::$columnCache[$cacheKey] = !empty($row['cnt']);
-        } catch (\Throwable $e) {
-            self::$columnCache[$cacheKey] = false;
-        }
-
-        return (bool)self::$columnCache[$cacheKey];
     }
 
     private static function companyLimitValue(array $company, string $feature): ?int {

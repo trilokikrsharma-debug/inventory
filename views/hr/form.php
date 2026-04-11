@@ -24,6 +24,14 @@ $isEdit = str_starts_with($formAction, 'edit');
         padding: 1.25rem;
         background: #fff;
     }
+    .hr-form-kicker {
+        letter-spacing: .12em;
+        color: #93c5fd;
+    }
+    .hr-form-hero-copy {
+        max-width: 720px;
+        color: #c8d7ee;
+    }
 </style>
 
 <div class="page-header">
@@ -40,9 +48,9 @@ $isEdit = str_starts_with($formAction, 'edit');
     <div class="card-body hr-form-hero p-4 p-lg-5 border-bottom">
         <div class="row align-items-center g-4">
             <div class="col-lg-8">
-                <div class="small text-uppercase fw-semibold mb-2" style="letter-spacing:.12em;color:#93c5fd;"><?= $isEdit ? 'Update Employee' : 'New Employee' ?></div>
+                <div class="small text-uppercase fw-semibold mb-2 hr-form-kicker"><?= $isEdit ? 'Update Employee' : 'New Employee' ?></div>
                 <h3 class="mb-2 fw-bold"><?= $isEdit ? 'Refine employee profile details' : 'Create a clean employee master record' ?></h3>
-                <p class="mb-0" style="max-width:720px;color:#c8d7ee;">
+                <p class="mb-0 hr-form-hero-copy">
                     Keep identity, department, status, and workforce details structured so later HR modules can build on consistent master data.
                 </p>
             </div>

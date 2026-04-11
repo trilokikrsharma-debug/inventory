@@ -1,7 +1,7 @@
 <?php
 /**
  * Stock Service
- * 
+ *
  * Handles business logic related to inventory stock levels.
  */
 class StockService {
@@ -13,7 +13,7 @@ class StockService {
 
     /**
      * Deduct stock securely
-     * 
+     *
      * @throws Exception if insufficient stock
      */
     public function deduct(int $productId, float $quantity, string $reason, int $userId, ?int $referenceId = null): void {
@@ -42,11 +42,11 @@ class StockService {
         // Log history
         $note = "Stock deducted for {$reason}" . ($referenceId ? " (Ref: {$referenceId})" : "");
         $this->productRepo->logStockHistory(
-            $productId, 
-            $reason, 
-            -$quantity, 
-            $stockInfo['current_stock'], 
-            $stockAfter, 
+            $productId,
+            $reason,
+            -$quantity,
+            $stockInfo['current_stock'],
+            $stockAfter,
             $note,
             $userId
         );
@@ -86,11 +86,11 @@ class StockService {
         // Log history
         $note = "Stock added via {$reason}" . ($referenceId ? " (Ref: {$referenceId})" : "");
         $this->productRepo->logStockHistory(
-            $productId, 
-            $reason, 
-            $quantity, 
-            $stockInfo['current_stock'], 
-            $stockAfter, 
+            $productId,
+            $reason,
+            $quantity,
+            $stockInfo['current_stock'],
+            $stockAfter,
             $note,
             $userId
         );

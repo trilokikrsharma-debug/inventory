@@ -65,15 +65,16 @@ $_nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? $cspNonce ?? '', ENT_QUOTES)
         <div class="mx-sm">
             <div class="crumbs"><a href="<?= APP_URL ?>/">Home</a><span>/</span><span>Blog</span></div>
             <div class="badge"><i class="fas fa-book-open"></i> Guides & Articles</div>
-            <h1 style="font-size:clamp(2rem,5vw,3.2rem);font-weight:900;color:var(--w);line-height:1.08;margin-bottom:14px">Business software guides for Indian SMEs</h1>
-            <p style="color:var(--mt);line-height:1.8;max-width:720px;font-size:1.02rem">Practical articles on GST billing software, inventory management, retail and wholesale workflows, invoice software, and small-business operations in India.</p>
+            <h1 class="hero-title-xl">Business software guides for Indian SMEs</h1>
+            <p class="hero-copy-wide">Practical articles on GST billing software, inventory management, retail and wholesale workflows, invoice software, and small-business operations in India.</p>
         </div>
     </section>
-    <section class="sec" style="padding-top:18px">
+    <section class="sec sec-tight-18">
         <div class="mx-sm">
             <div class="grid-3">
                 <?php foreach ($items as $index => $item): ?>
-                <a href="<?= Helper::escape((string)$item['url']) ?>" class="card rv" style="transition-delay:<?= $index * 60 ?>ms;display:block">
+                <?php $delayClass = [0 => '', 1 => 'delay-60', 2 => 'delay-120', 3 => 'delay-180', 4 => 'delay-240', 5 => 'delay-300', 6 => 'delay-360'][$index] ?? 'delay-400'; ?>
+                <a href="<?= Helper::escape((string)$item['url']) ?>" class="card rv card-block delay-inline <?= $delayClass ?>">
                     <h3><?= Helper::escape((string)($item['heading'] ?? $item['title'] ?? '')) ?></h3>
                     <p><?= Helper::escape((string)$item['description']) ?></p>
                 </a>
@@ -87,7 +88,7 @@ $_nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? $cspNonce ?? '', ENT_QUOTES)
 
 <script nonce="<?= $_nonce ?>">
 document.getElementById('hamburger').addEventListener('click',function(){document.getElementById('mobMenu').classList.toggle('open')});
-function clM(){document.getElementById('mobMenu').classList.remove('open')}
+document.querySelectorAll('#mobMenu a').forEach(function(el){el.addEventListener('click',function(){document.getElementById('mobMenu').classList.remove('open')})});
 var revEls=document.querySelectorAll('.rv');
 if('IntersectionObserver' in window){
 var ob=new IntersectionObserver(function(e){e.forEach(function(el){if(el.isIntersecting){el.target.classList.add('vis');ob.unobserve(el.target)}})},{threshold:.08,rootMargin:'0px 0px -20px 0px'});

@@ -1,10 +1,10 @@
-﻿<?php
+<?php
 /**
  * PDF Invoice Generation Service
- * 
+ *
  * Generates professional PDF invoices using Dompdf.
  * Falls back to an HTML download if Dompdf is not installed.
- * 
+ *
  * Usage:
  *   $pdf = InvoicePdfService::generate($saleId);
  *   InvoicePdfService::download($saleId);   // Force browser download
@@ -13,7 +13,7 @@
 class InvoicePdfService {
     /**
      * Generate a PDF for a sale invoice.
-     * 
+     *
      * @param int $saleId  Sale ID
      * @return string      Raw PDF binary data
      */

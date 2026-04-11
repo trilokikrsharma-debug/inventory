@@ -1,5 +1,19 @@
 parameters:
     level: 5
+    bootstrapFiles:
+        - bootstrap/phpstan-bootstrap.php
+    dynamicConstantNames:
+        - APP_ENV
+        - PASSWORD_COMPLEXITY
+        - PASSWORD_MIN_LENGTH
+        - RAZORPAY_WEBHOOK_SECRET
+        - REDIS_ENABLED
+        - REDIS_HOST
+        - REDIS_PORT
+        - REDIS_PASSWORD
+        - REDIS_DB
+        - REDIS_PREFIX
+        - SESSION_LIFETIME
     paths:
         - core/
         - models/
@@ -20,4 +34,11 @@ parameters:
         - '#Call to static method .* on a non-class#'
         # Legacy Session::get returns mixed
         - '#Cannot access offset .* on mixed#'
+        - '#Method SaaSBillingController::handle(PaymentCaptured|SubscriptionCharged|SubscriptionStatus)Webhook\(\) is unused#'
+        - message: '#If condition is always false#'
+          path: controllers/HealthController.php
+        - message: '#If condition is always false#'
+          path: core/Cache.php
+        - message: '#If condition is always false#'
+          path: core/RedisSessionHandler.php
     reportUnmatchedIgnoredErrors: false

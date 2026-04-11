@@ -28,7 +28,7 @@ Focus next on integration hardening rather than new module sprawl:
 ## Why This Order
 
 - `api_access`: roadmap item still not visibly completed end-to-end
-- `ai_insights`: premium feature exists in the product surface and should stay explicitly gated
+- `ai_insights`: premium feature exists in the product surface and should stay explicitly gated, but user-facing copy should describe it as automated or rule-based insights rather than implying an advanced AI system
 - HR polish: module breadth is now large enough that approvals, reporting, and UX consistency matter more than more tables
 - Warehouse polish: core transfer/reporting exists, but operational edge cases matter before adding more inventory scope
 - Documentation and rollout: the migration set is now large and needs careful operator guidance

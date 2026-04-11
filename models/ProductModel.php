@@ -1,7 +1,7 @@
 <?php
 /**
  * Product Model — Multi-Tenant Aware
- * 
+ *
  * Manages products and inventory operations.
  * All queries scoped by company_id via Tenant::id().
  */
@@ -180,7 +180,7 @@ class ProductModel extends Model {
 
         $stockBefore = $product['current_stock'];
         $stockAfter = $stockBefore + $quantity;
-        
+
         // Update product stock
         $this->db->query(
             "UPDATE {$this->table} SET current_stock = current_stock + ? WHERE id = ?" . (Tenant::id() !== null ? " AND company_id = ?" : ""),
@@ -339,6 +339,10 @@ class ProductModel extends Model {
             $this->flushStockCaches();
         }
         return $affected;
+    }
+
+    public function setActiveState(int $id, bool $isActive): int {
+        return $this->update($id, ['is_active' => $isActive ? 1 : 0]);
     }
 
     /**

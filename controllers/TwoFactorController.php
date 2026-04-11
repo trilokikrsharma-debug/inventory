@@ -1,10 +1,10 @@
 <?php
 /**
  * Two-Factor Authentication Controller
- * 
+ *
  * Handles 2FA setup (QR code + recovery codes) and
  * OTP verification during login flow.
- * 
+ *
  * Routes:
  *   ?page=twoFactor&action=setup         Show QR code for setup
  *   ?page=twoFactor&action=enable        POST: verify + enable 2FA

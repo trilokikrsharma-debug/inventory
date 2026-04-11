@@ -1,7 +1,7 @@
 <?php
 /**
  * User Model — Multi-Tenant Aware
- * 
+ *
  * Authentication flow:
  *  - authenticate() scopes user lookup by username within a company
  *  - For login, we first find the user by username/email, then verify company is active
@@ -17,11 +17,11 @@ class UserModel extends Model {
      */
     /**
      * Authenticate user by username/email and password.
-     * 
+     *
      * SECURITY FIX: Returns first user with matching credentials AND an active company.
      * Old code used LIMIT 1, which caused cross-tenant login leakage if the same
      * username existed in multiple companies.
-     * 
+     *
      * @param string $username Username or email
      * @param string $password Raw password
      * @return array|false  User row on success, false on failure
@@ -144,7 +144,7 @@ class UserModel extends Model {
         }
 
         // Enterprise password complexity: at least 1 uppercase + 1 digit
-        if (defined('PASSWORD_COMPLEXITY') && PASSWORD_COMPLEXITY) {
+        if (PASSWORD_COMPLEXITY) {
             if (!preg_match('/[A-Z]/', $data['password']) || !preg_match('/[0-9]/', $data['password'])) {
                 return ['success' => false, 'message' => 'Password must contain at least 1 uppercase letter and 1 number.'];
             }
@@ -220,7 +220,7 @@ class UserModel extends Model {
             return ['success' => false, 'message' => "Password must be at least {$minLen} characters."];
         }
 
-        if (defined('PASSWORD_COMPLEXITY') && PASSWORD_COMPLEXITY) {
+        if (PASSWORD_COMPLEXITY) {
             if (!preg_match('/[A-Z]/', $newPassword) || !preg_match('/[0-9]/', $newPassword)) {
                 return ['success' => false, 'message' => 'Password must contain at least 1 uppercase letter and 1 number.'];
             }
@@ -244,7 +244,6 @@ class UserModel extends Model {
 
         return ['success' => true, 'message' => 'Password reset successfully.'];
     }
-
     /**
      * Change password with current password verification.
      * Called by ProfileController::password().
@@ -267,7 +266,7 @@ class UserModel extends Model {
             return ['success' => false, 'message' => "New password must be at least {$minLen} characters."];
         }
         // Enforce same complexity rules as createUser()
-        if (defined('PASSWORD_COMPLEXITY') && PASSWORD_COMPLEXITY) {
+        if (PASSWORD_COMPLEXITY) {
             if (!preg_match('/[A-Z]/', $newPassword) || !preg_match('/[0-9]/', $newPassword)) {
                 return ['success' => false, 'message' => 'Password must contain at least 1 uppercase letter and 1 number.'];
             }

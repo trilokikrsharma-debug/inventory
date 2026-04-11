@@ -1,7 +1,7 @@
 <?php
 /**
  * Security Headers Middleware
- * 
+ *
  * Sets enterprise-grade security headers on every response.
  * Extracted from index.php lines 78-90.
  */
@@ -40,7 +40,7 @@ class SecurityHeadersMiddleware implements MiddlewareInterface {
             . "base-uri 'self'; "
             . "object-src 'none'; "
             . "form-action 'self'; "
-            . "script-src 'self' 'unsafe-inline' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://code.jquery.com https://checkout.razorpay.com; "
+            . "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://code.jquery.com https://checkout.razorpay.com; "
             . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://fonts.googleapis.com; "
             . "img-src 'self' data: blob: https://*.razorpay.com; "
             . "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "

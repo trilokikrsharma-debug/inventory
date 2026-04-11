@@ -70,9 +70,9 @@ $faq = is_array($faq ?? null) ? $faq : [];
             <div class="seo-hero-grid">
                 <div>
                     <div class="badge"><i class="fas fa-chart-line"></i><?= Helper::escape($eyebrow) ?></div>
-                    <h1 style="font-size:clamp(2rem,5vw,3.2rem);font-weight:900;color:var(--w);line-height:1.08;margin-bottom:16px"><?= Helper::escape($headline) ?></h1>
-                    <p style="max-width:700px;font-size:1.02rem;line-height:1.8;color:var(--mt);margin-bottom:24px"><?= Helper::escape($intro) ?></p>
-                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <h1 class="hero-title-xl hero-title-gap-16"><?= Helper::escape($headline) ?></h1>
+                    <p class="hero-copy-wide"><?= Helper::escape($intro) ?></p>
+                    <div class="cta-btns">
                         <a href="<?= APP_URL ?>/signup" class="btn-p"><i class="fas fa-rocket"></i>Start Free Trial</a>
                         <a href="<?= APP_URL ?>/demo" class="btn-g"><i class="fas fa-play-circle"></i>Try Live Demo</a>
                     </div>
@@ -110,9 +110,10 @@ $faq = is_array($faq ?? null) ? $faq : [];
                     <?php
                         $ucTitle = is_array($item) ? (string)($item['t'] ?? '') : (string)$item;
                         $ucDesc = is_array($item) ? (string)($item['d'] ?? 'Use one platform for billing, inventory, reports, customer records, and daily operational visibility.') : 'Use one platform for billing, inventory, reports, customer records, and daily operational visibility.';
+                        $useCaseDelay = [0 => '', 1 => 'delay-80', 2 => 'delay-160', 3 => 'delay-240', 4 => 'delay-320', 5 => 'delay-400'][$index] ?? 'delay-400';
                     ?>
-                    <div class="card rv" style="transition-delay:<?= $index * 80 ?>ms">
-                        <div class="card-ic" style="background:rgba(37,99,235,.1);color:var(--ac)"><i class="fas fa-layer-group"></i></div>
+                    <div class="card rv delay-inline <?= $useCaseDelay ?>">
+                        <div class="card-ic card-ic-accent"><i class="fas fa-layer-group"></i></div>
                         <h3><?= Helper::escape($ucTitle) ?></h3>
                         <p><?= Helper::escape($ucDesc) ?></p>
                     </div>
@@ -127,7 +128,8 @@ $faq = is_array($faq ?? null) ? $faq : [];
             <div class="sec-hd rv"><h2 class="sec-t">Frequently asked questions</h2><p class="sec-s">These questions target the commercial queries businesses usually search before choosing a billing or inventory platform.</p></div>
             <div class="faq-grid">
                 <?php foreach ($faq as $index => $item): ?>
-                    <div class="faq-card rv" style="transition-delay:<?= $index * 60 ?>ms">
+                    <?php $faqDelay = [0 => '', 1 => 'delay-60', 2 => 'delay-120', 3 => 'delay-180', 4 => 'delay-240', 5 => 'delay-300', 6 => 'delay-360'][$index] ?? 'delay-400'; ?>
+                    <div class="faq-card rv delay-inline <?= $faqDelay ?>">
                         <h3><?= Helper::escape((string)($item['q'] ?? '')) ?></h3>
                         <p><?= Helper::escape((string)($item['a'] ?? '')) ?></p>
                     </div>
@@ -140,7 +142,7 @@ $faq = is_array($faq ?? null) ? $faq : [];
     <section class="sec sec-alt">
         <div class="mx-sm">
             <div class="sec-hd rv"><h2 class="sec-t">Related pages</h2></div>
-            <div class="chip-row" style="justify-content:center">
+            <div class="chip-row chip-row-center">
                 <a class="chip" href="<?= APP_URL ?>/gst-billing-software">GST Billing Software</a>
                 <a class="chip" href="<?= APP_URL ?>/inventory-management-software">Inventory Management Software</a>
                 <a class="chip" href="<?= APP_URL ?>/billing-software-for-small-business">Billing Software for Small Business</a>
@@ -155,10 +157,10 @@ $faq = is_array($faq ?? null) ? $faq : [];
         <div class="mx-sm">
             <div class="cta-box rv">
                 <div class="bg"></div>
-                <div style="position:relative;z-index:1">
-                    <h2 style="font-size:2rem;font-weight:900;color:var(--w);margin-bottom:10px">Start with billing. Scale into full operations.</h2>
-                    <p style="max-width:700px;margin:0 auto 20px;color:var(--mt);line-height:1.7">Launch with GST billing and inventory, then grow into reports, customer tracking, multi-user workflows, backups, and integrations on the same platform.</p>
-                    <div class="cta-btns" style="justify-content:center">
+                <div class="copy-stack">
+                    <h2 class="hero-title-compact">Start with billing. Scale into full operations.</h2>
+                    <p class="center-copy-700">Launch with GST billing and inventory, then grow into reports, customer tracking, multi-user workflows, backups, and integrations on the same platform.</p>
+                    <div class="cta-btns cta-btns-center">
                         <a href="<?= APP_URL ?>/signup" class="btn-p btn-lg">Start Free Trial</a>
                         <a href="<?= APP_URL ?>/pricing" class="btn-g btn-lg">See Plans</a>
                     </div>
@@ -172,7 +174,7 @@ $faq = is_array($faq ?? null) ? $faq : [];
 
 <script nonce="<?= $_nonce ?>">
 document.getElementById('hamburger').addEventListener('click',function(){document.getElementById('mobMenu').classList.toggle('open')});
-function clM(){document.getElementById('mobMenu').classList.remove('open')}
+document.querySelectorAll('#mobMenu a').forEach(function(el){el.addEventListener('click',function(){document.getElementById('mobMenu').classList.remove('open')})});
 var revEls=document.querySelectorAll('.rv');
 if('IntersectionObserver' in window){
 var ob=new IntersectionObserver(function(e){e.forEach(function(el){if(el.isIntersecting){el.target.classList.add('vis');ob.unobserve(el.target)}})},{threshold:.08,rootMargin:'0px 0px -20px 0px'});

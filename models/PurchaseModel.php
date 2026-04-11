@@ -4,12 +4,6 @@
  */
 class PurchaseModel extends Model {
     protected $table = 'purchases';
-    /**
-     * Cached products table columns for optional HSN compatibility.
-     *
-     * @var array<string, bool>|null
-     */
-    private static $productColumnMap = null;
 
     public function activeWarehouses(): array {
         if (Tenant::id() === null || !Tenant::canUse('multi_warehouse')) {
@@ -117,9 +111,6 @@ class PurchaseModel extends Model {
              WHERE " . implode(' AND ', $where), $params
         )->fetch();
         if ($purchase) {
-            $hsnSelect = $this->productColumnExists('hsn_code')
-                ? ", pr.hsn_code as hsn_code"
-                : ", NULL as hsn_code";
             $purchase['items'] = $this->db->query(
                 "SELECT
                     pi.id,
@@ -135,7 +126,8 @@ class PurchaseModel extends Model {
                     pi.total,
                     pr.name as product_name,
                     pr.sku,
-                    un.short_name as unit_name{$hsnSelect}
+                    pr.hsn_code as hsn_code,
+                    un.short_name as unit_name
                  FROM purchase_items pi LEFT JOIN products pr ON pi.product_id = pr.id LEFT JOIN units un ON pr.unit_id = un.id
                  WHERE pi.purchase_id = ?" . (Tenant::id() !== null ? " AND pi.company_id = ?" : ""),
                 Tenant::id() !== null ? [$id, Tenant::id()] : [$id]
@@ -165,7 +157,7 @@ class PurchaseModel extends Model {
 
             $supplierModel = new SupplierModel();
             $supplierModel->recalculateBalance((int)$purchaseData['supplier_id']);
-            
+
             $db->commit();
             $this->flushAnalyticCaches();
             return $purchaseId;
@@ -200,11 +192,11 @@ class PurchaseModel extends Model {
                 $productModel->updateStock($item['product_id'], +$item['quantity'], 'purchase_edit', $id, $userId, 'Edited Purchase #' . $invoiceNum, $warehouseId);
             }
             $this->update($id, $purchaseData);
-            
+
             $paymentModel = new PaymentModel();
             $paymentModel->recalculateSupplierPurchasesPublic((int)$purchaseData['supplier_id']);
             $supplierModel->recalculateBalance((int)$purchaseData['supplier_id']);
-            
+
             if ((int)$old['supplier_id'] !== (int)$purchaseData['supplier_id']) {
                 $paymentModel->recalculateSupplierPurchasesPublic((int)$old['supplier_id']);
                 $supplierModel->recalculateBalance((int)$old['supplier_id']);
@@ -242,7 +234,7 @@ class PurchaseModel extends Model {
 
     /**
      * Get all dashboard totals in a single query (tenant-scoped).
-     * 
+     *
      * Returns today/month/all purchase totals in one round-trip,
      * matching the same contract as SalesModel::getDashboardTotals().
      * Used by DashboardController to build the KPI cards.
@@ -289,23 +281,4 @@ class PurchaseModel extends Model {
         )->fetchAll();
     }
 
-    /**
-     * Check products table column existence with cached schema lookup.
-     */
-    private function productColumnExists(string $column): bool {
-        if (self::$productColumnMap === null) {
-            self::$productColumnMap = [];
-            try {
-                $rows = Database::getInstance()->query("SHOW COLUMNS FROM products")->fetchAll();
-                foreach ($rows as $row) {
-                    if (!empty($row['Field'])) {
-                        self::$productColumnMap[$row['Field']] = true;
-                    }
-                }
-            } catch (Throwable $e) {
-                self::$productColumnMap = [];
-            }
-        }
-        return !empty(self::$productColumnMap[$column]);
-    }
 }

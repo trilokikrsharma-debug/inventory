@@ -1,10 +1,10 @@
 <?php
 /**
  * Cache — Dual-Driver Cache System (Redis + File Fallback)
- * 
+ *
  * Automatically uses Redis when available and enabled.
  * Falls back to file-based cache with atomic writes and stampede protection.
- * 
+ *
  * Usage:
  *   Cache::set('key', $value, 300);          // 5 minutes
  *   $val = Cache::get('key');
@@ -29,7 +29,7 @@ class Cache {
         }
         self::$redisChecked = true;
 
-        if (!defined('REDIS_ENABLED') || !REDIS_ENABLED) {
+        if (!REDIS_ENABLED) {
             return null;
         }
         if (!extension_loaded('redis')) {
@@ -45,13 +45,13 @@ class Cache {
             );
             if (!$connected) return null;
 
-            $password = defined('REDIS_PASSWORD') ? REDIS_PASSWORD : null;
+            $password = REDIS_PASSWORD;
             if ($password) $r->auth($password);
 
-            $db = defined('REDIS_DB') ? REDIS_DB : 0;
+            $db = REDIS_DB;
             if ($db > 0) $r->select($db);
 
-            $prefix = defined('REDIS_PREFIX') ? REDIS_PREFIX : 'invenbill:';
+            $prefix = REDIS_PREFIX;
             $r->setOption(\Redis::OPT_PREFIX, $prefix);
             $r->setOption(\Redis::OPT_SERIALIZER, \Redis::SERIALIZER_PHP);
 
@@ -120,7 +120,7 @@ class Cache {
 
     /**
      * Set a cached value.
-     * 
+     *
      * @param string $key    Cache key
      * @param mixed  $value  Value to cache
      * @param int    $ttl    Time to live in seconds (0 = forever)

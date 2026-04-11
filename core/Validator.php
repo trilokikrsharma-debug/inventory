@@ -1,10 +1,10 @@
 <?php
 /**
  * Enterprise Input Validation Framework
- * 
+ *
  * Declarative, chainable validation for controller input.
  * Eliminates scattered validation logic and provides consistent error handling.
- * 
+ *
  * Usage:
  *   $v = new Validator($_POST, [
  *       'name'     => 'required|string|min:2|max:100',

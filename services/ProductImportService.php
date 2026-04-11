@@ -116,7 +116,7 @@ class ProductImportService {
             $rowNumber = $index + 2;
             $mapped = $this->mapRow($headers, $row);
             $normalized = $this->normalizeRow($mapped, $context);
-            $skuKey = $normalized['sku_key'] ?? '';
+            $skuKey = $normalized['sku_key'];
 
             if ($skuKey !== '') {
                 if (isset($seenSkus[$skuKey])) {

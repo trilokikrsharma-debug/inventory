@@ -3,8 +3,9 @@
  * Customer Controller
  */
 class CustomerController extends Controller {
-
-    protected $allowedActions = ['index', 'create', 'edit', 'view_customer', 'delete', 'recalculate_balance', 'import', 'download_template'];
+    protected $allowedActions = ['index', 'create', 'edit', 'view_customer', 'delete', 'archive', 'restore', 'recalculate_balance', 'import', 'download_template'];
+    private ?CustomerWorkflowService $customerWorkflowService = null;
+    private ?AccountingLifecycleService $accountingLifecycleService = null;
 
     public function index() {
         $this->requirePermission('customers.view');
@@ -42,7 +43,7 @@ class CustomerController extends Controller {
                     } elseif (empty($validRows)) {
                         $this->setFlash('error', 'No valid rows were found to import.');
                     } else {
-                        $imported = $this->persistImportedContacts($validRows);
+                        $imported = $this->workflowService()->persistImportedContacts($validRows);
                         $this->setFlash('success', 'Imported ' . $imported . ' customer(s) successfully.');
                     }
                 }
@@ -125,21 +126,7 @@ class CustomerController extends Controller {
             }
 
             try {
-                $data = [
-                    'name'            => $name,
-                    'email'           => $email,
-                    'phone'           => $phone,
-                    'address'         => $this->sanitize($clean['address'] ?? ''),
-                    'city'            => $this->sanitize($clean['city'] ?? ''),
-                    'state'           => $this->sanitize($clean['state'] ?? ''),
-                    'zip'             => $this->sanitize($clean['zip'] ?? ''),
-                    'tax_number'      => !empty($clean['tax_number']) ? strtoupper($this->sanitize($clean['tax_number'])) : '',
-                    'opening_balance' => $openingBalance,
-                    'current_balance' => $openingBalance,
-                ];
-                $data = $this->appendOptionalCustomerFields($data, [
-                    'custom_fields' => $this->extractCustomFieldsPayload(),
-                ]);
+                $data = $this->workflowService()->buildPayload($_POST, Session::isSuperAdmin() || Tenant::canUse('custom_fields'), true);
             } catch (\RuntimeException $e) {
                 $this->setFlash('error', $e->getMessage());
                 $this->view('customers.create', ['pageTitle' => 'Add Customer', 'old' => $old, 'customFieldsPretty' => $this->customFieldsPretty($old['custom_fields_json'] ?? '')]);
@@ -216,19 +203,7 @@ class CustomerController extends Controller {
             }
 
             try {
-                $data = [
-                    'name'       => $name,
-                    'email'      => $email,
-                    'phone'      => $phone,
-                    'address'    => $this->sanitize($clean['address'] ?? ''),
-                    'city'       => $this->sanitize($clean['city'] ?? ''),
-                    'state'      => $this->sanitize($clean['state'] ?? ''),
-                    'zip'        => $this->sanitize($clean['zip'] ?? ''),
-                    'tax_number' => !empty($clean['tax_number']) ? strtoupper($this->sanitize($clean['tax_number'])) : '',
-                ];
-                $data = $this->appendOptionalCustomerFields($data, [
-                    'custom_fields' => $this->extractCustomFieldsPayload(),
-                ]);
+                $data = $this->workflowService()->buildPayload($_POST, Session::isSuperAdmin() || Tenant::canUse('custom_fields'), false);
             } catch (\RuntimeException $e) {
                 $this->setFlash('error', $e->getMessage());
                 $this->view('customers.edit', ['pageTitle' => 'Edit Customer', 'customer' => array_merge($customer, $old), 'customFieldsPretty' => $this->customFieldsPretty($old['custom_fields_json'] ?? ($customer['custom_fields'] ?? ''))]);
@@ -275,35 +250,6 @@ class CustomerController extends Controller {
         ]);
     }
 
-    private function appendOptionalCustomerFields(array $data, array $optionalFields): array {
-        $columns = [];
-        try {
-            $rows = Database::getInstance()->query("SHOW COLUMNS FROM customers")->fetchAll();
-            foreach ($rows as $row) {
-                if (!empty($row['Field'])) {
-                    $columns[$row['Field']] = true;
-                }
-            }
-        } catch (\Throwable $e) {
-            $columns = [];
-        }
-
-        foreach ($optionalFields as $field => $value) {
-            if (!empty($columns[$field])) {
-                $data[$field] = $value;
-            }
-        }
-
-        return $data;
-    }
-
-    private function extractCustomFieldsPayload(): ?string {
-        if (!(Session::isSuperAdmin() || Tenant::canUse('custom_fields'))) {
-            return null;
-        }
-        return CustomFieldService::encodeFromInput((string)$this->post('custom_fields_json', ''));
-    }
-
     private function customFieldsPretty($raw): string {
         return CustomFieldService::pretty($raw);
     }
@@ -313,51 +259,60 @@ class CustomerController extends Controller {
         if (!$this->isPost()) { $this->redirect('index.php?page=customers'); }
         $this->validateCSRF();
         $id = (int)$this->post('id');
-        $db = Database::getInstance();
-
-        // Check for linked sales
-        $salesCount = $db->query(
-            "SELECT COUNT(*) FROM sales WHERE customer_id = ? AND deleted_at IS NULL" . (Tenant::id() !== null ? " AND company_id = ?" : ""),
-            Tenant::id() !== null ? [$id, Tenant::id()] : [$id]
-        )->fetchColumn();
-
-        if ($salesCount > 0) {
-            $this->setFlash('error', 'Cannot delete customer: ' . $salesCount . ' active sale(s) exist. Delete or reassign the sales first.');
+        try {
+            $result = $this->lifecycleService()->retireOrDeleteCustomer($id);
+        } catch (\InvalidArgumentException $e) {
+            $this->setFlash('error', $e->getMessage());
             $this->redirect('index.php?page=customers');
             return;
         }
 
-        // Check for linked payments/receipts
-        $paymentsCount = $db->query(
-            "SELECT COUNT(*) FROM payments WHERE customer_id = ? AND deleted_at IS NULL" . (Tenant::id() !== null ? " AND company_id = ?" : ""),
-            Tenant::id() !== null ? [$id, Tenant::id()] : [$id]
-        )->fetchColumn();
+        if ($result['action'] === 'archived') {
+            $this->logActivity(
+                'Archived customer: ' . ($result['record']['name'] ?? $id),
+                'customers',
+                $id,
+                json_encode(['balance' => $result['record']['current_balance'] ?? 0, 'usage' => $result['usage']])
+            );
+            $this->setFlash('success', 'Customer archived because transactional history exists. Ledger and billing history remain intact.');
+        } else {
+            $this->logActivity('Deleted customer: ' . ($result['record']['name'] ?? $id), 'customers', $id, 'Balance: ' . ($result['record']['current_balance'] ?? 0));
+            $this->setFlash('success', 'Unused customer deleted.');
+        }
+        $this->redirect('index.php?page=customers');
+    }
 
-        if ($paymentsCount > 0) {
-            $this->setFlash('error', 'Cannot delete customer: ' . $paymentsCount . ' active payment(s)/receipt(s) exist. Delete them first.');
-            $this->redirect('index.php?page=customers');
-            return;
+    public function archive() {
+        $this->requirePermission('customers.delete');
+        if (!$this->isPost()) { $this->redirect('index.php?page=customers'); }
+        $this->validateCSRF();
+
+        $id = (int)$this->post('id');
+        try {
+            $result = $this->lifecycleService()->setCustomerArchived($id, true);
+            $this->logActivity('Archived customer: ' . ($result['record']['name'] ?? $id), 'customers', $id);
+            $this->setFlash('success', 'Customer archived successfully.');
+        } catch (\InvalidArgumentException $e) {
+            $this->setFlash('error', $e->getMessage());
         }
 
-        // Check for linked sale returns (including returns on soft-deleted sales).
-        $returnsCount = $db->query(
-            "SELECT COUNT(*)
-             FROM sale_returns sr
-             JOIN sales s ON sr.sale_id = s.id
-             WHERE s.customer_id = ? AND sr.deleted_at IS NULL" . (Tenant::id() !== null ? " AND s.company_id = ?" : ""),
-            Tenant::id() !== null ? [$id, Tenant::id()] : [$id]
-        )->fetchColumn();
+        $this->redirect('index.php?page=customers');
+    }
 
-        if ($returnsCount > 0) {
-            $this->setFlash('error', 'Cannot delete customer: ' . $returnsCount . ' active sale return(s) exist. Delete/cancel return records first.');
-            $this->redirect('index.php?page=customers');
-            return;
+    public function restore() {
+        $this->requirePermission('customers.delete');
+        if (!$this->isPost()) { $this->redirect('index.php?page=customers'); }
+        $this->validateCSRF();
+
+        $id = (int)$this->post('id');
+        try {
+            $result = $this->lifecycleService()->setCustomerArchived($id, false);
+            $this->logActivity('Restored customer: ' . ($result['record']['name'] ?? $id), 'customers', $id);
+            $this->setFlash('success', 'Customer restored successfully.');
+        } catch (\InvalidArgumentException $e) {
+            $this->setFlash('error', $e->getMessage());
         }
 
-        $customer = (new CustomerModel())->find($id);
-        (new CustomerModel())->delete($id);
-        $this->logActivity('Deleted customer: ' . ($customer['name'] ?? $id), 'customers', $id, 'Balance: ' . ($customer['current_balance'] ?? 0));
-        $this->setFlash('success', 'Customer deleted.');
         $this->redirect('index.php?page=customers');
     }
 
@@ -379,31 +334,19 @@ class CustomerController extends Controller {
         $this->redirect('index.php?page=customers&action=view_customer&id=' . $id);
     }
 
-    /**
-     * @param array<int, array<string, mixed>> $rows
-     */
-    private function persistImportedContacts(array $rows): int {
-        $model = new CustomerModel();
-        $count = 0;
-        foreach ($rows as $row) {
-            $data = (array)($row['normalized'] ?? []);
-            $payload = [
-                'name' => $this->sanitize((string)($data['name'] ?? '')),
-                'email' => !empty($data['email']) ? $this->sanitize((string)$data['email']) : null,
-                'phone' => !empty($data['phone']) ? $this->sanitize((string)$data['phone']) : null,
-                'address' => $this->sanitize((string)($data['address'] ?? '')),
-                'city' => $this->sanitize((string)($data['city'] ?? '')),
-                'state' => $this->sanitize((string)($data['state'] ?? '')),
-                'zip' => $this->sanitize((string)($data['zip'] ?? '')),
-                'tax_number' => !empty($data['tax_number']) ? strtoupper($this->sanitize((string)$data['tax_number'])) : '',
-                'opening_balance' => (float)($data['opening_balance'] ?? 0),
-                'current_balance' => (float)($data['current_balance'] ?? 0),
-                'is_active' => !empty($data['is_active']) ? 1 : 0,
-            ];
-            $payload = $this->appendOptionalCustomerFields($payload, ['custom_fields' => null]);
-            $model->create($payload);
-            $count++;
+    private function workflowService(): CustomerWorkflowService {
+        if ($this->customerWorkflowService === null) {
+            $this->customerWorkflowService = new CustomerWorkflowService();
         }
-        return $count;
+
+        return $this->customerWorkflowService;
+    }
+
+    private function lifecycleService(): AccountingLifecycleService {
+        if ($this->accountingLifecycleService === null) {
+            $this->accountingLifecycleService = new AccountingLifecycleService();
+        }
+
+        return $this->accountingLifecycleService;
     }
 }

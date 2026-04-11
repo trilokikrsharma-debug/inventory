@@ -12,6 +12,7 @@ class ReferralController extends Controller {
     ];
 
     private Referral $referralModel;
+    private ?ReferralAdminService $referralAdminService = null;
 
     public function __construct() {
         $this->requireSuperAdmin();
@@ -20,21 +21,19 @@ class ReferralController extends Controller {
 
     public function index() {
         $status = trim((string)$this->get('status', ''));
-        $referrals = $this->referralModel->listReferrals($status);
-        $rules = $this->referralModel->listRewardRules();
-        $activeRule = $this->referralModel->getActiveRewardRule();
+        $viewData = $this->workflowService()->buildIndexViewData($status);
 
         $this->view('platform.referrals', [
             'pageTitle' => 'Referrals',
-            'status' => $status,
-            'referrals' => $referrals,
-            'rules' => $rules,
-            'activeRule' => $activeRule,
+            'status' => $viewData['status'],
+            'referrals' => $viewData['referrals'],
+            'rules' => $viewData['rules'],
+            'activeRule' => $viewData['activeRule'],
         ]);
     }
 
     public function rewards() {
-        $rewards = $this->referralModel->listRewards();
+        $rewards = $this->workflowService()->listRewards();
 
         $this->view('platform.referral-rewards', [
             'pageTitle' => 'Referral Rewards',
@@ -52,15 +51,16 @@ class ReferralController extends Controller {
             return;
         }
 
-        $referralId = (int)$this->post('referral_id');
-        $note = trim((string)$this->post('note', 'Manual approval'));
-        $ok = $this->referralModel->approveReward($referralId, $note);
+        $result = $this->workflowService()->approveReward(
+            (int)$this->post('referral_id'),
+            (string)$this->post('note', 'Manual approval')
+        );
 
-        if ($ok) {
-            $this->logActivity('Referral reward approved', 'referrals', $referralId, $note);
-            $this->setFlash('success', 'Referral reward approved successfully.');
+        if ($result['success']) {
+            $this->logActivity('Referral reward approved', 'referrals', $result['id'], $result['note']);
+            $this->setFlash('success', $result['message']);
         } else {
-            $this->setFlash('error', 'Failed to approve referral reward.');
+            $this->setFlash('error', $result['message']);
         }
         $this->redirect('index.php?page=referrals');
     }
@@ -75,15 +75,16 @@ class ReferralController extends Controller {
             return;
         }
 
-        $referralId = (int)$this->post('referral_id');
-        $note = trim((string)$this->post('note', 'Manual rejection'));
-        $ok = $this->referralModel->rejectReward($referralId, $note);
+        $result = $this->workflowService()->rejectReward(
+            (int)$this->post('referral_id'),
+            (string)$this->post('note', 'Manual rejection')
+        );
 
-        if ($ok) {
-            $this->logActivity('Referral reward rejected', 'referrals', $referralId, $note);
-            $this->setFlash('success', 'Referral reward rejected.');
+        if ($result['success']) {
+            $this->logActivity('Referral reward rejected', 'referrals', $result['id'], $result['note']);
+            $this->setFlash('success', $result['message']);
         } else {
-            $this->setFlash('error', 'Failed to reject referral reward.');
+            $this->setFlash('error', $result['message']);
         }
         $this->redirect('index.php?page=referrals');
     }
@@ -98,15 +99,13 @@ class ReferralController extends Controller {
             return;
         }
 
-        $id = (int)$this->post('id');
-        $id = $id > 0 ? $id : null;
-        $result = $this->referralModel->saveRewardRule($this->post(), $id);
+        $result = $this->workflowService()->saveRule($this->post());
 
         if ($result['success']) {
             $this->logActivity(
-                $id ? 'Referral reward rule updated' : 'Referral reward rule created',
+                $result['action'] === 'updated' ? 'Referral reward rule updated' : 'Referral reward rule created',
                 'referrals',
-                (int)$result['id']
+                (int)$result['rule_id']
             );
             $this->setFlash('success', 'Referral reward rule saved.');
         } else {
@@ -114,5 +113,12 @@ class ReferralController extends Controller {
         }
         $this->redirect('index.php?page=referrals');
     }
-}
 
+    private function workflowService(): ReferralAdminService {
+        if ($this->referralAdminService === null) {
+            $this->referralAdminService = new ReferralAdminService($this->referralModel);
+        }
+
+        return $this->referralAdminService;
+    }
+}

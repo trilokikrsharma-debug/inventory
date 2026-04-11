@@ -118,7 +118,7 @@
             <div class="card mb-3">
                 <div class="card-header"><h6><i class="fas fa-image me-2"></i>Image</h6></div>
                 <div class="card-body">
-                    <?php if ($product['image']): ?><img src="<?= APP_URL ?>/<?= $product['image'] ?>" class="img-thumbnail mb-2" style="max-height:100px;" loading="lazy"><?php endif; ?>
+                    <?php if ($product['image']): ?><img src="<?= APP_URL ?>/<?= $product['image'] ?>" class="img-thumbnail mb-2 product-image-thumb" loading="lazy"><?php endif; ?>
                     <input type="file" name="image" class="form-control" accept="image/*">
                 </div>
             </div>

@@ -57,6 +57,7 @@
     $reports = [
         ['sales', 'chart-line', 'success', 'Sales Report', 'View all sales with date & customer filters'],
         ['purchases', 'cart-shopping', 'primary', 'Purchase Report', 'View all purchases with date & supplier filters'],
+        ['tax_summary', 'file-invoice-dollar', 'success', 'GST / Tax Summary', 'Output GST, input GST, non-GST turnover, and net tax payable'],
         ['stock', 'boxes-stacked', 'info', 'Stock Report', !empty($hasWarehouseFeature) ? 'Current stock levels with warehouse filters' : 'Current stock levels for all products'],
         ['warehouse_transfers', 'right-left', 'primary', 'Warehouse Transfers', !empty($hasWarehouseFeature) ? 'Movement requests, approvals, and quantity flow by warehouse' : 'Requires multi-warehouse feature'],
         ['payroll_finance', 'wallet', 'dark', 'Payroll Finance', 'Approved payroll runs, payouts, and finance journal trace'],

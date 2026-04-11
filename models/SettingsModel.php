@@ -1,14 +1,60 @@
 <?php
 /**
  * Settings Model — Multi-Tenant Aware
- * 
+ *
  * Manages per-company settings and application configuration.
  * Each company has its own row in company_settings.
  */
 class SettingsModel extends Model {
     protected $table = 'company_settings';
     protected $softDelete = false;
-    
+
+    private const UPDATABLE_FIELDS = [
+        'company_name',
+        'company_email',
+        'company_phone',
+        'company_address',
+        'company_city',
+        'company_state',
+        'company_zip',
+        'company_country',
+        'company_website',
+        'company_logo',
+        'tax_number',
+        'enable_tax',
+        'enable_gst',
+        'tax_rate',
+        'currency_symbol',
+        'currency_code',
+        'date_format',
+        'timezone',
+        'low_stock_threshold',
+        'invoice_prefix',
+        'purchase_prefix',
+        'payment_prefix',
+        'receipt_prefix',
+        'invoice_title',
+        'invoice_subtitle',
+        'purchase_invoice_title',
+        'invoice_footer_text',
+        'invoice_terms',
+        'invoice_bank_details',
+        'invoice_signature_image',
+        'invoice_seal_image',
+        'invoice_show_signature',
+        'invoice_show_seal',
+        'invoice_signature_label',
+        'invoice_notes_label',
+        'invoice_show_logo',
+        'invoice_show_payment_status',
+        'show_paid_due_on_invoice',
+        'show_unit_on_invoice',
+        'show_discount_on_invoice',
+        'show_hsn_on_invoice',
+        'auto_round_off_rupee',
+        'theme_color',
+    ];
+
     private static $cachedSettings = null;
 
     /**
@@ -66,9 +112,7 @@ class SettingsModel extends Model {
     public function updateSettings($data) {
         self::$cachedSettings = null;
 
-        $result = $this->db->query("SHOW COLUMNS FROM {$this->table}")->fetchAll();
-        $columns = array_column($result, 'Field');
-        $data = array_intersect_key($data, array_flip($columns));
+        $data = array_intersect_key($data, array_flip(self::UPDATABLE_FIELDS));
         if (empty($data)) {
             return 0;
         }

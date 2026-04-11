@@ -1,7 +1,7 @@
 <?php
 /**
  * Profile Controller
- * 
+ *
  * Handles user profile, password change, and theme toggling.
  */
 class ProfileController extends Controller {
@@ -12,7 +12,7 @@ class ProfileController extends Controller {
         $this->requireAuth();
         $userModel = new UserModel();
         $user = $userModel->find(Session::get('user')['id']);
-        
+
         $this->view('profile.index', [
             'pageTitle' => 'My Profile',
             'user' => $user,
@@ -21,7 +21,7 @@ class ProfileController extends Controller {
 
     public function password() {
         $this->requireAuth();
-        
+
         if ($this->isPost()) {
             $this->validateCSRF();
             $userModel = new UserModel();
@@ -58,10 +58,10 @@ class ProfileController extends Controller {
             $this->redirect('index.php?page=profile');
         }
         $this->validateCSRF();
-        
+
         $userModel = new UserModel();
         $userId = Session::get('user')['id'];
-        
+
         // SECURITY: Explicit allowlist — prevents mass assignment of
         // role, role_id, is_super_admin, is_active, company_id, password
         $data = [
@@ -79,7 +79,7 @@ class ProfileController extends Controller {
         }
 
         $userModel->update($userId, $data);
-        
+
         // Update ONLY the allowed fields in session — never overwrite role/SA flag
         $currentUser['full_name'] = $data['full_name'];
         $currentUser['email'] = $data['email'];

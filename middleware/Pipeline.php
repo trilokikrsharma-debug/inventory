@@ -1,11 +1,11 @@
 <?php
 /**
  * Middleware Pipeline
- * 
+ *
  * Executes middleware classes in sequence using the chain-of-responsibility pattern.
- * Each middleware can modify the request, perform side effects, 
+ * Each middleware can modify the request, perform side effects,
  * or short-circuit the pipeline.
- * 
+ *
  * Usage:
  *   $pipeline = new Pipeline();
  *   $pipeline->pipe(new SecurityHeadersMiddleware());
@@ -26,7 +26,7 @@ class Pipeline {
 
     /**
      * Execute the pipeline against a Request.
-     * 
+     *
      * Each middleware receives the request and a $next callable.
      * Calling $next($request) passes control to the next middleware.
      * Not calling $next() short-circuits the pipeline (e.g., auth failure).

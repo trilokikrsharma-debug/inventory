@@ -53,7 +53,7 @@
                     <td><?= $i ?></td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
-                            <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" style="width:36px;height:36px;min-width:36px;">
+                            <div class="avatar-sm avatar-sm-fixed bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold">
                                 <?= strtoupper(substr($u['full_name'], 0, 1)) ?>
                             </div>
                             <div>

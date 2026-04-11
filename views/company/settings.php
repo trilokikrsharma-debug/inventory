@@ -14,12 +14,34 @@ if ($planStatus === 'active') {
 }
 ?>
 
+<style>
+    .company-plan-badge {
+        font-size: 0.8rem;
+    }
+    .company-logo-preview {
+        max-width: 150px;
+        max-height: 100px;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    .company-logo-placeholder {
+        width: 100px;
+        height: 100px;
+        background: rgba(78,115,223,0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+    }
+</style>
+
 <div class="row g-3 mb-4">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <h4 class="mb-0"><i class="fas fa-building me-2 text-primary"></i>Company Settings</h4>
             <?php if (Tenant::company()): ?>
-            <span class="badge bg-<?= $planStatusClass ?> <?= $planStatusTextClass ?>" style="font-size:0.8rem;">
+            <span class="badge bg-<?= $planStatusClass ?> <?= $planStatusTextClass ?> company-plan-badge">
                 <i class="fas fa-tag me-1"></i><?= Helper::escape($planName) ?> Plan
             </span>
             <?php endif; ?>
@@ -103,11 +125,12 @@ if ($planStatus === 'active') {
             <div class="card mb-3">
                 <div class="card-header"><h6 class="mb-0"><i class="fas fa-image me-2"></i>Company Logo</h6></div>
                 <div class="card-body text-center">
-                    <?php if (!empty($settings['company_logo'])): ?>
-                        <img src="<?= APP_URL ?>/<?= $settings['company_logo'] ?>" alt="Logo" 
-                             style="max-width:150px;max-height:100px;border-radius:8px;margin-bottom:1rem;" class="d-block mx-auto">
+                    <?php $companyLogoSrc = Helper::uploadedImageSrc($settings['company_logo'] ?? ''); ?>
+                    <?php if ($companyLogoSrc !== ''): ?>
+                        <img src="<?= Helper::escape($companyLogoSrc) ?>" alt="Logo" 
+                             class="d-block mx-auto company-logo-preview">
                     <?php else: ?>
-                        <div style="width:100px;height:100px;background:rgba(78,115,223,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+                        <div class="company-logo-placeholder">
                             <i class="fas fa-building fa-2x text-primary"></i>
                         </div>
                     <?php endif; ?>

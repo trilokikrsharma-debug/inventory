@@ -1,7 +1,7 @@
 <?php
 /**
  * Request Guard Middleware
- * 
+ *
  * Blocks oversized POST requests (20MB limit).
  * Extracted from index.php lines 96-113.
  */

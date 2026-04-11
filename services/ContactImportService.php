@@ -93,7 +93,7 @@ class ContactImportService {
             $mapped = $this->mapRow($headers, $row);
             $normalized = $this->normalizeRow($entity, $mapped, $context);
 
-            $emailKey = strtolower((string)($normalized['email_key'] ?? ''));
+            $emailKey = strtolower((string)$normalized['email_key']);
             if ($emailKey !== '') {
                 if (isset($seenEmails[$emailKey])) {
                     $normalized['errors'][] = 'Duplicate email in file.';
@@ -102,7 +102,7 @@ class ContactImportService {
                 }
             }
 
-            $phoneKey = strtolower((string)($normalized['phone_key'] ?? ''));
+            $phoneKey = strtolower((string)$normalized['phone_key']);
             if ($phoneKey !== '') {
                 if (isset($seenPhones[$phoneKey])) {
                     $normalized['errors'][] = 'Duplicate phone in file.';
@@ -320,4 +320,3 @@ class ContactImportService {
         return true;
     }
 }
-

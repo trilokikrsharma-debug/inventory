@@ -71,7 +71,14 @@
                             <a href="<?= APP_URL ?>/index.php?page=products&action=view_product&id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary btn-icon" title="View"><i class="fas fa-eye"></i></a>
                             <a href="<?= APP_URL ?>/index.php?page=products&action=edit&id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-secondary btn-icon" title="Edit"><i class="fas fa-edit"></i></a>
                             <?php if (Session::hasPermission('products.delete')): ?>
-                            <form method="POST" action="<?= APP_URL ?>/index.php?page=products&action=delete" class="d-inline" data-confirm="Delete this product?">
+                            <form method="POST" action="<?= APP_URL ?>/index.php?page=products&action=<?= $p['is_active'] ? 'archive' : 'restore' ?>" class="d-inline" data-confirm="<?= $p['is_active'] ? 'Archive this product from new transactions?' : 'Restore this product for new transactions?' ?>">
+                                <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
+                                <input type="hidden" name="id" value="<?= $p['id'] ?>">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary btn-icon" title="<?= $p['is_active'] ? 'Archive' : 'Restore' ?>">
+                                    <i class="fas <?= $p['is_active'] ? 'fa-box-archive' : 'fa-rotate-left' ?>"></i>
+                                </button>
+                            </form>
+                            <form method="POST" action="<?= APP_URL ?>/index.php?page=products&action=delete" class="d-inline" data-confirm="Remove this product? If it has transactional history, it will be archived instead.">
                                 <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
                                 <input type="hidden" name="id" value="<?= $p['id'] ?>">
                                 <button type="submit" class="btn btn-sm btn-outline-secondary btn-icon" title="Delete"><i class="fas fa-trash"></i></button>

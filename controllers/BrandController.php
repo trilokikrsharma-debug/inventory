@@ -5,6 +5,7 @@
 class BrandController extends Controller {
 
     protected $allowedActions = ['index', 'create', 'edit', 'delete', 'fetch'];
+    private ?CatalogLookupService $catalogLookupService = null;
 
     public function index() {
         $this->requireAuth();
@@ -18,11 +19,7 @@ class BrandController extends Controller {
         $this->requirePermission('catalog.manage');
         if ($this->isPost()) {
             $this->validateCSRF();
-            (new BrandModel())->create([
-                'name' => $this->sanitize($this->post('name')),
-                'description' => $this->sanitize($this->post('description')),
-                'is_active' => $this->post('is_active', 1),
-            ]);
+            (new BrandModel())->create($this->lookupService()->buildNamedPayload($this->post(), true));
             $this->setFlash('success', 'Brand created successfully.');
             $this->redirect('index.php?page=brands');
         }
@@ -33,11 +30,7 @@ class BrandController extends Controller {
         $id = (int)$this->get('id');
         if ($this->isPost()) {
             $this->validateCSRF();
-            (new BrandModel())->update($id, [
-                'name' => $this->sanitize($this->post('name')),
-                'description' => $this->sanitize($this->post('description')),
-                'is_active' => $this->post('is_active', 1),
-            ]);
+            (new BrandModel())->update($id, $this->lookupService()->buildNamedPayload($this->post(), true));
             $this->setFlash('success', 'Brand updated successfully.');
             $this->redirect('index.php?page=brands');
         }
@@ -55,5 +48,13 @@ class BrandController extends Controller {
     public function fetch() {
         $this->requireAuth();
         $this->json((new BrandModel())->find((int)parent::get('id')) ?: ['error' => 'Not found']);
+    }
+
+    private function lookupService(): CatalogLookupService {
+        if ($this->catalogLookupService === null) {
+            $this->catalogLookupService = new CatalogLookupService();
+        }
+
+        return $this->catalogLookupService;
     }
 }

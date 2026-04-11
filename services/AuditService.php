@@ -1,13 +1,13 @@
 <?php
 /**
  * Audit Service — Immutable Financial Audit Trail
- * 
+ *
  * Logs all changes to critical financial tables (sales, purchases,
  * payments, etc.) into the audit_trail table.
- * 
+ *
  * Designed as a repository hook — call from service/repository
  * methods instead of using database triggers (more portable).
- * 
+ *
  * Usage:
  *   AuditService::log('sales', $id, 'INSERT', null, $newData);
  *   AuditService::log('sales', $id, 'UPDATE', $oldData, $newData);
@@ -23,7 +23,7 @@ class AuditService {
 
     /**
      * Log a change to the audit trail.
-     * 
+     *
      * @param string     $tableName   Name of the audited table
      * @param int        $recordId    Primary key of the affected record
      * @param string     $action      'INSERT', 'UPDATE', or 'DELETE'
@@ -108,7 +108,7 @@ class AuditService {
     /**
      * Compute only the fields that actually changed.
      * Reduces audit storage by ~80% for typical updates.
-     * 
+     *
      * @return array{old: array, new: array}
      */
     private static function diffValues(array $oldValues, array $newValues): array {
@@ -128,7 +128,7 @@ class AuditService {
 
     /**
      * Query audit history for a specific record.
-     * 
+     *
      * @param string $tableName  Table name
      * @param int    $recordId   Record ID
      * @param int    $limit      Max entries to return

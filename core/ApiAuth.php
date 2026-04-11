@@ -1,17 +1,17 @@
 <?php
 /**
  * API Token Authentication — Bearer Token Strategy
- * 
+ *
  * Provides stateless API authentication for programmatic access.
  * Tokens are scoped to a tenant and can have granular permissions.
- * 
+ *
  * Token Format: inv_{base64(random_bytes(32))}
  * Storage:      SHA-256 hash stored in DB (never store raw tokens)
- * 
+ *
  * Usage:
  *   // Generate token for a tenant:
  *   $token = ApiAuth::generateToken($companyId, $userId, 'My Integration');
- *   
+ *
  *   // Validate incoming request:
  *   $tokenData = ApiAuth::validateRequest();
  *   if (!$tokenData) {
@@ -27,7 +27,7 @@ class ApiAuth {
 
     /**
      * Generate a new API token for a tenant
-     * 
+     *
      * @param int    $companyId  Tenant ID
      * @param int    $userId     User who created the token
      * @param string $name       Human-readable name
@@ -38,40 +38,40 @@ class ApiAuth {
         $rawToken = 'inv_' . bin2hex(random_bytes(32));
         $hash = hash('sha256', $rawToken);
         $scopes = self::normalizeScopes($scopes);
-        
+
         $db = Database::getInstance();
         $db->query(
             "INSERT INTO api_tokens (company_id, user_id, name, token_hash, scopes, expires_at, last_used_at, created_at) 
              VALUES (?, ?, ?, ?, ?, ?, NULL, NOW())",
             [$companyId, $userId, $name, $hash, json_encode($scopes), $expiresAt]
         );
-        
+
         $id = $db->lastInsertId();
-        
+
         Logger::audit('api_token_created', 'api_tokens', $id, [
             'name' => $name, 'scopes' => $scopes
         ]);
-        
+
         return ['token' => $rawToken, 'id' => $id];
     }
 
     /**
      * Validate an API request using Bearer token from Authorization header
-     * 
+     *
      * @return array|null Token data (company_id, user_id, scopes) or null
      */
     public static function validateRequest(): ?array {
         $header = self::authorizationHeader();
-        
+
         if (stripos($header, 'Bearer ') !== 0) {
             return null;
         }
-        
+
         $rawToken = substr($header, 7);
         if (empty($rawToken) || strpos($rawToken, 'inv_') !== 0) {
             return null;
         }
-        
+
         return self::validateToken($rawToken);
     }
 
@@ -80,7 +80,7 @@ class ApiAuth {
      */
     public static function validateToken(string $rawToken): ?array {
         $hash = hash('sha256', $rawToken);
-        
+
         $db = Database::getInstance();
         $token = $db->query(
             "SELECT t.*, c.status AS company_status 
@@ -89,19 +89,19 @@ class ApiAuth {
              WHERE t.token_hash = ? AND t.is_active = 1 AND c.status = 'active'",
             [$hash]
         )->fetch();
-        
+
         if (!$token) return null;
-        
+
         // Check expiry
         if ($token['expires_at'] && strtotime($token['expires_at']) < time()) {
             return null;
         }
-        
+
         // Update last used timestamp (non-blocking)
         try {
             $db->query("UPDATE api_tokens SET last_used_at = NOW() WHERE id = ?", [$token['id']]);
         } catch (\Exception $e) { /* non-critical */ }
-        
+
         return [
             'token_id'   => $token['id'],
             'company_id' => $token['company_id'],
@@ -129,7 +129,7 @@ class ApiAuth {
             "UPDATE api_tokens SET is_active = 0 WHERE id = ? AND company_id = ?",
             [$tokenId, $companyId]
         )->rowCount();
-        
+
         if ($affected > 0) {
             Logger::audit('api_token_revoked', 'api_tokens', $tokenId);
         }

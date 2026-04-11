@@ -418,7 +418,7 @@ class Referral extends Model {
     }
 
     private function generateUniqueCode(string $companyName): string {
-        $base = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $companyName) ?: 'REF', 0, 6));
+        $base = strtoupper(substr((string) preg_replace('/[^A-Za-z0-9]/', '', $companyName), 0, 6));
         if ($base === '') {
             $base = 'REF';
         }
@@ -511,4 +511,3 @@ class Referral extends Model {
         );
     }
 }
-

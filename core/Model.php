@@ -1,16 +1,16 @@
 <?php
 /**
  * Base Model Class — Multi-Tenant Aware
- * 
+ *
  * All models extend this class for common database operations.
  * Supports soft deletes, CRUD operations, and AUTOMATIC tenant scoping.
- * 
+ *
  * TENANT ISOLATION:
  *   - All queries are automatically scoped by company_id via Tenant::id()
  *   - All inserts automatically include company_id
  *   - Set $tenantScoped = false in models that should NOT be tenant-scoped
  *     (e.g., the Company model itself, or system-level tables)
- * 
+ *
  * This is the PRIMARY security boundary for multi-tenant data isolation.
  */
 class Model {
@@ -22,7 +22,7 @@ class Model {
     /**
      * Whether this model's queries should be automatically scoped by company_id.
      * Override to false in models like CompanyModel that operate across tenants.
-     * 
+     *
      * @var bool
      */
     protected $tenantScoped = true;
@@ -47,7 +47,7 @@ class Model {
     /**
      * Get the current tenant company_id.
      * Returns null if tenant is not resolved or model is not tenant-scoped.
-     * 
+     *
      * @return int|null
      */
     protected function getCompanyId() {
@@ -58,7 +58,7 @@ class Model {
     /**
      * Build WHERE clause fragment for tenant scoping.
      * Returns empty string if not tenant-scoped or no tenant.
-     * 
+     *
      * @param string $alias Optional table alias (e.g., 'p' for products)
      * @return string SQL fragment like "p.company_id = ?" or ""
      */
@@ -72,7 +72,7 @@ class Model {
     /**
      * Get tenant param array for binding.
      * Returns empty array if not tenant-scoped.
-     * 
+     *
      * @return array [company_id] or []
      */
     protected function tenantParams() {
@@ -84,7 +84,7 @@ class Model {
     /**
      * Add company_id to data array if tenant-scoped.
      * Used before INSERT to automatically inject company_id.
-     * 
+     *
      * @param array $data
      * @return array
      */
@@ -102,7 +102,7 @@ class Model {
     /**
      * Tenant Safety Guard: Automatically inject company_id into raw queries.
      * Prevents developers from accidentally exposing cross-tenant data.
-     * 
+     *
      * Usage: $this->safeQuery("SELECT * FROM invoices");
      */
     protected function safeQuery(string $sql, array $params = []) {
@@ -112,7 +112,7 @@ class Model {
                 // Only wrap if company_id is not already in the query
                 if (strpos($sqlUpper, 'COMPANY_ID') === false) {
                     $tenantId = Tenant::id();
-                    
+
                     if (strpos($sqlUpper, 'WHERE') !== false) {
                         $sql = preg_replace('/WHERE/i', 'WHERE company_id = ? AND ', $sql, 1);
                     } else {
@@ -370,7 +370,7 @@ class Model {
     public function paginate($page = 1, $perPage = RECORDS_PER_PAGE, $conditions = '', $params = [], $orderBy = 'id DESC') {
         $offset = max(0, ($page - 1) * $perPage);
         $perPage = max(1, min(100, (int)$perPage)); // Cap per-page to 100
-        
+
         // Build WHERE
         $whereClauses = [];
         $countParams = [];

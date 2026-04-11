@@ -47,10 +47,10 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0"><i class="fas fa-key me-2"></i>Permissions</h6>
                     <div>
-                        <button type="button" class="btn btn-sm btn-outline-success" onclick="toggleAll(true)">
+                        <button type="button" class="btn btn-sm btn-outline-success js-toggle-all-perms" data-state="true">
                             <i class="fas fa-check-double me-1"></i>Select All
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAll(false)">
+                        <button type="button" class="btn btn-sm btn-outline-secondary js-toggle-all-perms" data-state="false">
                             <i class="fas fa-times me-1"></i>Clear All
                         </button>
                     </div>
@@ -87,8 +87,8 @@
                                             <i class="fas <?= $moduleIcons[$module] ?? 'fa-puzzle-piece' ?> me-1 text-primary"></i>
                                             <?= Helper::escape(ucfirst($module)) ?>
                                         </h6>
-                                        <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none"
-                                                onclick="toggleModule('<?= Helper::escape($module) ?>')">
+                                        <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none js-toggle-module"
+                                                data-module="<?= Helper::escape($module) ?>">
                                             <small>Toggle</small>
                                         </button>
                                     </div>
@@ -113,7 +113,7 @@
     </div>
 </form>
 
-<script>
+<script nonce="<?= $cspNonce ?? '' ?>">
 function toggleAll(state) {
     document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = state);
 }
@@ -122,4 +122,16 @@ function toggleModule(module) {
     const allChecked = Array.from(cbs).every(cb => cb.checked);
     cbs.forEach(cb => cb.checked = !allChecked);
 }
+
+document.querySelectorAll('.js-toggle-all-perms').forEach(function (button) {
+    button.addEventListener('click', function () {
+        toggleAll(button.dataset.state === 'true');
+    });
+});
+
+document.querySelectorAll('.js-toggle-module').forEach(function (button) {
+    button.addEventListener('click', function () {
+        toggleModule(button.dataset.module || '');
+    });
+});
 </script>

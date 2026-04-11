@@ -1,10 +1,10 @@
 <?php
 /**
  * Invoice / Voucher Controller
- * 
+ *
  * Handles printable document generation, PDF download, and statements
  * for all document types: sales, purchases, payments, returns, quotations.
- * 
+ *
  * Routes:
  *   ?page=invoice&type=sale&id=123              Print view
  *   ?page=invoice&action=download&type=sale&id=123   PDF download
@@ -106,7 +106,7 @@ class InvoiceController extends Controller {
 
     /**
      * Customer/supplier ledger or receipt/payment register PDF download.
-     * 
+     *
      * ?page=invoice&action=statement&party=customer&id=5&from_date=2025-01-01&to_date=2025-12-31
      */
     public function statement() {

@@ -1,11 +1,11 @@
 <?php
 /**
  * Session Management Class
- * 
+ *
  * Handles user sessions, flash messages, and login state.
  */
 class Session {
-    
+
     /**
      * Start session with secure settings
      */
@@ -102,11 +102,11 @@ class Session {
         if (isset($_COOKIE[SESSION_NAME])) {
             setcookie(SESSION_NAME, '', [
                 'expires'  => time() - 3600,
-                'path'     => $cookieParams['path'] ?? '/',
-                'domain'   => $cookieParams['domain'] ?? '',
-                'secure'   => (bool)($cookieParams['secure'] ?? false),
-                'httponly' => (bool)($cookieParams['httponly'] ?? true),
-                'samesite' => $cookieParams['samesite'] ?? 'Lax',
+                'path'     => $cookieParams['path'],
+                'domain'   => $cookieParams['domain'],
+                'secure'   => (bool)$cookieParams['secure'],
+                'httponly' => (bool)$cookieParams['httponly'],
+                'samesite' => $cookieParams['samesite'],
             ]);
         }
     }
@@ -131,7 +131,7 @@ class Session {
             self::destroy();
             if (!headers_sent()) {
                 // Check if AJAX
-                $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
                 if ($isAjax) {
                     http_response_code(401);
@@ -212,7 +212,7 @@ class Session {
 
     /**
      * Get the current user's company_id from session.
-     * 
+     *
      * @return int|null
      */
     public static function companyId() {

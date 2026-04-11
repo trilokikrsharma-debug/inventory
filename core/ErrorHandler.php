@@ -90,14 +90,14 @@ class ErrorHandler {
         }
 
         $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR];
-        if (!in_array((int)($error['type'] ?? 0), $fatalTypes, true)) {
+        if (!in_array((int)$error['type'], $fatalTypes, true)) {
             return;
         }
 
         error_log(
             '[SHUTDOWN ERROR] [' . (defined('REQUEST_ID') ? REQUEST_ID : '-') . '] '
-            . ($error['message'] ?? 'Unknown fatal error')
-            . ' in ' . ($error['file'] ?? '-') . ':' . ($error['line'] ?? 0)
+            . $error['message']
+            . ' in ' . $error['file'] . ':' . $error['line']
         );
 
         if (headers_sent()) {
