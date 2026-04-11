@@ -3,12 +3,18 @@
  * Refund Policy — TSA Legacy Ventures
  * Last updated: March 2026
  */
+require_once __DIR__ . '/_partials/brand.php';
+
 $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? '', ENT_QUOTES);
+$assets = tsa_brand_assets();
 $canonicalUrl = rtrim(APP_URL, '/') . '/refund';
-$iconUrl = rtrim(APP_URL, '/') . '/assets/icon.svg';
-$faviconUrl = rtrim(APP_URL, '/') . '/assets/favicon.svg';
-$logoUrl = rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
-$socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.png';
+$faviconUrl = $assets['favicon'];
+$socialImageUrl = $assets['og'];
+
+$heroCards = [
+    ['title' => 'Try before paying', 'text' => 'Paid plans begin with a 14-day free trial before subscription commitment.'],
+    ['title' => 'Clear refund windows', 'text' => 'Refund handling follows the stated policy windows and review process below.'],
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -31,44 +37,41 @@ $socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.png';
     <link rel="canonical" href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES) ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <style>
-        :root{--p:#6366f1;--pl:#818cf8;--ac:#06b6d4;--d:#020617;--d2:#0f172a;--card:rgba(255,255,255,.04);--brd:rgba(255,255,255,.07);--tx:#e2e8f0;--mt:#94a3b8;--w:#fff}
-        *{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
-        body{font-family:'Inter',system-ui,sans-serif;background:var(--d);color:var(--tx);-webkit-font-smoothing:antialiased}
-        a{color:var(--pl);text-decoration:none}a:hover{text-decoration:underline}
-        nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(20px);background:rgba(2,6,23,.9);border-bottom:1px solid var(--brd);height:64px;display:flex;align-items:center;padding:0 24px}
-        .nav-i{max-width:1200px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between}
-        .logo{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.15rem;color:var(--w);text-decoration:none}
-        .logo img{height:30px;display:block}
-        .logo .hl{color:var(--pl)}
-        .btn-g{padding:8px 18px;border-radius:8px;font-size:.8rem;font-weight:600;color:var(--tx);border:1px solid var(--brd);text-decoration:none;display:inline-flex;align-items:center;gap:6px}
-        .content{max-width:800px;margin:0 auto;padding:100px 24px 60px}
-        .content h1{font-size:2rem;font-weight:800;color:var(--w);margin-bottom:8px}
-        .updated{font-size:.8rem;color:var(--mt);margin-bottom:32px}
-        .content h2{font-size:1.2rem;font-weight:700;color:var(--w);margin:32px 0 12px;padding-top:16px;border-top:1px solid var(--brd)}
-        .content p,.content li{font-size:.9rem;line-height:1.75;color:var(--tx);margin-bottom:12px}
-        .content ul{padding-left:20px;margin-bottom:16px}
-        .content li{margin-bottom:6px}
-        .content strong{color:var(--w)}
-        .highlight{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:12px;padding:20px;margin:20px 0}
-        .highlight p{margin-bottom:0}
-        footer{border-top:1px solid var(--brd);padding:24px;text-align:center}
-        footer p{color:var(--mt);font-size:.72rem}
-    </style>
+    <link rel="stylesheet" href="<?= htmlspecialchars($assets['brand_css'], ENT_QUOTES) ?>">
 </head>
-<body>
-<nav><div class="nav-i">
-    <a href="<?= APP_URL ?>/" class="logo"><img src="<?= htmlspecialchars($logoUrl, ENT_QUOTES) ?>" alt="TSA Legacy"></a>
-    <a href="<?= APP_URL ?>/" class="btn-g"><i class="fas fa-arrow-left"></i> Back to Home</a>
-</div></nav>
+<body class="tsa-public">
+<?php tsa_render_public_nav([
+    'active_href' => APP_URL . '/refund',
+    'links' => [
+        ['href' => APP_URL . '/', 'label' => 'Home'],
+        ['href' => APP_URL . '/pricing', 'label' => 'Pricing'],
+        ['href' => APP_URL . '/refund', 'label' => 'Refund'],
+    ],
+    'secondary_label' => 'Back to Home',
+    'secondary_href' => APP_URL . '/',
+]); ?>
 
-<div class="content">
-    <h1>Refund & Cancellation Policy</h1>
-    <p class="updated">Last updated: March 2026</p>
+<main class="tsa-page tsa-legal-shell">
+    <div class="tsa-container">
+        <?php tsa_render_page_hero([
+            'eyebrow' => 'Legal & Trust',
+            'title' => 'Refund and cancellation policy for <span class="tsa-serif">TSA Legacy</span>',
+            'lead' => 'This page explains the free-trial structure, cancellation model and the refund windows currently stated for paid subscriptions.',
+            'primary_href' => APP_URL . '/pricing',
+            'primary_label' => 'See Pricing',
+            'secondary_href' => APP_URL . '/',
+            'secondary_label' => 'Back to Home',
+            'note' => 'Last updated: March 2026',
+            'side_cards' => $heroCards,
+        ]); ?>
 
-    <p>At TSA Legacy Ventures, we want you to be completely satisfied with our Service. This policy outlines our approach to refunds and cancellations.</p>
+        <article class="tsa-legal-card tsa-legal-prose">
+            <h1>Refund &amp; Cancellation Policy</h1>
+            <p class="tsa-legal-meta">Last updated: March 2026</p>
+
+            <p>This policy explains how TSA Legacy handles free trials, subscription cancellation, and refund requests for paid plans.</p>
 
     <h2>1. Free Plan</h2>
     <p>The Free plan is available at no cost with no obligation. No refund applies as no payment is made.</p>
@@ -82,8 +85,8 @@ $socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.png';
         <li>No automatic billing during the trial period</li>
     </ul>
 
-    <div class="highlight">
-        <p><strong>💡 Tip:</strong> We recommend trying the free trial before committing to a paid plan. This way you can evaluate all features risk-free.</p>
+    <div class="tsa-callout">
+        <p><strong>Tip:</strong> We recommend trying the free trial before committing to a paid plan so you can evaluate the workflows before subscription billing begins.</p>
     </div>
 
     <h2>3. Subscription Cancellation</h2>
@@ -132,8 +135,13 @@ $socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.png';
         <li><strong>Business:</strong> TSA Legacy Ventures (MSME / Udyam Registered)</li>
         <li><strong>Location:</strong> India</li>
     </ul>
-</div>
+        </article>
+    </div>
+</main>
 
-<footer><p>© 2025–<?= date('Y') ?> TSA Legacy Ventures. All rights reserved.</p></footer>
+<?php tsa_render_public_footer(['show_guides' => true]); ?>
+<script nonce="<?= $nonce ?>">
+<?= tsa_brand_script() ?>
+</script>
 </body>
 </html>

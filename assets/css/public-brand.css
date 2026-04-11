@@ -44,7 +44,6 @@ body.tsa-public a{color:inherit}
 }
 .tsa-nav-inner{display:flex;align-items:center;justify-content:space-between;gap:18px}
 .tsa-logo{display:inline-flex;align-items:center}
-.tsa-footer-logo{margin-bottom:14px}
 .tsa-logo img{display:block;height:32px;width:auto}
 .tsa-nav-links,.tsa-nav-cta{display:flex;align-items:center;gap:10px}
 .tsa-nav-links a{

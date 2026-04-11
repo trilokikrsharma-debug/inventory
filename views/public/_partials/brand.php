@@ -53,17 +53,17 @@ if (!function_exists('tsa_render_public_nav')) {
                         <a href="<?= tsa_h($secondaryHref) ?>" class="tsa-btn tsa-btn-ghost"><?= tsa_h($secondaryLabel) ?></a>
                         <a href="<?= tsa_h($primaryHref) ?>" class="tsa-btn tsa-btn-primary"><?= tsa_h($primaryLabel) ?></a>
                     </div>
-                    <button class="tsa-hamburger js-tsa-toggle-menu" type="button" aria-label="Menu" data-menu-id="<?= tsa_h($menuId) ?>">
+                    <button class="tsa-hamburger" type="button" aria-label="Menu" onclick="tsaToggleMenu('<?= tsa_h($menuId) ?>')">
                         <i class="fas fa-bars"></i>
                     </button>
                 </div>
             </nav>
             <div class="tsa-mobile-menu" id="<?= tsa_h($menuId) ?>">
                 <?php foreach ($links as $link): ?>
-                    <a href="<?= tsa_h((string)$link['href']) ?>" class="js-tsa-close-menu" data-menu-id="<?= tsa_h($menuId) ?>"><?= tsa_h((string)$link['label']) ?></a>
+                    <a href="<?= tsa_h((string)$link['href']) ?>" onclick="tsaCloseMenu('<?= tsa_h($menuId) ?>')"><?= tsa_h((string)$link['label']) ?></a>
                 <?php endforeach; ?>
-                <a href="<?= tsa_h($secondaryHref) ?>" class="js-tsa-close-menu" data-menu-id="<?= tsa_h($menuId) ?>"><?= tsa_h($secondaryLabel) ?></a>
-                <a href="<?= tsa_h($primaryHref) ?>" class="js-tsa-close-menu" data-menu-id="<?= tsa_h($menuId) ?>"><?= tsa_h($primaryLabel) ?></a>
+                <a href="<?= tsa_h($secondaryHref) ?>" onclick="tsaCloseMenu('<?= tsa_h($menuId) ?>')"><?= tsa_h($secondaryLabel) ?></a>
+                <a href="<?= tsa_h($primaryHref) ?>" onclick="tsaCloseMenu('<?= tsa_h($menuId) ?>')"><?= tsa_h($primaryLabel) ?></a>
             </div>
         </div>
         <?php
@@ -80,7 +80,7 @@ if (!function_exists('tsa_render_public_footer')) {
             <div class="tsa-footer-shell">
                 <div class="tsa-footer-grid">
                     <div>
-                        <a href="<?= tsa_h(APP_URL . '/') ?>" class="tsa-logo tsa-footer-logo"><img src="<?= tsa_h($assets['logo_light']) ?>" alt="TSA Legacy"></a>
+                        <a href="<?= tsa_h(APP_URL . '/') ?>" class="tsa-logo" style="margin-bottom:14px"><img src="<?= tsa_h($assets['logo_light']) ?>" alt="TSA Legacy"></a>
                         <p>Cloud-based GST billing, inventory and business operations software designed for Indian SMEs that want cleaner workflows and stronger control.</p>
                     </div>
                     <div>
@@ -206,8 +206,6 @@ if (!function_exists('tsa_brand_script')) {
         return <<<JS
 function tsaToggleMenu(id){var el=document.getElementById(id);if(el){el.classList.toggle('open');}}
 function tsaCloseMenu(id){var el=document.getElementById(id);if(el){el.classList.remove('open');}}
-document.querySelectorAll('.js-tsa-toggle-menu').forEach(function(btn){btn.addEventListener('click',function(){tsaToggleMenu(btn.dataset.menuId||'');});});
-document.querySelectorAll('.js-tsa-close-menu').forEach(function(link){link.addEventListener('click',function(){tsaCloseMenu(link.dataset.menuId||'');});});
 window.addEventListener('scroll',function(){var nav=document.getElementById($navIdJs);if(!nav){return;}nav.style.background=window.scrollY>20?'rgba(255,253,248,.94)':'rgba(255,253,248,.84)';});
 document.addEventListener('click',function(e){var m=document.getElementById('tsaPublicMenu');if(m&&m.classList.contains('open')){var n=document.getElementById('tsaPublicNav');if(n&&!n.contains(e.target)&&!m.contains(e.target)){m.classList.remove('open');}}});
 JS;

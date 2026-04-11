@@ -3,12 +3,18 @@
  * Terms of Service — TSA Legacy Ventures
  * Last updated: March 2026
  */
+require_once __DIR__ . '/_partials/brand.php';
+
 $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? '', ENT_QUOTES);
+$assets = tsa_brand_assets();
 $canonicalUrl = rtrim(APP_URL, '/') . '/terms';
-$iconUrl = rtrim(APP_URL, '/') . '/assets/icon.svg';
-$faviconUrl = rtrim(APP_URL, '/') . '/assets/favicon.svg';
-$logoUrl = rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
-$socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.png';
+$faviconUrl = $assets['favicon'];
+$socialImageUrl = $assets['og'];
+
+$heroCards = [
+    ['title' => 'Self-serve SaaS', 'text' => 'Plans, upgrades, and operational access are designed for Indian SME workflows.'],
+    ['title' => 'Controlled access', 'text' => 'Role-based permissions and tenant separation define how the service is used.'],
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -31,42 +37,41 @@ $socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.png';
     <link rel="canonical" href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES) ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <style>
-        :root{--p:#6366f1;--pl:#818cf8;--ac:#06b6d4;--d:#020617;--d2:#0f172a;--card:rgba(255,255,255,.04);--brd:rgba(255,255,255,.07);--tx:#e2e8f0;--mt:#94a3b8;--w:#fff}
-        *{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
-        body{font-family:'Inter',system-ui,sans-serif;background:var(--d);color:var(--tx);-webkit-font-smoothing:antialiased}
-        a{color:var(--pl);text-decoration:none}a:hover{text-decoration:underline}
-        nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(20px);background:rgba(2,6,23,.9);border-bottom:1px solid var(--brd);height:64px;display:flex;align-items:center;padding:0 24px}
-        .nav-i{max-width:1200px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between}
-        .logo{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.15rem;color:var(--w);text-decoration:none}
-        .logo img{height:30px;display:block}
-        .logo .hl{color:var(--pl)}
-        .btn-g{padding:8px 18px;border-radius:8px;font-size:.8rem;font-weight:600;color:var(--tx);border:1px solid var(--brd);text-decoration:none;display:inline-flex;align-items:center;gap:6px}
-        .content{max-width:800px;margin:0 auto;padding:100px 24px 60px}
-        .content h1{font-size:2rem;font-weight:800;color:var(--w);margin-bottom:8px}
-        .updated{font-size:.8rem;color:var(--mt);margin-bottom:32px}
-        .content h2{font-size:1.2rem;font-weight:700;color:var(--w);margin:32px 0 12px;padding-top:16px;border-top:1px solid var(--brd)}
-        .content p,.content li{font-size:.9rem;line-height:1.75;color:var(--tx);margin-bottom:12px}
-        .content ul{padding-left:20px;margin-bottom:16px}
-        .content li{margin-bottom:6px}
-        .content strong{color:var(--w)}
-        footer{border-top:1px solid var(--brd);padding:24px;text-align:center}
-        footer p{color:var(--mt);font-size:.72rem}
-    </style>
+    <link rel="stylesheet" href="<?= htmlspecialchars($assets['brand_css'], ENT_QUOTES) ?>">
 </head>
-<body>
-<nav><div class="nav-i">
-    <a href="<?= APP_URL ?>/" class="logo"><img src="<?= htmlspecialchars($logoUrl, ENT_QUOTES) ?>" alt="TSA Legacy"></a>
-    <a href="<?= APP_URL ?>/" class="btn-g"><i class="fas fa-arrow-left"></i> Back to Home</a>
-</div></nav>
+<body class="tsa-public">
+<?php tsa_render_public_nav([
+    'active_href' => APP_URL . '/terms',
+    'links' => [
+        ['href' => APP_URL . '/', 'label' => 'Home'],
+        ['href' => APP_URL . '/pricing', 'label' => 'Pricing'],
+        ['href' => APP_URL . '/terms', 'label' => 'Terms'],
+    ],
+    'secondary_label' => 'Back to Home',
+    'secondary_href' => APP_URL . '/',
+]); ?>
 
-<div class="content">
-    <h1>Terms of Service</h1>
-    <p class="updated">Last updated: March 2026</p>
+<main class="tsa-page tsa-legal-shell">
+    <div class="tsa-container">
+        <?php tsa_render_page_hero([
+            'eyebrow' => 'Legal & Trust',
+            'title' => 'Terms of service for <span class="tsa-serif">TSA Legacy</span>',
+            'lead' => 'These terms describe the relationship between TSA Legacy Ventures and the businesses using the platform, including account responsibilities, billing and acceptable use.',
+            'primary_href' => APP_URL . '/signup',
+            'primary_label' => 'Start Free Trial',
+            'secondary_href' => APP_URL . '/',
+            'secondary_label' => 'Back to Home',
+            'note' => 'Last updated: March 2026',
+            'side_cards' => $heroCards,
+        ]); ?>
 
-    <p>These Terms of Service ("Terms") govern your use of the TSA Legacy platform ("Service") operated by TSA Legacy Ventures ("Company", "we", "us"), an MSME-registered technology startup in India. By accessing or using our Service, you agree to be bound by these Terms.</p>
+        <article class="tsa-legal-card tsa-legal-prose">
+            <h1>Terms of Service</h1>
+            <p class="tsa-legal-meta">Last updated: March 2026</p>
+
+            <p>These Terms of Service ("Terms") govern your use of the TSA Legacy platform ("Service") operated by TSA Legacy Ventures ("Company", "we", "us"). By accessing or using the service, you agree to these Terms.</p>
 
     <h2>1. Acceptance of Terms</h2>
     <p>By creating an account or using the Service, you agree to these Terms and our <a href="<?= APP_URL ?>/privacy">Privacy Policy</a>. If you do not agree, please do not use the Service.</p>
@@ -110,7 +115,7 @@ $socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.png';
     <p>TSA Legacy operates on a multi-tenant architecture with strict per-tenant data isolation. Your business data is completely separated from other tenants and is only accessible to authorized users within your organization.</p>
 
     <h2>8. Service Availability</h2>
-    <p>We strive to maintain 99.9% uptime but do not guarantee uninterrupted service. Scheduled maintenance windows will be communicated in advance when possible.</p>
+    <p>We work to keep the Service available and reliable for day-to-day business use, but we do not guarantee uninterrupted access. Scheduled maintenance windows will be communicated in advance when reasonably possible.</p>
     <p>We are not liable for service interruptions caused by factors outside our control, including third-party service outages, natural disasters, or internet connectivity issues.</p>
 
     <h2>9. Limitation of Liability</h2>
@@ -139,8 +144,13 @@ $socialImageUrl = rtrim(APP_URL, '/') . '/assets/og-default.png';
         <li><strong>Business:</strong> TSA Legacy Ventures (MSME / Udyam Registered)</li>
         <li><strong>Location:</strong> India</li>
     </ul>
-</div>
+        </article>
+    </div>
+</main>
 
-<footer><p>© 2025–<?= date('Y') ?> TSA Legacy Ventures. All rights reserved.</p></footer>
+<?php tsa_render_public_footer(['show_guides' => true]); ?>
+<script nonce="<?= $nonce ?>">
+<?= tsa_brand_script() ?>
+</script>
 </body>
 </html>
