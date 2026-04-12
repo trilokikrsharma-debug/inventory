@@ -42,7 +42,7 @@ if (!function_exists('tsa_render_public_nav')) {
             <nav class="tsa-nav" id="<?= tsa_h($navId) ?>">
                 <div class="tsa-nav-inner">
                     <a href="<?= tsa_h(APP_URL . '/') ?>" class="tsa-logo">
-                        <img src="<?= tsa_h($assets['logo_light']) ?>" alt="TSA Legacy">
+                        <img src="<?= tsa_h($assets['logo_light']) ?>" alt="TSA Legacy" width="160" height="32">
                     </a>
                     <div class="tsa-nav-links">
                         <?php foreach ($links as $link): ?>
@@ -80,7 +80,7 @@ if (!function_exists('tsa_render_public_footer')) {
             <div class="tsa-footer-shell">
                 <div class="tsa-footer-grid">
                     <div>
-                        <a href="<?= tsa_h(APP_URL . '/') ?>" class="tsa-logo" style="margin-bottom:14px"><img src="<?= tsa_h($assets['logo_light']) ?>" alt="TSA Legacy"></a>
+                        <a href="<?= tsa_h(APP_URL . '/') ?>" class="tsa-logo" style="margin-bottom:14px"><img src="<?= tsa_h($assets['logo_light']) ?>" alt="TSA Legacy" width="160" height="32"></a>
                         <p>Cloud-based GST billing, inventory and business operations software designed for Indian SMEs that want cleaner workflows and stronger control.</p>
                     </div>
                     <div>
