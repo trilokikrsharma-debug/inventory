@@ -585,67 +585,7 @@ $faqSchema = [
                         <span>Low-stock signals and product movement are visible before they become owner problems.</span>
                         <div class="metric"><i class="fas fa-boxes-stacked"></i> 12 alerts active</div>
                     </div>
-                    <div class="tsa-home-window">
-                        <div class="tsa-home-window-top">
-                            <div class="tsa-home-dots"><span></span><span></span><span></span></div>
-                            <div class="tsa-home-window-label">Sample Dashboard</div>
-                            <div class="tsa-home-pill"><i class="fas fa-shield-halved"></i> GST-ready</div>
-                        </div>
-                        <div class="tsa-home-window-body">
-                            <div class="tsa-home-sidebar">
-                                <div class="tsa-home-sidebar-brand"><i class="fas fa-chart-pie"></i></div>
-                                <div class="tsa-home-sidebar-list">
-                                    <div class="tsa-home-sidebar-item is-active"><i class="fas fa-grid-2"></i><span>Dashboard</span></div>
-                                    <div class="tsa-home-sidebar-item"><i class="fas fa-file-invoice"></i><span>Sales</span></div>
-                                    <div class="tsa-home-sidebar-item"><i class="fas fa-boxes-stacked"></i><span>Products</span></div>
-                                    <div class="tsa-home-sidebar-item"><i class="fas fa-chart-line"></i><span>Reports</span></div>
-                                </div>
-                            </div>
-                            <div class="tsa-home-main">
-                                <div class="tsa-home-headbar">
-                                    <div>
-                                        <h3>Business dashboard</h3>
-                                        <small>Daily billing, stock, dues, and reporting visibility</small>
-                                    </div>
-                                    <div class="tsa-home-userpill"><i class="fas fa-circle-check"></i> Workspace active</div>
-                                </div>
-                                <div class="tsa-home-metrics">
-                                    <div class="tsa-home-metric"><strong>Rs 84,200</strong><span>Today's sales</span></div>
-                                    <div class="tsa-home-metric"><strong>Rs 18,450</strong><span>Customer dues</span></div>
-                                    <div class="tsa-home-metric"><strong>12 items</strong><span>Low-stock alerts</span></div>
-                                </div>
-                                <div class="tsa-home-main-grid">
-                                    <div class="tsa-home-panel">
-                                        <h3>Recent invoices</h3>
-                                        <div class="tsa-home-table">
-                                            <div class="tsa-home-table-row"><strong>INV-2031</strong><span>Om Traders</span><span>Paid</span></div>
-                                            <div class="tsa-home-table-row"><strong>INV-2030</strong><span>Nila Stores</span><span>Due</span></div>
-                                            <div class="tsa-home-table-row"><strong>INV-2029</strong><span>Patel Electricals</span><span>Paid</span></div>
-                                        </div>
-                                    </div>
-                                    <div class="tsa-home-panel">
-                                        <h3>Sales vs purchase</h3>
-                                        <div class="tsa-home-chart">
-                                            <div class="tsa-home-bar"><span style="height:58%"></span></div>
-                                            <div class="tsa-home-bar"><span style="height:74%"></span></div>
-                                            <div class="tsa-home-bar"><span style="height:67%"></span></div>
-                                            <div class="tsa-home-bar"><span style="height:88%"></span></div>
-                                            <div class="tsa-home-bar"><span style="height:80%"></span></div>
-                                            <div class="tsa-home-bar"><span style="height:96%"></span></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="tsa-home-panel">
-                                    <h3>Operational alerts</h3>
-                                    <div class="tsa-home-table-mini">
-                                        <div class="tsa-home-mini-row"><span>Low stock</span><strong>Engine Oil 1L</strong></div>
-                                        <div class="tsa-home-mini-row"><span>Supplier due</span><strong>Rs 42,300</strong></div>
-                                        <div class="tsa-home-mini-row"><span>Pending quotations</span><strong>4 open</strong></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <img src="<?= APP_URL ?>/assets/images/dashboard-hero.png" alt="TSA Legacy Dashboard" class="img-fluid rounded" style="order:2; border:1px solid rgba(20,33,58,.08); background:#fff; transform:perspective(2000px) rotateY(-4deg) rotateX(2deg) translateY(0); transform-origin:center; box-shadow:0 36px 88px rgba(20,33,58,.22); animation:tsaFloatPanel 6.8s ease-in-out infinite;">
                     <div class="tsa-home-preview-signals">
                         <div class="tsa-home-signal"><strong>Counter-ready</strong><span>Fast workflows for daily billing desks.</span></div>
                         <div class="tsa-home-signal"><strong>Cloud-based</strong><span>Use across devices and business locations.</span></div>
