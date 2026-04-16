@@ -50,6 +50,7 @@ class Router {
         'refund'         => 'LegalController',
         'seo'            => 'SeoController',
         'blog'           => 'BlogController',
+        'ai'             => 'AiController',
     ];
 
     /**

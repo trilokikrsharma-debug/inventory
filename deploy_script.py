@@ -1,13 +1,17 @@
 import paramiko
+import sys
 
 def execute_ssh():
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect('34.14.169.146', username='deploy', password='Triloki')
-    
+    try:
+        ssh.connect('34.14.169.146', username='deploy', password='Triloki')
+    except Exception as e:
+        print(f"Failed to connect: {e}")
+        sys.exit(1)
+        
     commands = [
-        "ls -la /var/www/",
-        "ls -la /var/www/html/"
+        "cd /var/www/tsalegacy && git pull origin main && ./deploy/scripts/deploy.sh"
     ]
     
     for cmd in commands:

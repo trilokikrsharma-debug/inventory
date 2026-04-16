@@ -8,6 +8,20 @@
     <?= CSRF::field() ?>
     <div class="row g-3">
         <div class="col-lg-8">
+            <div class="card mb-3 sales-entry-card border-info" style="background-color: var(--surface-bg, #f8f9fa);">
+                <div class="card-body py-2">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="mb-0 text-info fw-bold"><i class="fas fa-magic me-2"></i>AI Smart Scan (Enterprise)</h6>
+                            <small class="text-muted">Upload an invoice photo/PDF to auto-fill details using Gemini AI.</small>
+                        </div>
+                        <input type="file" id="aiScanInput" class="d-none" accept="image/jpeg,image/png,image/webp,application/pdf">
+                        <button type="button" class="btn btn-info text-white shadow-sm" onclick="document.getElementById('aiScanInput').click();" id="aiScanBtn">
+                            <i class="fas fa-upload me-1"></i> Upload & Scan
+                        </button>
+                    </div>
+                </div>
+            </div>
             <div class="card mb-3 sales-entry-card">
                 <div class="card-header"><h6><i class="fas fa-info-circle me-2"></i>Purchase Details</h6></div>
                 <div class="card-body">
@@ -246,4 +260,66 @@ function calc() {
 document.getElementById('discountInput').addEventListener('input', calc);
 document.getElementById('shippingInput').addEventListener('input', calc);
 addItem();
+
+// AI Integration
+document.getElementById('aiScanInput').addEventListener('change', function(e) {
+    if (!this.files.length) return;
+    const btn = document.getElementById('aiScanBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class=\"fas fa-spinner fa-spin me-1\"></i> Scanning...';
+    
+    const formData = new FormData();
+    formData.append('invoice_file', this.files[0]);
+    formData.append('csrf_token', document.querySelector('input[name=\"csrf_token\"]').value);
+    
+    fetch(APP + '/index.php?page=ai&action=scan_invoice', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class=\"fas fa-upload me-1\"></i> Upload & Scan';
+        if (data.success && data.data) {
+            const result = data.data;
+            if (result.invoice_no) document.querySelector('input[name=\"reference_number\"]').value = result.invoice_no;
+            if (result.date) document.querySelector('input[name=\"purchase_date\"]').value = result.date;
+            
+            // Note: We might not automatically select Supplier because it requires matching ID,
+            // but we can at least show a note or try to match.
+            if (result.party_name) {
+                const s = document.querySelector('select[name=\"supplier_id\"]');
+                Array.from(s.options).forEach(opt => {
+                    if (opt.text.toLowerCase().includes(result.party_name.toLowerCase())) s.value = opt.value;
+                });
+            }
+            
+            // Add items
+            if (result.items && result.items.length) {
+                // Clear initial empty item if needed
+                const trs = document.querySelectorAll('#itemsBody tr');
+                if (trs.length === 1 && !trs[0].querySelector('.product-id').value) trs[0].remove();
+                
+                result.items.forEach(item => {
+                    addItem();
+                    const lastTr = document.querySelector('#itemsBody tr:last-child');
+                    // We don't have product IDs easily mapped to names via OCR, so just put the raw name
+                    // In a full implementation, we'd search or create product. Here, we just fill the text.
+                    lastTr.querySelector('.product-search').value = item.name || '';
+                    lastTr.querySelector('.qty').value = item.qty || 1;
+                    lastTr.querySelector('.price').value = item.rate || 0;
+                });
+                calc();
+                alert('Success: Invoice scanned and data populated. Please verify items.');
+            }
+        } else {
+            alert('AI Scan Failed: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class=\"fas fa-upload me-1\"></i> Upload & Scan';
+        alert('AI Scan Error: ' + err.message);
+    });
+});
 "; ?>
