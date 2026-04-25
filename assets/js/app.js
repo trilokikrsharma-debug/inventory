@@ -92,21 +92,45 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 200));
 
     // ============================================================
-    // THEME TOGGLE
+    // THEME TOGGLE (supports both #themeSwitch checkbox and #themeToggle button)
     // ============================================================
-    const themeToggle = document.getElementById('themeToggle');
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-bs-theme', theme);
+        document.documentElement.setAttribute('data-theme', theme); // legacy CSS compat
+        localStorage.setItem('theme', theme);
+        // Sync checkbox
+        const sw = document.getElementById('themeSwitch');
+        if (sw) sw.checked = (theme === 'dark');
+        // Sync icon button
+        const btn = document.getElementById('themeToggle');
+        if (btn) { const ico = btn.querySelector('i'); if (ico) ico.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon'; }
+        // Notify server (save preference)
+        if (window.APP_URL) {
+            fetch(window.APP_URL + '/index.php?page=profile&action=save_theme', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+                body: 'theme=' + encodeURIComponent(theme)
+            }).catch(() => {});
+        }
+    }
+
     const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-bs-theme', savedTheme);
+    applyTheme(savedTheme);
+
+    // Checkbox switch (#themeSwitch in navbar)
+    const themeSwitch = document.getElementById('themeSwitch');
+    if (themeSwitch) {
+        themeSwitch.addEventListener('change', function () {
+            applyTheme(this.checked ? 'dark' : 'light');
+        });
+    }
+
+    // Button toggle (#themeToggle — alternative button style)
+    const themeToggle = document.getElementById('themeToggle');
     if (themeToggle) {
-        const icon = themeToggle.querySelector('i');
-        if (icon) icon.className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
         themeToggle.addEventListener('click', function () {
-            const current = document.documentElement.getAttribute('data-bs-theme');
-            const next = current === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-bs-theme', next);
-            localStorage.setItem('theme', next);
-            const ico = this.querySelector('i');
-            if (ico) ico.className = next === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            const cur = document.documentElement.getAttribute('data-bs-theme') || 'light';
+            applyTheme(cur === 'dark' ? 'light' : 'dark');
         });
     }
 
