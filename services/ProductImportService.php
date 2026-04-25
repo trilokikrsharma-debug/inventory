@@ -386,9 +386,16 @@ class ProductImportService {
      * @return array<string, int>
      */
     private function buildEntityLookup(string $table): array {
-        $rows = Database::getInstance()->query(
-            "SELECT id, name FROM {$table} WHERE deleted_at IS NULL ORDER BY name ASC"
-        )->fetchAll();
+        $tenantId = Tenant::id();
+        $params = [];
+        $sql = "SELECT id, name FROM {$table} WHERE deleted_at IS NULL";
+        if ($tenantId !== null) {
+            $sql .= " AND company_id = ?";
+            $params[] = $tenantId;
+        }
+        $sql .= " ORDER BY name ASC";
+
+        $rows = Database::getInstance()->query($sql, $params)->fetchAll();
 
         $lookup = [];
         foreach ($rows as $row) {
@@ -407,9 +414,16 @@ class ProductImportService {
      * @return array<string, int>
      */
     private function buildUnitLookup(): array {
-        $rows = Database::getInstance()->query(
-            "SELECT id, name, short_name FROM units WHERE deleted_at IS NULL ORDER BY name ASC"
-        )->fetchAll();
+        $tenantId = Tenant::id();
+        $params = [];
+        $sql = "SELECT id, name, short_name FROM units WHERE deleted_at IS NULL";
+        if ($tenantId !== null) {
+            $sql .= " AND company_id = ?";
+            $params[] = $tenantId;
+        }
+        $sql .= " ORDER BY name ASC";
+
+        $rows = Database::getInstance()->query($sql, $params)->fetchAll();
 
         $lookup = [];
         foreach ($rows as $row) {
@@ -432,9 +446,15 @@ class ProductImportService {
      * @return array<string, bool>
      */
     private function existingSkuLookup(): array {
-        $rows = Database::getInstance()->query(
-            "SELECT sku FROM products WHERE deleted_at IS NULL AND sku IS NOT NULL AND sku <> ''"
-        )->fetchAll();
+        $tenantId = Tenant::id();
+        $params = [];
+        $sql = "SELECT sku FROM products WHERE deleted_at IS NULL AND sku IS NOT NULL AND sku <> ''";
+        if ($tenantId !== null) {
+            $sql .= " AND company_id = ?";
+            $params[] = $tenantId;
+        }
+
+        $rows = Database::getInstance()->query($sql, $params)->fetchAll();
 
         $lookup = [];
         foreach ($rows as $row) {

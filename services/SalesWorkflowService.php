@@ -101,6 +101,9 @@ class SalesWorkflowService {
                 'warehouse_id' => $warehouseId,
                 'sale_date' => $saleDate,
                 'reference_number' => $this->sanitize($input['reference_number'] ?? null),
+                'dispatch_vehicle' => $this->sanitize($input['dispatch_vehicle'] ?? null),
+                'dispatch_transporter' => $this->sanitize($input['dispatch_transporter'] ?? null),
+                'dispatch_lr_no' => $this->sanitize($input['dispatch_lr_no'] ?? null),
                 'subtotal' => $subtotal,
                 'discount_amount' => $discountAmount,
                 'tax_amount' => $totalTax,
@@ -161,10 +164,17 @@ class SalesWorkflowService {
     }
 
     private function resolveSaleGstType(array $customer, string $requestedType, array $settings): string {
+        // If tax is completely disabled, no GST type needed
         if (!$this->taxEnabled($settings)) {
             return 'none';
         }
 
+        // If tax is on but GST is off → non-GST simple tax mode
+        if (!$this->gstEnabled($settings)) {
+            return 'none';
+        }
+
+        // GST mode: resolve IGST vs CGST/SGST
         $requested = strtolower(trim($requestedType));
         if (in_array($requested, ['igst', 'cgst_sgst', 'none'], true)) {
             return $requested;
@@ -180,10 +190,22 @@ class SalesWorkflowService {
         return 'cgst_sgst';
     }
 
+    /**
+     * Check if tax/GST calculation is enabled.
+     * In Indian billing, tax = GST (they are coupled).
+     */
     private function taxEnabled(array $settings): bool {
         $isTaxEnabled = !isset($settings['enable_tax']) || !empty($settings['enable_tax']);
         $isGstEnabled = !isset($settings['enable_gst']) || !empty($settings['enable_gst']);
         return $isTaxEnabled && $isGstEnabled;
+    }
+
+    /**
+     * Check if GST-specific features are enabled (CGST/SGST/IGST breakup).
+     */
+    private function gstEnabled(array $settings): bool {
+        return $this->taxEnabled($settings)
+            && (!isset($settings['enable_gst']) || !empty($settings['enable_gst']));
     }
 
     private function normalizeState(string $state): string {

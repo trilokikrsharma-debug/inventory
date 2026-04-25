@@ -9,6 +9,7 @@ require_once __DIR__ . '/../BaseTestCase.php';
 require_once dirname(__DIR__, 2) . '/core/Session.php';
 require_once dirname(__DIR__, 2) . '/core/Tenant.php';
 require_once dirname(__DIR__, 2) . '/core/Controller.php';
+require_once dirname(__DIR__, 2) . '/services/HrWorkflowService.php';
 
 require_once dirname(__DIR__, 2) . '/controllers/HrController.php';
 

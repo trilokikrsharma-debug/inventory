@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../BaseTestCase.php';
+require_once dirname(__DIR__, 2) . '/core/Tenant.php';
+require_once dirname(__DIR__, 2) . '/core/Database.php';
 require_once dirname(__DIR__, 2) . '/services/ProductImportService.php';
 
 class ProductImportServiceTest extends BaseTestCase {
@@ -9,6 +11,13 @@ class ProductImportServiceTest extends BaseTestCase {
     protected function setUp(): void {
         parent::setUp();
         $this->service = new ProductImportService();
+        Tenant::reset();
+    }
+
+    protected function tearDown(): void {
+        Tenant::reset();
+        $this->setDatabaseInstance(null);
+        parent::tearDown();
     }
 
     public function testTemplateCsvIncludesExpectedHeaders(): void {
@@ -62,5 +71,74 @@ class ProductImportServiceTest extends BaseTestCase {
         $this->assertSame(5.0, $row['current_stock']);
         $this->assertSame(1, $row['is_active']);
         $this->assertSame(18.0, $row['tax_rate']);
+    }
+
+    public function testBuildContextScopesLookupsToCurrentTenant(): void {
+        Tenant::set(44, ['id' => 44]);
+        $db = new RecordingProductImportDatabase([
+            [
+                ['id' => 7, 'name' => 'General'],
+            ],
+            [
+                ['id' => 3, 'name' => 'Acme'],
+            ],
+            [
+                ['id' => 2, 'name' => 'Pieces', 'short_name' => 'pcs'],
+            ],
+            [
+                ['sku' => 'SKU-44'],
+            ],
+        ]);
+        $this->setDatabaseInstance($db);
+
+        $context = $this->service->buildContext();
+
+        $this->assertSame(
+            'SELECT id, name FROM categories WHERE deleted_at IS NULL AND company_id = ? ORDER BY name ASC',
+            $db->queries[0]['sql'] ?? ''
+        );
+        $this->assertSame([44], $db->queries[0]['params'] ?? []);
+        $this->assertSame(
+            'SELECT sku FROM products WHERE deleted_at IS NULL AND sku IS NOT NULL AND sku <> \'\' AND company_id = ?',
+            $db->queries[3]['sql'] ?? ''
+        );
+        $this->assertSame([44], $db->queries[3]['params'] ?? []);
+        $this->assertSame(7, $context['categories_by_key']['general'] ?? null);
+        $this->assertTrue($context['existing_skus']['sku-44'] ?? false);
+    }
+
+    private function setDatabaseInstance($instance): void {
+        $ref = new ReflectionProperty(Database::class, 'instance');
+        $ref->setAccessible(true);
+        $ref->setValue(null, $instance);
+    }
+}
+
+class RecordingProductImportDatabase {
+    public array $queries = [];
+    private array $resultSets;
+    private int $index = 0;
+
+    public function __construct(array $resultSets) {
+        $this->resultSets = $resultSets;
+    }
+
+    public function query($sql, $params = []) {
+        $this->queries[] = ['sql' => $sql, 'params' => $params];
+        $rows = $this->resultSets[$this->index] ?? [];
+        $this->index++;
+        return new RecordingProductImportResult($rows);
+    }
+}
+
+class RecordingProductImportResult {
+    private array $rows;
+
+    public function __construct(array $rows) {
+        $this->rows = $rows;
+    }
+
+    public function fetchAll() {
+        return $this->rows;
     }
 }

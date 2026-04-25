@@ -3,18 +3,17 @@
  * API Controller
  */
 class ApiController extends Controller {
+    private ApiWorkflowService $workflowService;
 
     protected $allowedActions = ['index', 'generate', 'revoke', 'products', 'customers', 'summary'];
 
+    public function __construct() {
+        $this->workflowService = new ApiWorkflowService();
+    }
+
     public function index() {
         $companyId = $this->requireTenantApiManagementAccess();
-        $tokens = Database::getInstance()->query(
-            "SELECT id, name, scopes, is_active, expires_at, last_used_at, created_at
-             FROM api_tokens
-             WHERE company_id = ?
-             ORDER BY id DESC",
-            [$companyId]
-        )->fetchAll();
+        $tokens = $this->workflowService->listTokens($companyId);
 
         $newToken = (string)Session::get('new_api_token', '');
         Session::remove('new_api_token');
@@ -39,23 +38,15 @@ class ApiController extends Controller {
 
         $currentUser = Session::get('user') ?? [];
         $userId = (int)($currentUser['id'] ?? 0);
-        $name = trim((string)$this->post('name', ''));
-        if ($name === '') {
-            $name = 'Default Integration';
-        }
-        $name = mb_substr($name, 0, 100);
-
-        $fullAccess = (string)$this->post('full_access', '0') === '1';
-        $scopes = $fullAccess ? ['*'] : ApiAuth::normalizeScopes((array)$this->post('scopes', []));
-        if (!$fullAccess && $scopes === ['*']) {
+        $request = $this->workflowService->normalizeTokenRequest($this->post());
+        if (!$request['full_access'] && $request['scopes'] === []) {
             $this->setFlash('error', 'Select at least one scope or keep full access enabled.');
             $this->redirect('index.php?page=api');
             return;
         }
-        $expiresAt = $this->resolveExpiryTimestamp($this->post('expiry_days', ''));
 
         try {
-            $token = ApiAuth::generateToken($companyId, $userId, $name, $scopes, $expiresAt);
+            $token = ApiAuth::generateToken($companyId, $userId, $request['name'], $request['scopes'], $request['expires_at']);
             Session::set('new_api_token', (string)($token['token'] ?? ''));
             $this->setFlash('success', 'API token generated successfully. Copy it now, it will not be shown again.');
         } catch (\Throwable $e) {
@@ -141,39 +132,7 @@ class ApiController extends Controller {
 
     public function summary() {
         $token = $this->authenticateApiRequest('reports.read');
-        $companyId = (int)$token['company_id'];
-        $db = Database::getInstance();
-
-        $salesToday = (float)$db->query(
-            "SELECT COALESCE(SUM(grand_total), 0) FROM sales WHERE company_id = ? AND deleted_at IS NULL AND sale_date = CURDATE()",
-            [$companyId]
-        )->fetchColumn();
-        $salesMonth = (float)$db->query(
-            "SELECT COALESCE(SUM(grand_total), 0) FROM sales WHERE company_id = ? AND deleted_at IS NULL AND sale_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')",
-            [$companyId]
-        )->fetchColumn();
-        $outstandingReceivables = (float)$db->query(
-            "SELECT COALESCE(SUM(current_balance), 0) FROM customers WHERE company_id = ? AND deleted_at IS NULL AND current_balance > 0",
-            [$companyId]
-        )->fetchColumn();
-        $lowStockCount = (int)$db->query(
-            "SELECT COUNT(*) FROM products WHERE company_id = ? AND deleted_at IS NULL AND is_active = 1 AND current_stock <= COALESCE(low_stock_alert, 10)",
-            [$companyId]
-        )->fetchColumn();
-
-        $this->json([
-            'success' => true,
-            'data' => [
-                'sales_today' => SaaSBillingHelper::money($salesToday),
-                'sales_month' => SaaSBillingHelper::money($salesMonth),
-                'outstanding_receivables' => SaaSBillingHelper::money($outstandingReceivables),
-                'low_stock_count' => $lowStockCount,
-            ],
-            'meta' => [
-                'company_id' => $companyId,
-                'generated_at' => date(DATE_ATOM),
-            ],
-        ]);
+        $this->json($this->workflowService->buildSummaryPayload((int)$token['company_id']));
     }
 
     private function authenticateApiRequest(string $requiredScope): array {
@@ -218,20 +177,5 @@ class ApiController extends Controller {
         $this->requireFeature('api');
 
         return Tenant::require();
-    }
-
-    private function resolveExpiryTimestamp($input): ?string {
-        $value = trim((string)$input);
-        if ($value === '' || $value === 'never') {
-            return null;
-        }
-
-        $days = (int)$value;
-        $allowed = [1, 7, 30, 90, 365];
-        if (!in_array($days, $allowed, true)) {
-            return null;
-        }
-
-        return date('Y-m-d H:i:s', strtotime('+' . $days . ' days'));
     }
 }

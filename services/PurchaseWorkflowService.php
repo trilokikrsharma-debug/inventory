@@ -80,6 +80,9 @@ class PurchaseWorkflowService {
                 'warehouse_id' => $this->resolveWarehouseId($input, $warehouseFeatureEnabled, $warehouseOptions),
                 'purchase_date' => $purchaseDate,
                 'reference_number' => $this->sanitize($input['reference_number'] ?? null),
+                'dispatch_vehicle' => $this->sanitize($input['dispatch_vehicle'] ?? null),
+                'dispatch_transporter' => $this->sanitize($input['dispatch_transporter'] ?? null),
+                'dispatch_lr_no' => $this->sanitize($input['dispatch_lr_no'] ?? null),
                 'subtotal' => $subtotal,
                 'discount_amount' => $discountAmount,
                 'tax_amount' => $totalTax,
@@ -135,6 +138,9 @@ class PurchaseWorkflowService {
         throw new RuntimeException('Please select a valid warehouse.');
     }
 
+    /**
+     * Check if tax/GST calculation is enabled.
+     */
     private function taxEnabled(array $settings): bool {
         $isTaxEnabled = !isset($settings['enable_tax']) || !empty($settings['enable_tax']);
         $isGstEnabled = !isset($settings['enable_gst']) || !empty($settings['enable_gst']);

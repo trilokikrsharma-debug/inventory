@@ -731,13 +731,12 @@ class TwoFactorController extends Controller {
         $secret = TwoFactorService::generateSecret();
         Session::set('twofa_setup_secret', $secret);
 
-        $qrUrl = TwoFactorService::getQrCodeUrl($secret, $email);
         $otpAuthUrl = TwoFactorService::getOtpAuthUrl($secret, $email);
 
         $this->view('twoFactor.setup', [
             'pageTitle' => 'Two-Factor Authentication',
             'secret' => $secret,
-            'qrUrl' => $qrUrl,
+            'email' => $email,
             'otpAuthUrl' => $otpAuthUrl,
             'isEnabled' => $isEnabled,
         ]);

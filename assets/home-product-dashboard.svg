@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" role="img" aria-labelledby="title desc">
+  <title id="title">TSA Legacy live demo dashboard view</title>
+  <desc id="desc">Live demo dashboard with sidebar navigation, demo mode notice, eight stat cards, monthly chart, recent sales and low stock alert.</desc>
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="980" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f6f9fd"/>
+      <stop offset="1" stop-color="#e9f0f8"/>
+    </linearGradient>
+    <linearGradient id="sidebar" x1="0" y1="34" x2="0" y2="586" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#0b1220"/>
+    </linearGradient>
+    <filter id="shadow" x="-6%" y="-8%" width="112%" height="116%">
+      <feDropShadow dx="0" dy="22" stdDeviation="23" flood-color="#132238" flood-opacity=".2"/>
+    </filter>
+  </defs>
+  <rect width="980" height="620" rx="30" fill="#dfe8f3"/>
+  <g filter="url(#shadow)">
+    <rect x="36" y="32" width="908" height="556" rx="24" fill="url(#page)" stroke="#cbd8e6"/>
+    <rect x="36" y="32" width="196" height="556" rx="24" fill="url(#sidebar)"/>
+    <path d="M232 32v556" stroke="#d7e1ec"/>
+  </g>
+  <g font-family="Inter, Manrope, Arial, sans-serif">
+    <g transform="translate(60 58)">
+      <rect width="42" height="42" rx="12" fill="#ffffff" fill-opacity=".1"/>
+      <path d="M13 14h17M22 14v16M17 30h12" stroke="#f8fbff" stroke-width="4" stroke-linecap="round"/>
+      <path d="M30 10v24" stroke="#d6b271" stroke-width="3" stroke-linecap="round"/>
+      <text x="52" y="27" fill="#f8fbff" font-size="17" font-weight="850">TSA Legacy</text>
+    </g>
+    <g font-size="10" font-weight="850" letter-spacing=".2">
+      <text x="60" y="132" fill="#64748b">MAIN</text>
+      <text x="60" y="194" fill="#64748b">BILLING</text>
+      <text x="60" y="256" fill="#64748b">INVENTORY</text>
+      <text x="60" y="367" fill="#64748b">TRANSACTIONS</text>
+      <text x="60" y="478" fill="#64748b">SYSTEM</text>
+    </g>
+    <g font-size="12" font-weight="760">
+      <rect x="52" y="146" width="160" height="32" rx="9" fill="#eef2ff" fill-opacity=".13"/>
+      <text x="82" y="167" fill="#f8fafc">Dashboard</text>
+      <circle cx="66" cy="162" r="5" fill="#60a5fa"/>
+      <text x="82" y="228" fill="#cbd5e1">Plans &amp; Billing</text>
+      <text x="82" y="290" fill="#cbd5e1">Products</text>
+      <rect x="190" y="278" width="16" height="16" rx="8" fill="#dc2626"/>
+      <text x="198" y="290" fill="#fff" font-size="9" text-anchor="middle">1</text>
+      <text x="82" y="323" fill="#cbd5e1">Categories</text>
+      <text x="82" y="356" fill="#cbd5e1">Warehouses</text>
+      <text x="82" y="401" fill="#cbd5e1">Purchases</text>
+      <text x="82" y="434" fill="#cbd5e1">Sales</text>
+      <text x="82" y="467" fill="#cbd5e1">Reports</text>
+      <text x="82" y="512" fill="#cbd5e1">Settings</text>
+      <text x="82" y="545" fill="#cbd5e1">Backup</text>
+    </g>
+    <g transform="translate(55 536)">
+      <rect width="162" height="36" rx="10" fill="#052e1b" stroke="#14532d"/>
+      <text x="12" y="15" fill="#86efac" font-size="10" font-weight="850">Demo Mode</text>
+      <text x="12" y="29" fill="#bbf7d0" font-size="9" font-weight="650">Billing and settings restricted</text>
+    </g>
+    <g transform="translate(232 32)">
+      <rect width="712" height="66" fill="#ffffff"/>
+      <path d="M0 66h712" stroke="#e3ebf4"/>
+      <text x="32" y="42" fill="#111827" font-size="22" font-weight="850">Dashboard</text>
+      <rect x="452" y="20" width="34" height="26" rx="13" fill="#eef2f7"/>
+      <circle cx="473" cy="33" r="9" fill="#4f46e5"/>
+      <circle cx="520" cy="33" r="13" fill="#f8fafc" stroke="#d8e2ee"/>
+      <circle cx="562" cy="33" r="13" fill="#f8fafc" stroke="#d8e2ee"/>
+      <rect x="600" y="17" width="82" height="32" rx="16" fill="#f8fafc" stroke="#d8e2ee"/>
+      <circle cx="618" cy="33" r="10" fill="#4f46e5"/>
+      <text x="635" y="37" fill="#334155" font-size="10" font-weight="800">Demo</text>
+    </g>
+    <g transform="translate(264 116)">
+      <rect width="648" height="34" rx="8" fill="#e0f2fe" stroke="#bae6fd"/>
+      <text x="16" y="22" fill="#0369a1" font-size="12" font-weight="760">Welcome to Demo Mode. Explore freely, demo data may reset.</text>
+    </g>
+    <g transform="translate(264 170)" font-size="10" font-weight="820">
+      <g><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#dcfce7"/><text x="46" y="24" fill="#64748b">Total Sales</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
+      <g transform="translate(166 0)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#e0e7ff"/><text x="46" y="24" fill="#64748b">Total Purchases</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
+      <g transform="translate(332 0)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#fef3c7"/><text x="46" y="24" fill="#64748b">Today's Sales</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
+      <g transform="translate(498 0)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#cffafe"/><text x="46" y="24" fill="#64748b">Stock Value</text><text x="46" y="46" fill="#111827" font-size="17" font-weight="900">Rs 60,200</text></g>
+      <g transform="translate(0 76)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#fee2e2"/><text x="46" y="24" fill="#64748b">Customer Dues</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
+      <g transform="translate(166 76)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#ffedd5"/><text x="46" y="24" fill="#64748b">Supplier Dues</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
+      <g transform="translate(332 76)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#dcfce7"/><text x="46" y="24" fill="#64748b">This Month Sales</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
+      <g transform="translate(498 76)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#e0e7ff"/><text x="46" y="24" fill="#64748b">Month Purchase</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
+    </g>
+    <g transform="translate(264 330)">
+      <rect width="420" height="132" rx="13" fill="#ffffff" stroke="#dce6f0"/>
+      <text x="18" y="31" fill="#111827" font-size="15" font-weight="850">Monthly Sales vs Purchase (2026)</text>
+      <g transform="translate(32 56)" stroke="#e8eef6"><path d="M0 60h338M0 30h338M0 0h338"/></g>
+      <path d="M32 119C76 96 96 108 130 74S190 82 222 48s76-14 118-44" fill="none" stroke="#4f46e5" stroke-width="4" stroke-linecap="round"/>
+      <path d="M32 131C78 120 102 122 138 104s72-8 105-30 67 10 120-12" fill="none" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="340" cy="44" r="4" fill="#4f46e5"/><text x="350" y="48" fill="#475569" font-size="10" font-weight="760">Sales</text>
+      <circle cx="340" cy="64" r="4" fill="#f59e0b"/><text x="350" y="68" fill="#475569" font-size="10" font-weight="760">Purchase</text>
+    </g>
+    <g transform="translate(704 330)">
+      <rect width="208" height="132" rx="13" fill="#ffffff" stroke="#dce6f0"/>
+      <text x="16" y="31" fill="#111827" font-size="15" font-weight="850">Top Selling Products</text>
+      <rect x="16" y="51" width="176" height="27" rx="7" fill="#f8fafc"/>
+      <text x="34" y="69" fill="#94a3b8" font-size="11" font-weight="760">No sales data</text>
+      <path d="M16 92h176" stroke="#edf2f7"/>
+      <text x="16" y="116" fill="#64748b" font-size="11" font-weight="800">Product</text>
+      <text x="142" y="116" fill="#64748b" font-size="11" font-weight="800">Qty Sold</text>
+    </g>
+    <g transform="translate(264 482)">
+      <rect width="420" height="72" rx="13" fill="#ffffff" stroke="#dce6f0"/>
+      <text x="16" y="29" fill="#111827" font-size="15" font-weight="850">Recent Sales</text>
+      <rect x="346" y="13" width="58" height="24" rx="8" fill="#ffffff" stroke="#93c5fd"/>
+      <text x="360" y="29" fill="#2563eb" font-size="10" font-weight="820">View All</text>
+      <text x="16" y="55" fill="#94a3b8" font-size="11" font-weight="760">No recent sales</text>
+      <text x="116" y="55" fill="#64748b" font-size="11" font-weight="760">Invoice · Customer · Date · Amount · Status</text>
+    </g>
+    <g transform="translate(704 482)">
+      <rect width="208" height="72" rx="13" fill="#ffffff" stroke="#dce6f0"/>
+      <text x="16" y="29" fill="#111827" font-size="15" font-weight="850">Low Stock Alert</text>
+      <rect x="138" y="13" width="54" height="24" rx="8" fill="#ffffff" stroke="#fca5a5"/>
+      <text x="152" y="29" fill="#dc2626" font-size="10" font-weight="820">View All</text>
+      <text x="16" y="55" fill="#111827" font-size="11" font-weight="800">Thermal Printer</text>
+      <rect x="130" y="42" width="26" height="18" rx="9" fill="#dc2626"/>
+      <text x="143" y="55" text-anchor="middle" fill="#fff" font-size="10" font-weight="850">6</text>
+      <text x="164" y="55" fill="#64748b" font-size="11" font-weight="760">pcs</text>
+    </g>
+  </g>
+</svg>

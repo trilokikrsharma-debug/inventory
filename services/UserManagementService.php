@@ -19,11 +19,13 @@ class UserManagementService {
             $tenantId = Tenant::id();
 
             if (Session::isSuperAdmin()) {
-                return $this->db->query(
+                $allRoles = $this->db->query(
                     "SELECT id, name, display_name, company_id, is_super_admin
                      FROM roles
                      ORDER BY company_id IS NULL DESC, company_id ASC, display_name ASC, id ASC"
                 )->fetchAll();
+                // Deduplicate: prefer global roles over tenant-specific duplicates
+                return $this->deduplicateAssignableRoles($allRoles, (int)(Tenant::id() ?? 0));
             }
 
             if ($tenantId !== null) {

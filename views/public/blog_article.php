@@ -10,6 +10,7 @@ $sections = is_array($sections ?? null) ? $sections : [];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php tsa_render_adsense_verification(); ?>
     <title><?= Helper::escape((string)($title ?? APP_NAME)) ?></title>
     <meta name="description" content="<?= Helper::escape((string)($description ?? '')) ?>">
     <meta property="og:title" content="<?= Helper::escape((string)($title ?? APP_NAME)) ?>">
@@ -18,7 +19,7 @@ $sections = is_array($sections ?? null) ? $sections : [];
     <meta property="og:url" content="<?= Helper::escape($canonicalUrl) ?>">
     <meta property="og:image" content="<?= Helper::escape($assets['og']) ?>">
     <meta property="og:image:alt" content="<?= Helper::escape((string)($title ?? APP_NAME)) ?>">
-    <meta property="og:site_name" content="TSA Legacy">
+    <meta property="og:site_name" content="<?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="<?= Helper::escape((string)($title ?? APP_NAME)) ?>">
     <meta name="twitter:description" content="<?= Helper::escape((string)($description ?? '')) ?>">
@@ -39,7 +40,7 @@ $sections = is_array($sections ?? null) ? $sections : [];
             ],
             'publisher' => [
                 '@type' => 'Organization',
-                'name' => 'TSA Legacy Ventures',
+                'name' => defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME,
                 'url' => rtrim(APP_URL, '/') . '/',
                 'logo' => [
                     '@type' => 'ImageObject',

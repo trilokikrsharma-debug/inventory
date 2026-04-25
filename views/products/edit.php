@@ -1,4 +1,5 @@
 <?php $pageTitle = 'Edit Product'; ?>
+<?php $gstEnabled = !empty($settings['enable_gst'] ?? false); ?>
 <?php $customFieldsPretty = (string)($customFieldsPretty ?? ''); ?>
 <?php $hasCustomFields = Session::isSuperAdmin() || Tenant::canUse('custom_fields'); ?>
 <?php $hasWarehouseFeature = !empty($hasWarehouseFeature); ?>
@@ -27,8 +28,8 @@
                             <input type="text" name="barcode" class="form-control" value="<?= Helper::escape($product['barcode'] ?? '') ?>">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">HSN / SAC</label>
-                            <input type="text" name="hsn_code" class="form-control" value="<?= Helper::escape($product['hsn_code'] ?? '') ?>" placeholder="e.g. 8471">
+                            <!-- hsn_gst_check --><?php if (!empty($settings['enable_gst'])): ?><label class="form-label">HSN / SAC</label>
+                            <input type="text" name="hsn_code" class="form-control" value="<?= Helper::escape($product['hsn_code'] ?? '') ?>" placeholder="e.g. 8471"><?php endif; ?>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Category</label>
@@ -74,12 +75,64 @@
         </div>
         <div class="col-lg-4">
             <div class="card mb-3">
-                <div class="card-header"><h6><i class="fas fa-tag me-2"></i>Pricing</h6></div>
+                <div class="card-header"><h6><i class="fas fa-tag me-2"></i><?= $gstEnabled ? "Pricing & Tax" : "Pricing" ?></h6></div>
                 <div class="card-body">
-                    <div class="mb-3"><label class="form-label">MRP</label><input type="number" name="mrp" class="form-control" step="0.01" value="<?= $product['mrp'] ?? '' ?>" placeholder="e.g. 500.00"></div>
-                    <div class="mb-3"><label class="form-label">Purchase Price</label><input type="number" name="purchase_price" class="form-control" step="0.01" value="<?= $product['purchase_price'] ?>" required></div>
-                    <div class="mb-3"><label class="form-label">Selling Price</label><input type="number" name="selling_price" class="form-control" step="0.01" value="<?= $product['selling_price'] ?>" required></div>
-                    <div class="mb-3"><label class="form-label">Tax Rate (%)</label><input type="number" name="tax_rate" class="form-control" step="0.01" value="<?= $product['tax_rate'] ?? '' ?>"></div>
+                    <?php
+                    $gstRates = [0, 3, 5, 12, 18, 28];
+                    $currentTaxRate = $product['tax_rate'] ?? ($settings['tax_rate'] ?? 18);
+                    $gstEnabled = !empty($settings['enable_gst']);
+                    ?>
+                    <?php if ($gstEnabled): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">GST Rate (%)</label>
+                        <select name="tax_rate" id="productTaxRate" class="form-select">
+                            <?php foreach ($gstRates as $rate): ?>
+                            <option value="<?= $rate ?>" <?= (float)$rate == (float)$currentTaxRate ? 'selected' : '' ?>><?= $rate ?>%<?= $rate == 0 ? ' (Exempt)' : '' ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+                    <div class="mb-3"><label class="form-label">MRP</label><input type="number" name="mrp" id="productMrp" class="form-control" step="0.01" value="<?= $product['mrp'] ?? '' ?>" placeholder="e.g. 500.00"></div>
+                    <?php if ($gstEnabled): ?>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Purchase Price</label>
+                            <input type="number" name="purchase_price" id="productPurchasePrice" class="form-control" step="0.01" value="<?= $product['purchase_price'] ?>" required placeholder="Without GST">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted">+ GST</label>
+                            <input type="text" id="purchasePriceWithGst" class="form-control" disabled>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <div class="mb-3">
+                        <label class="form-label">Purchase Price</label>
+                        <input type="number" name="purchase_price" id="productPurchasePrice" class="form-control" step="0.01" value="<?= $product['purchase_price'] ?>" required>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($gstEnabled): ?>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Selling Price</label>
+                            <input type="number" name="selling_price" id="productSellingPrice" class="form-control" step="0.01" value="<?= $product['selling_price'] ?>" required placeholder="Without GST">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted">+ GST</label>
+                            <input type="text" id="sellingPriceWithGst" class="form-control" disabled>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <div class="mb-3">
+                        <label class="form-label">Selling Price</label>
+                        <input type="number" name="selling_price" id="productSellingPrice" class="form-control" step="0.01" value="<?= $product['selling_price'] ?>" required>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($gstEnabled): ?>
+                    <div class="alert alert-light border small p-2 mb-0" id="profitInfo">
+                        <i class="fas fa-chart-line me-1 text-success"></i>
+                        <span id="profitDisplay">-</span>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="card mb-3">
@@ -129,4 +182,31 @@
             </div>
         </div>
     </div>
+
+<?php if (!empty($settings['enable_gst'])): ?>
+<?php $inlineScript = "
+function calcProductPrices() {
+    const taxRate = parseFloat(document.getElementById('productTaxRate')?.value) || 0;
+    const pp = parseFloat(document.getElementById('productPurchasePrice')?.value) || 0;
+    const sp = parseFloat(document.getElementById('productSellingPrice')?.value) || 0;
+    const ppGst = document.getElementById('purchasePriceWithGst');
+    const spGst = document.getElementById('sellingPriceWithGst');
+    const profitEl = document.getElementById('profitDisplay');
+    if (ppGst) ppGst.value = pp > 0 ? '₹' + (pp * (1 + taxRate/100)).toFixed(2) : '';
+    if (spGst) spGst.value = sp > 0 ? '₹' + (sp * (1 + taxRate/100)).toFixed(2) : '';
+    if (profitEl && pp > 0 && sp > 0) {
+        const profit = sp - pp;
+        const margin = ((profit / sp) * 100).toFixed(1);
+        profitEl.innerHTML = 'Profit: <strong>₹' + profit.toFixed(2) + '</strong> | Margin: <strong>' + margin + '%</strong>';
+        profitEl.parentElement.className = profit >= 0 ? 'alert alert-success border small p-2 mb-0' : 'alert alert-danger border small p-2 mb-0';
+    }
+}
+['productTaxRate','productPurchasePrice','productSellingPrice'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', calcProductPrices);
+    if (el) el.addEventListener('change', calcProductPrices);
+});
+calcProductPrices();
+"; ?>
+<?php endif; ?>
 </form>

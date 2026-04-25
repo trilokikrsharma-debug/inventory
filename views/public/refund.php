@@ -21,17 +21,18 @@ $heroCards = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Refund Policy — TSA Legacy</title>
-    <meta name="description" content="Refund and Cancellation Policy for TSA Legacy SaaS platform.">
-    <meta property="og:title" content="Refund Policy — TSA Legacy">
-    <meta property="og:description" content="Refund and Cancellation Policy for TSA Legacy SaaS platform.">
+    <?php tsa_render_adsense_verification(); ?>
+    <title>Refund Policy — <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?></title>
+    <meta name="description" content="Refund and Cancellation Policy for <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> SaaS platform.">
+    <meta property="og:title" content="Refund Policy — <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
+    <meta property="og:description" content="Refund and Cancellation Policy for <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> SaaS platform.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES) ?>">
     <meta property="og:image" content="<?= htmlspecialchars($socialImageUrl, ENT_QUOTES) ?>">
-    <meta property="og:image:alt" content="TSA Legacy">
+    <meta property="og:image:alt" content="<?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Refund Policy — TSA Legacy">
-    <meta name="twitter:description" content="Refund and Cancellation Policy for TSA Legacy SaaS platform.">
+    <meta name="twitter:title" content="Refund Policy — <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
+    <meta name="twitter:description" content="Refund and Cancellation Policy for <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> SaaS platform.">
     <meta name="twitter:image" content="<?= htmlspecialchars($socialImageUrl, ENT_QUOTES) ?>">
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars($faviconUrl, ENT_QUOTES) ?>">
     <link rel="canonical" href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES) ?>">
@@ -132,7 +133,7 @@ $heroCards = [
     <p>For any questions regarding refunds or cancellations:</p>
     <ul>
         <li><strong>Email:</strong> triloki@tsalegacy.com</li>
-        <li><strong>Business:</strong> TSA Legacy Ventures (MSME / Udyam Registered)</li>
+        <li><strong>Business:</strong> <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> (MSME / Udyam Registered)</li>
         <li><strong>Location:</strong> India</li>
     </ul>
         </article>

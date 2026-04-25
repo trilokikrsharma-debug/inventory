@@ -1,7 +1,7 @@
 <?php
 /**
  * Security Headers Middleware
- *
+ * 
  * Sets enterprise-grade security headers on every response.
  * Extracted from index.php lines 78-90.
  */
@@ -12,7 +12,7 @@ class SecurityHeadersMiddleware implements MiddlewareInterface {
         header("X-Content-Type-Options: nosniff");
         header("X-XSS-Protection: 1; mode=block");
         header("Referrer-Policy: strict-origin-when-cross-origin");
-        header("Permissions-Policy: camera=(), microphone=(), geolocation=()");
+        header("Permissions-Policy: camera=(self), microphone=(self), geolocation=(self)");
         header("Cross-Origin-Opener-Policy: same-origin");
         header("Cross-Origin-Resource-Policy: cross-origin");
         if ($this->shouldAllowPublicCaching($request)) {
@@ -40,12 +40,12 @@ class SecurityHeadersMiddleware implements MiddlewareInterface {
             . "base-uri 'self'; "
             . "object-src 'none'; "
             . "form-action 'self'; "
-            . "script-src 'self' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://code.jquery.com https://checkout.razorpay.com; "
+            . "script-src 'self' 'unsafe-inline' 'nonce-{$nonce}' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://code.jquery.com https://checkout.razorpay.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; "
             . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://fonts.googleapis.com; "
-            . "img-src 'self' data: blob: https://*.razorpay.com; "
+            . "img-src 'self' data: blob: https://*.razorpay.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; "
             . "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
-            . "connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com; "
-            . "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com; "
+            . "connect-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net; "
+            . "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; "
             . "frame-ancestors 'self';");
 
         $next($request);

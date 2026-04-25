@@ -149,6 +149,7 @@ class TaxReportService {
         return [
             'from_date' => $fromDate,
             'to_date' => $toDate,
+            'tax_enabled' => (!isset($settings['enable_tax']) || !empty($settings['enable_tax'])),
             'gst_enabled' => (!isset($settings['enable_tax']) || !empty($settings['enable_tax']))
                 && (!isset($settings['enable_gst']) || !empty($settings['enable_gst'])),
             'summary' => $summary,

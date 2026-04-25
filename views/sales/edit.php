@@ -55,29 +55,33 @@
                     <?php if ((!isset($settings['enable_tax']) || $settings['enable_tax']) && (!isset($settings['enable_gst']) || $settings['enable_gst'])): ?>
                     <div class="mb-2">
                         <label class="form-label small">GST Mode</label>
-                        <select name="gst_type" id="gstTypeInput" class="form-select form-select-sm">
+                        <?php if (!empty($settings['enable_gst'])): ?><select name="gst_type" id="gstTypeInput" class="form-select form-select-sm">
                             <?php $gstType = strtolower((string)($sale['gst_type'] ?? 'auto')); ?>
                             <option value="auto" <?= !in_array($gstType, ['cgst_sgst', 'igst', 'none'], true) ? 'selected' : '' ?>>Auto (By State)</option>
                             <option value="cgst_sgst" <?= $gstType === 'cgst_sgst' ? 'selected' : '' ?>>CGST + SGST</option>
                             <option value="igst" <?= $gstType === 'igst' ? 'selected' : '' ?>>IGST</option>
-                        </select>
+                        </select><?php else: ?><input type="hidden" name="gst_type" value="none"><?php endif; ?>
                     </div>
                     <?php endif; ?>
-                    <div class="mb-2"><label class="form-label small">Gari Bhada / Freight</label><input type="number" name="freight_charge" class="form-control form-control-sm" step="0.01" value="<?= Helper::escape($sale['freight_charge'] ?? $sale['shipping_cost'] ?? 0) ?>" id="freightInput" min="0"></div>
+                    <!-- gst_freight_check -->
+                    <?php if (!empty($settings['enable_gst'])): ?><div class="mb-2"><label class="form-label small">Gari Bhada / Freight</label><input type="number" name="freight_charge" class="form-control form-control-sm" step="0.01" value="<?= Helper::escape($sale['freight_charge'] ?? $sale['shipping_cost'] ?? 0) ?>" id="freightInput" min="0"></div>
                     <div class="mb-2"><label class="form-label small">Loading</label><input type="number" name="loading_charge" class="form-control form-control-sm" step="0.01" value="<?= Helper::escape($sale['loading_charge'] ?? 0) ?>" id="loadingInput" min="0"></div>
                     <input type="hidden" name="shipping_cost" id="shippingInput" value="<?= Helper::escape($sale['shipping_cost'] ?? 0) ?>">
+                    <?php else: ?>
+                    <div class="mb-2"><label class="form-label small">Transport</label><input type="number" name="shipping_cost" class="form-control form-control-sm" step="0.01" value="<?= Helper::escape($sale['shipping_cost'] ?? 0) ?>" min="0"></div>
+                    <?php endif; ?>
                     <div class="mb-2"><label class="form-label small">Round Off</label><input type="number" name="round_off" class="form-control form-control-sm" step="0.01" value="<?= $sale['round_off'] ?? 0 ?>" id="roundOffInput" <?= !empty($settings['auto_round_off_rupee']) ? 'readonly' : '' ?>><?php if (!empty($settings['auto_round_off_rupee'])): ?><small class="text-muted">Auto mode: nearest Rs. 1 is applied automatically.</small><?php endif; ?></div>
                     </div>
                     <hr>
                     <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Subtotal</span><span class="sales-entry-summary-value" id="summarySubtotal">₹0.00</span></div>
-                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Tax</span><span class="sales-entry-summary-value" id="summaryTax">Rs.0.00</span></div>
-                    <div class="sales-entry-summary-line mb-2 sales-entry-hidden" id="summaryCgstRow"><span class="sales-entry-summary-label">CGST</span><span class="sales-entry-summary-value" id="summaryCgst">Rs.0.00</span></div>
+                    <?php if (!empty($settings['enable_gst'])): ?><div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">GST</span><span class="sales-entry-summary-value" id="summaryTax">Rs.0.00</span></div><?php endif; ?>
+                    <?php if (!empty($settings['enable_gst'])): ?><!-- gst_breakup_section --><div class="sales-entry-summary-line mb-2 sales-entry-hidden" id="summaryCgstRow"><span class="sales-entry-summary-label">CGST</span><span class="sales-entry-summary-value" id="summaryCgst">Rs.0.00</span></div>
                     <div class="sales-entry-summary-line mb-2 sales-entry-hidden" id="summarySgstRow"><span class="sales-entry-summary-label">SGST</span><span class="sales-entry-summary-value" id="summarySgst">Rs.0.00</span></div>
-                    <div class="sales-entry-summary-line mb-2 sales-entry-hidden" id="summaryIgstRow"><span class="sales-entry-summary-label">IGST</span><span class="sales-entry-summary-value" id="summaryIgst">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2 sales-entry-hidden" id="summaryIgstRow"><span class="sales-entry-summary-label">IGST</span><span class="sales-entry-summary-value" id="summaryIgst">Rs.0.00</span></div><?php endif; ?>
                     <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Discount</span><span class="sales-entry-summary-value" id="summaryDiscount">-Rs.0.00</span></div>
-                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Freight</span><span class="sales-entry-summary-value" id="summaryFreight">Rs.0.00</span></div>
+                    <?php if (!empty($settings['enable_gst'])): ?><!-- gst_freight_summary --><div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Freight</span><span class="sales-entry-summary-value" id="summaryFreight">Rs.0.00</span></div>
                     <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Loading</span><span class="sales-entry-summary-value" id="summaryLoading">Rs.0.00</span></div>
-                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Total Charges</span><span class="sales-entry-summary-value" id="summaryShipping">Rs.0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Total Charges</span><span class="sales-entry-summary-value" id="summaryShipping">Rs.0.00</span></div><?php else: ?><div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Transport</span><span class="sales-entry-summary-value" id="summaryShipping">Rs.0.00</span></div><?php endif; ?>
                     <hr>
                     <div class="sales-entry-summary-line sales-entry-grand-total mb-3 fs-5 fw-bold"><span class="sales-entry-summary-label">Grand Total</span><span class="sales-entry-summary-value text-primary" id="summaryGrand">₹0.00</span></div>
                 </div>
@@ -117,6 +121,7 @@ const currentTaxStatus = " . ((!isset($settings['enable_tax']) || $settings['ena
 const currentGstStatus = " . ((!isset($settings['enable_gst']) || $settings['enable_gst']) ? 'true' : 'false') . ";
 const autoRoundOffEnabled = " . (!empty($settings['auto_round_off_rupee']) ? 'true' : 'false') . ";
 const taxCalculationEnabled = currentTaxStatus && currentGstStatus;
+const gstBreakupEnabled = currentTaxStatus && currentGstStatus;
 const APP = '" . APP_URL . "';
 const existingItems = " . $existingItems . ";
 document.getElementById('addItemBtn').addEventListener('click', () => addItem());
@@ -284,7 +289,7 @@ function calc() {
     document.getElementById('subtotalDisplay').textContent = 'Rs.'+sub.toFixed(2);
     document.getElementById('summarySubtotal').textContent = 'Rs.'+sub.toFixed(2);
     document.getElementById('summaryTax').textContent = 'Rs.'+tax.toFixed(2);
-    if (taxCalculationEnabled) {
+    if (typeof gstBreakupEnabled !== 'undefined' && gstBreakupEnabled) {
         const isIgst = gstType === 'igst';
         const cgstRow = document.getElementById('summaryCgstRow');
         const sgstRow = document.getElementById('summarySgstRow');

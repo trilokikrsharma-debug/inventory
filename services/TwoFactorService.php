@@ -9,7 +9,7 @@
  *
  * Usage:
  *   $secret = TwoFactorService::generateSecret();
- *   $qrUrl  = TwoFactorService::getQrCodeUrl($secret, 'user@email.com');
+     *   $otpUrl = TwoFactorService::getOtpAuthUrl($secret, 'user@email.com');
  *   $valid  = TwoFactorService::verifyCode($secret, '123456');
  */
 class TwoFactorService {
@@ -130,15 +130,6 @@ class TwoFactorService {
             self::CODE_LENGTH,
             self::TIME_STEP
         );
-    }
-
-    /**
-     * Generate a QR code image URL via Google Charts API.
-     * For production, consider generating QR locally with a library.
-     */
-    public static function getQrCodeUrl(string $secret, string $email, string $issuer = 'InvenBill Pro'): string {
-        $otpUrl = self::getOtpAuthUrl($secret, $email, $issuer);
-        return 'https://chart.googleapis.com/chart?cht=qr&chs=250x250&chl=' . urlencode($otpUrl);
     }
 
     // ─── Database Operations ─────────────────────────────

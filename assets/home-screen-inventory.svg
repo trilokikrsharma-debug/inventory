@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 480" role="img" aria-labelledby="title desc">
+  <title id="title">TSA Legacy product stock view</title>
+  <desc id="desc">Inventory list showing products, SKU, category and stock status.</desc>
+  <rect width="760" height="480" rx="24" fill="#eef4fb"/>
+  <rect x="32" y="30" width="696" height="420" rx="20" fill="#fff" stroke="#d5e1ee"/>
+  <g font-family="Manrope, Inter, Arial, sans-serif">
+    <text x="62" y="78" fill="#10263c" font-size="24" font-weight="850">Products</text>
+    <rect x="570" y="52" width="130" height="36" rx="12" fill="#0f4c81"/>
+    <text x="602" y="75" fill="#fff" font-size="13" font-weight="800">Add Product</text>
+    <rect x="62" y="112" width="240" height="34" rx="10" fill="#f7fbff" stroke="#d5e1ee"/>
+    <rect x="316" y="112" width="154" height="34" rx="10" fill="#f7fbff" stroke="#d5e1ee"/>
+    <rect x="484" y="112" width="154" height="34" rx="10" fill="#f7fbff" stroke="#d5e1ee"/>
+    <text x="78" y="134" fill="#587089" font-size="12" font-weight="700">Search product or SKU</text>
+    <text x="332" y="134" fill="#587089" font-size="12" font-weight="700">All Categories</text>
+    <text x="500" y="134" fill="#587089" font-size="12" font-weight="700">Stock Status</text>
+    <g transform="translate(62 178)">
+      <rect width="638" height="38" rx="12" fill="#f1f6fb"/>
+      <text x="16" y="24" fill="#415b74" font-size="12" font-weight="850">Product</text>
+      <text x="214" y="24" fill="#415b74" font-size="12" font-weight="850">SKU</text>
+      <text x="326" y="24" fill="#415b74" font-size="12" font-weight="850">Category</text>
+      <text x="480" y="24" fill="#415b74" font-size="12" font-weight="850">Current Stock</text>
+      <g transform="translate(0 52)">
+        <rect width="638" height="56" rx="12" fill="#fff" stroke="#e1eaf4"/>
+        <text x="16" y="34" fill="#10263c" font-size="14" font-weight="850">Brake Pad Set</text>
+        <text x="214" y="34" fill="#587089" font-size="13" font-weight="750">BP-204</text>
+        <text x="326" y="34" fill="#587089" font-size="13" font-weight="750">Brakes</text>
+        <text x="480" y="34" fill="#198754" font-size="13" font-weight="850">128 pcs</text>
+      </g>
+      <g transform="translate(0 118)">
+        <rect width="638" height="56" rx="12" fill="#fff" stroke="#e1eaf4"/>
+        <text x="16" y="34" fill="#10263c" font-size="14" font-weight="850">Engine Oil 1L</text>
+        <text x="214" y="34" fill="#587089" font-size="13" font-weight="750">EO-1L</text>
+        <text x="326" y="34" fill="#587089" font-size="13" font-weight="750">Lubricants</text>
+        <rect x="480" y="17" width="74" height="24" rx="12" fill="#f7ead7"/>
+        <text x="498" y="33" fill="#8a5b13" font-size="11" font-weight="850">Low: 9</text>
+      </g>
+      <g transform="translate(0 184)">
+        <rect width="638" height="56" rx="12" fill="#fff" stroke="#e1eaf4"/>
+        <text x="16" y="34" fill="#10263c" font-size="14" font-weight="850">Battery Cable</text>
+        <text x="214" y="34" fill="#587089" font-size="13" font-weight="750">BC-111</text>
+        <text x="326" y="34" fill="#587089" font-size="13" font-weight="750">Electrical</text>
+        <text x="480" y="34" fill="#198754" font-size="13" font-weight="850">64 pcs</text>
+      </g>
+    </g>
+  </g>
+</svg>

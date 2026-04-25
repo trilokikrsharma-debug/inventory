@@ -731,6 +731,15 @@ class Tenant {
         $status = strtolower(trim((string)($company['subscription_status'] ?? $company['status'] ?? 'inactive')));
         $trialEndsAt = self::parseDateToTimestamp($company['trial_ends_at'] ?? null);
 
+        if (!empty($company['is_demo'])) {
+            return [
+                'status' => 'active',
+                'active' => true,
+                'source' => 'demo',
+                'expires_at' => null,
+            ];
+        }
+
         if (in_array($status, ['inactive', 'suspended', 'cancelled'], true)) {
             return [
                 'status' => $status,

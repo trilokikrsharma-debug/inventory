@@ -21,17 +21,20 @@ $heroCards = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terms of Service — TSA Legacy</title>
-    <meta name="description" content="Terms of Service for TSA Legacy SaaS platform.">
-    <meta property="og:title" content="Terms of Service — TSA Legacy">
-    <meta property="og:description" content="Terms of Service for TSA Legacy SaaS platform.">
+    <?php tsa_render_adsense_verification(); ?>
+    <title>Terms of Service — <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?></title>
+    <meta name="description" content="Terms of Service for <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> SaaS platform.">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <meta name="theme-color" content="#16385f">
+    <meta property="og:title" content="Terms of Service — <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
+    <meta property="og:description" content="Terms of Service for <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> SaaS platform.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES) ?>">
     <meta property="og:image" content="<?= htmlspecialchars($socialImageUrl, ENT_QUOTES) ?>">
-    <meta property="og:image:alt" content="TSA Legacy">
+    <meta property="og:image:alt" content="<?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Terms of Service — TSA Legacy">
-    <meta name="twitter:description" content="Terms of Service for TSA Legacy SaaS platform.">
+    <meta name="twitter:title" content="Terms of Service — <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
+    <meta name="twitter:description" content="Terms of Service for <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> SaaS platform.">
     <meta name="twitter:image" content="<?= htmlspecialchars($socialImageUrl, ENT_QUOTES) ?>">
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars($faviconUrl, ENT_QUOTES) ?>">
     <link rel="canonical" href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES) ?>">
@@ -53,12 +56,12 @@ $heroCards = [
     'secondary_href' => APP_URL . '/',
 ]); ?>
 
-<main class="tsa-page tsa-legal-shell">
+<main class="tsa-page tsa-legal-shell" id="main-content">
     <div class="tsa-container">
         <?php tsa_render_page_hero([
             'eyebrow' => 'Legal & Trust',
             'title' => 'Terms of service for <span class="tsa-serif">TSA Legacy</span>',
-            'lead' => 'These terms describe the relationship between TSA Legacy Ventures and the businesses using the platform, including account responsibilities, billing and acceptable use.',
+            'lead' => 'These terms describe the relationship between ' . Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) . ' and the businesses using the platform, including account responsibilities, billing and acceptable use.',
             'primary_href' => APP_URL . '/signup',
             'primary_label' => 'Start Free Trial',
             'secondary_href' => APP_URL . '/',
@@ -71,7 +74,7 @@ $heroCards = [
             <h1>Terms of Service</h1>
             <p class="tsa-legal-meta">Last updated: March 2026</p>
 
-            <p>These Terms of Service ("Terms") govern your use of the TSA Legacy platform ("Service") operated by TSA Legacy Ventures ("Company", "we", "us"). By accessing or using the service, you agree to these Terms.</p>
+            <p>These Terms of Service ("Terms") govern your use of the TSA Legacy platform ("Service") operated by <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> ("Company", "we", "us"). By accessing or using the service, you agree to these Terms.</p>
 
     <h2>1. Acceptance of Terms</h2>
     <p>By creating an account or using the Service, you agree to these Terms and our <a href="<?= APP_URL ?>/privacy">Privacy Policy</a>. If you do not agree, please do not use the Service.</p>
@@ -119,7 +122,7 @@ $heroCards = [
     <p>We are not liable for service interruptions caused by factors outside our control, including third-party service outages, natural disasters, or internet connectivity issues.</p>
 
     <h2>9. Limitation of Liability</h2>
-    <p>To the maximum extent permitted by law, TSA Legacy Ventures shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or business opportunities.</p>
+    <p>To the maximum extent permitted by law, <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or business opportunities.</p>
     <p>Our total liability shall not exceed the amount you paid for the Service in the 12 months preceding the event giving rise to the claim.</p>
 
     <h2>10. Termination</h2>
@@ -141,7 +144,7 @@ $heroCards = [
     <p>For questions about these Terms:</p>
     <ul>
         <li><strong>Email:</strong> triloki@tsalegacy.com</li>
-        <li><strong>Business:</strong> TSA Legacy Ventures (MSME / Udyam Registered)</li>
+        <li><strong>Business:</strong> <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> (MSME / Udyam Registered)</li>
         <li><strong>Location:</strong> India</li>
     </ul>
         </article>

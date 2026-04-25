@@ -10,7 +10,7 @@ $_logoUrl = $logoUrl ?? rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
     <div class="mx">
         <div class="ft-grid">
             <div>
-                <a href="<?= APP_URL ?>/" class="logo ft-logo"><img src="<?= htmlspecialchars($_logoUrl, ENT_QUOTES) ?>" alt="TSA Legacy"></a>
+                <a href="<?= APP_URL ?>/" class="logo ft-logo"><img src="<?= htmlspecialchars($_logoUrl, ENT_QUOTES) ?>" alt="<?= htmlspecialchars(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME, ENT_QUOTES) ?>"></a>
                 <p class="ft-intro">Cloud-native business management platform built for Indian SMEs.</p>
                 <p class="ft-meta icon-gap-4"><i class="fas fa-map-marker-alt"></i>India-based Startup</p>
             </div>
@@ -37,14 +37,14 @@ $_logoUrl = $logoUrl ?? rtrim(APP_URL, '/') . '/assets/logo-lockup.svg';
                 <div class="ft-title">Contact</div>
                 <div class="ft-links">
                     <a href="mailto:triloki@tsalegacy.com" class="icon-gap-4"><i class="fas fa-envelope"></i>triloki@tsalegacy.com</a>
-                    <span class="ft-meta ft-contact-item icon-gap-4"><i class="fas fa-building"></i>TSA Legacy Ventures</span>
+                    <span class="ft-meta ft-contact-item icon-gap-4"><i class="fas fa-building"></i><?= htmlspecialchars(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME, ENT_QUOTES) ?></span>
                     <span class="ft-meta ft-contact-item icon-gap-4"><i class="fas fa-certificate"></i>MSME / Udyam Registered</span>
                     <span class="ft-meta ft-contact-item icon-gap-4"><i class="fas fa-flag"></i>Made with ❤️ in India</span>
                 </div>
             </div>
         </div>
         <div class="ft-bar">
-            <p class="ft-copy">© 2025–<?= date('Y') ?> TSA Legacy Ventures. All rights reserved.</p>
+            <p class="ft-copy">© 2025–<?= date('Y') ?> <?= htmlspecialchars(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME, ENT_QUOTES) ?>. All rights reserved.</p>
             <div class="ft-inline"><span class="ft-copy">Powered by</span><span class="ft-cloud"><i class="fab fa-google"></i>Google Cloud</span></div>
         </div>
     </div>

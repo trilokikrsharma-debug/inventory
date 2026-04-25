@@ -3,13 +3,21 @@ if (!function_exists('tsa_brand_assets')) {
     function tsa_brand_assets(): array
     {
         $base = rtrim(APP_URL, '/');
+        $brandCssPath = BASE_PATH . '/assets/css/public-brand.css';
+        $brandCssVersion = defined('ASSET_VERSION') ? (string)ASSET_VERSION : '1';
+        $brandCssMtime = @filemtime($brandCssPath);
+        if ($brandCssMtime !== false) {
+            $brandCssVersion .= '.' . $brandCssMtime;
+        }
         return [
             'favicon' => $base . '/assets/favicon.svg',
             'icon' => $base . '/assets/icon.svg',
-            'logo_light' => $base . '/assets/logo-lockup-light.svg',
+            'logo_light' => $base . '/assets/logo-lockup.svg',
             'logo_dark' => $base . '/assets/logo-lockup.svg',
+            'logo_compact' => $base . '/assets/logo-lockup-compact.svg',
+            'logo_mark' => $base . '/assets/logo-mark-refined.svg',
             'og' => $base . '/assets/og-default.svg',
-            'brand_css' => $base . '/assets/css/public-brand.css?v=' . rawurlencode((string)ASSET_VERSION),
+            'brand_css' => $base . '/assets/css/public-brand.css?v=' . rawurlencode($brandCssVersion),
         ];
     }
 }
@@ -18,6 +26,18 @@ if (!function_exists('tsa_h')) {
     function tsa_h(?string $value): string
     {
         return htmlspecialchars((string)$value, ENT_QUOTES);
+    }
+}
+
+
+if (!function_exists('tsa_render_adsense_verification')) {
+    function tsa_render_adsense_verification(): void
+    {
+        ?>
+        <meta name="google-adsense-account" content="ca-pub-9384564101816113">
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9384564101816113"
+            crossorigin="anonymous"></script>
+        <?php
     }
 }
 
@@ -37,12 +57,14 @@ if (!function_exists('tsa_render_public_nav')) {
         $activeHref = $options['active_href'] ?? '';
         $navId = $options['nav_id'] ?? 'tsaPublicNav';
         $menuId = $options['menu_id'] ?? 'tsaPublicMenu';
+        $mainId = $options['main_id'] ?? 'main-content';
         ?>
+        <a href="#<?= tsa_h($mainId) ?>" class="tsa-skip-link">Skip to main content</a>
         <div class="tsa-nav-wrap">
             <nav class="tsa-nav" id="<?= tsa_h($navId) ?>">
                 <div class="tsa-nav-inner">
-                    <a href="<?= tsa_h(APP_URL . '/') ?>" class="tsa-logo">
-                        <img src="<?= tsa_h($assets['logo_light']) ?>" alt="TSA Legacy">
+                    <a href="<?= tsa_h(APP_URL . '/') ?>" class="tsa-logo tsa-logo-compact">
+                        <img src="<?= tsa_h($assets['logo_compact']) ?>" alt="<?= tsa_h(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
                     </a>
                     <div class="tsa-nav-links">
                         <?php foreach ($links as $link): ?>
@@ -51,19 +73,30 @@ if (!function_exists('tsa_render_public_nav')) {
                     </div>
                     <div class="tsa-nav-cta">
                         <a href="<?= tsa_h($secondaryHref) ?>" class="tsa-btn tsa-btn-ghost"><?= tsa_h($secondaryLabel) ?></a>
-                        <a href="<?= tsa_h($primaryHref) ?>" class="tsa-btn tsa-btn-primary"><?= tsa_h($primaryLabel) ?></a>
+                        <a href="<?= tsa_h($primaryHref) ?>" class="tsa-btn tsa-btn-primary tsa-btn-trial"><?= tsa_h($primaryLabel) ?></a>
                     </div>
-                    <button class="tsa-hamburger" type="button" aria-label="Menu" onclick="tsaToggleMenu('<?= tsa_h($menuId) ?>')">
-                        <i class="fas fa-bars"></i>
+                    <button
+                        class="tsa-hamburger"
+                        type="button"
+                        data-menu-toggle="<?= tsa_h($menuId) ?>"
+                        aria-label="Open menu"
+                        aria-controls="<?= tsa_h($menuId) ?>"
+                        aria-expanded="false"
+                    >
+                        <span class="tsa-hamburger-box" aria-hidden="true">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </span>
                     </button>
                 </div>
             </nav>
-            <div class="tsa-mobile-menu" id="<?= tsa_h($menuId) ?>">
+            <div class="tsa-mobile-menu" id="<?= tsa_h($menuId) ?>" hidden aria-hidden="true">
                 <?php foreach ($links as $link): ?>
-                    <a href="<?= tsa_h((string)$link['href']) ?>" onclick="tsaCloseMenu('<?= tsa_h($menuId) ?>')"><?= tsa_h((string)$link['label']) ?></a>
+                    <a href="<?= tsa_h((string)$link['href']) ?>" data-menu-close="<?= tsa_h($menuId) ?>"><?= tsa_h((string)$link['label']) ?></a>
                 <?php endforeach; ?>
-                <a href="<?= tsa_h($secondaryHref) ?>" onclick="tsaCloseMenu('<?= tsa_h($menuId) ?>')"><?= tsa_h($secondaryLabel) ?></a>
-                <a href="<?= tsa_h($primaryHref) ?>" onclick="tsaCloseMenu('<?= tsa_h($menuId) ?>')"><?= tsa_h($primaryLabel) ?></a>
+                <a href="<?= tsa_h($secondaryHref) ?>" class="tsa-mobile-menu-secondary" data-menu-close="<?= tsa_h($menuId) ?>"><?= tsa_h($secondaryLabel) ?></a>
+                <a href="<?= tsa_h($primaryHref) ?>" class="tsa-mobile-menu-primary" data-menu-close="<?= tsa_h($menuId) ?>"><?= tsa_h($primaryLabel) ?></a>
             </div>
         </div>
         <?php
@@ -80,7 +113,7 @@ if (!function_exists('tsa_render_public_footer')) {
             <div class="tsa-footer-shell">
                 <div class="tsa-footer-grid">
                     <div>
-                        <a href="<?= tsa_h(APP_URL . '/') ?>" class="tsa-logo" style="margin-bottom:14px"><img src="<?= tsa_h($assets['logo_light']) ?>" alt="TSA Legacy"></a>
+                        <a href="<?= tsa_h(APP_URL . '/') ?>" class="tsa-logo tsa-footer-brand"><img src="<?= tsa_h($assets['logo_light']) ?>" alt="<?= tsa_h(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>"></a>
                         <p>Cloud-based GST billing, inventory and business operations software designed for Indian SMEs that want cleaner workflows and stronger control.</p>
                     </div>
                     <div>
@@ -115,7 +148,7 @@ if (!function_exists('tsa_render_public_footer')) {
                     </div>
                 </div>
                 <div class="tsa-footer-bar">
-                    <div class="tsa-footer-copy">© 2025–<?= date('Y') ?> TSA Legacy Ventures. All rights reserved.</div>
+                    <div class="tsa-footer-copy">© 2025–<?= date('Y') ?> <?= tsa_h(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>. All rights reserved.</div>
                     <div class="tsa-footer-copy">Built in India for retailers, wholesalers and growing SMEs. Simple, structured, reliable.</div>
                 </div>
             </div>
@@ -204,10 +237,58 @@ if (!function_exists('tsa_brand_script')) {
     {
         $navIdJs = json_encode($navId, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         return <<<JS
-function tsaToggleMenu(id){var el=document.getElementById(id);if(el){el.classList.toggle('open');}}
-function tsaCloseMenu(id){var el=document.getElementById(id);if(el){el.classList.remove('open');}}
-window.addEventListener('scroll',function(){var nav=document.getElementById($navIdJs);if(!nav){return;}nav.style.background=window.scrollY>20?'rgba(255,253,248,.94)':'rgba(255,253,248,.84)';});
-document.addEventListener('click',function(e){var m=document.getElementById('tsaPublicMenu');if(m&&m.classList.contains('open')){var n=document.getElementById('tsaPublicNav');if(n&&!n.contains(e.target)&&!m.contains(e.target)){m.classList.remove('open');}}});
+function tsaSetMenuState(el, button, open){
+    if(!el){return;}
+    el.classList.toggle('open', open);
+    el.hidden = !open;
+    el.setAttribute('aria-hidden', open ? 'false' : 'true');
+    if(button){
+        button.classList.toggle('is-open', open);
+        button.setAttribute('aria-expanded', open ? 'true' : 'false');
+        button.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    }
+}
+function tsaFindMenuButton(id){
+    return document.querySelector('[aria-controls="' + id + '"]');
+}
+function tsaToggleMenu(id, button){
+    var el=document.getElementById(id);
+    if(!el){return;}
+    tsaSetMenuState(el, button || tsaFindMenuButton(id), !el.classList.contains('open'));
+}
+function tsaCloseMenu(id){
+    var el=document.getElementById(id);
+    tsaSetMenuState(el, tsaFindMenuButton(id), false);
+}
+window.addEventListener('scroll',function(){
+    var nav=document.getElementById($navIdJs);
+    if(!nav){return;}
+    nav.style.background=window.scrollY>20?'rgba(255,253,248,.96)':'rgba(255,253,248,.84)';
+});
+document.addEventListener('click',function(e){
+    var toggle=e.target.closest('[data-menu-toggle]');
+    if(toggle){
+        tsaToggleMenu(toggle.getAttribute('data-menu-toggle'), toggle);
+        return;
+    }
+    var closeLink=e.target.closest('[data-menu-close]');
+    if(closeLink){
+        tsaCloseMenu(closeLink.getAttribute('data-menu-close'));
+        return;
+    }
+    var m=document.getElementById('tsaPublicMenu');
+    if(m&&m.classList.contains('open')){
+        var n=document.getElementById('tsaPublicNav');
+        if(n&&!n.contains(e.target)&&!m.contains(e.target)){
+            tsaCloseMenu('tsaPublicMenu');
+        }
+    }
+});
+document.addEventListener('keydown',function(e){
+    if(e.key === 'Escape'){
+        tsaCloseMenu('tsaPublicMenu');
+    }
+});
 JS;
     }
 }

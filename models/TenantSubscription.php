@@ -153,6 +153,33 @@ class TenantSubscription extends Model {
             ];
         }
 
+        if (!empty($company['is_demo'])) {
+            if ($persist && strtolower(trim((string)($company['subscription_status'] ?? ''))) !== 'active') {
+                try {
+                    $this->db->query(
+                        "UPDATE companies
+                         SET subscription_status = 'active', updated_at = NOW()
+                         WHERE id = ?",
+                        [$companyId]
+                    );
+                    $company['subscription_status'] = 'active';
+                } catch (\Throwable $e) {
+                    error_log('[DEMO_SUBSCRIPTION] Failed to normalize demo tenant status: ' . $e->getMessage());
+                }
+            }
+
+            return [
+                'status' => 'active',
+                'is_active' => true,
+                'is_trial' => false,
+                'is_expired' => false,
+                'is_manually_blocked' => false,
+                'company' => $company,
+                'subscription' => null,
+                'current_window' => null,
+            ];
+        }
+
         $currentStatus = strtolower(trim((string)($company['subscription_status'] ?? 'inactive')));
         $manualBlockStatuses = ['suspended'];
         $isManuallyBlocked = in_array($currentStatus, $manualBlockStatuses, true);

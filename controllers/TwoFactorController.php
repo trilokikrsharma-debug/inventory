@@ -15,12 +15,17 @@
  *   ?page=twoFactor&action=recoveryPost  POST: verify recovery code
  */
 class TwoFactorController extends Controller {
+    private TwoFactorWorkflowService $workflowService;
 
     protected $allowedActions = [
         'setup', 'enable', 'disable',
         'verify', 'verifyPost',
         'recovery', 'recoveryPost'
     ];
+
+    public function __construct() {
+        $this->workflowService = new TwoFactorWorkflowService();
+    }
 
     /**
      * Show 2FA setup page with QR code.
@@ -29,26 +34,16 @@ class TwoFactorController extends Controller {
     public function setup() {
         $this->requireAuth();
 
-        $user = Session::get('user');
-        $userId = $user['id'];
-        $email = $user['email'] ?? $user['username'];
-
-        $isEnabled = TwoFactorService::isEnabled($userId);
-
-        // Generate a new secret for setup
-        $secret = TwoFactorService::generateSecret();
-        Session::set('twofa_setup_secret', $secret);
-
-        $qrUrl = TwoFactorService::getQrCodeUrl($secret, $email);
-        $otpAuthUrl = TwoFactorService::getOtpAuthUrl($secret, $email);
+        $payload = $this->workflowService->buildSetupPayload(Session::get('user') ?? []);
+        Session::set('twofa_setup_secret', $payload['secret']);
         CSRF::getToken();
 
         $this->view('twoFactor.setup', [
             'pageTitle' => 'Two-Factor Authentication',
-            'secret' => $secret,
-            'qrUrl' => $qrUrl,
-            'otpAuthUrl' => $otpAuthUrl,
-            'isEnabled' => $isEnabled,
+            'secret' => $payload['secret'],
+            'email' => $payload['email'],
+            'otpAuthUrl' => $payload['otpAuthUrl'],
+            'isEnabled' => $payload['isEnabled'],
         ]);
     }
 
@@ -217,7 +212,7 @@ class TwoFactorController extends Controller {
             return;
         }
 
-        $context = $this->loadLoginContext($userId);
+        $context = $this->workflowService->loadLoginContext($userId);
         if (!$context) {
             Session::remove('twofa_pending_user_id');
             Session::remove('twofa_pending_is_super_admin');
@@ -243,75 +238,10 @@ class TwoFactorController extends Controller {
     }
 
     /**
-     * Rebuild the login context from the database after 2FA succeeds.
-     */
-    private function loadLoginContext(int $userId): ?array {
-        $db = Database::getInstance();
-        $row = $db->query(
-            "SELECT u.*, c.name AS company_name, c.status AS company_status, c.is_demo, c.plan, c.saas_plan_id,
-                    c.subscription_status, c.trial_ends_at, c.max_users, c.max_products
-             FROM users u
-             LEFT JOIN companies c ON u.company_id = c.id
-             WHERE u.id = ?",
-            [$userId]
-        )->fetch(\PDO::FETCH_ASSOC);
-
-        if (!$row) {
-            return null;
-        }
-
-        $isSuperAdmin = !empty($row['is_super_admin']);
-        if (!$isSuperAdmin && !empty($row['role_id'])) {
-            try {
-                $role = $db->query(
-                    "SELECT is_super_admin FROM roles WHERE id = ?",
-                    [$row['role_id']]
-                )->fetch(\PDO::FETCH_ASSOC);
-                if ($role && !empty($role['is_super_admin'])) {
-                    $isSuperAdmin = true;
-                }
-            } catch (\Throwable $e) {
-                error_log('[RBAC] Failed to load role during 2FA login: ' . $e->getMessage());
-            }
-        }
-
-        $companyId = (int)($row['company_id'] ?? 0);
-        $company = null;
-
-        if (!$isSuperAdmin) {
-            if ($companyId <= 0) {
-                return null;
-            }
-
-            try {
-                $company = $db->query(
-                    "SELECT id, name, status, is_demo, plan, saas_plan_id, subscription_status, trial_ends_at, max_users, max_products
-                     FROM companies
-                     WHERE id = ? AND status = 'active'",
-                    [$companyId]
-                )->fetch(\PDO::FETCH_ASSOC);
-            } catch (\Throwable $e) {
-                $company = null;
-            }
-
-            if (!$company) {
-                return null;
-            }
-        }
-
-        return [
-            'user' => $row,
-            'company' => $company,
-            'company_id' => $companyId,
-            'is_super_admin' => $isSuperAdmin,
-        ];
-    }
-
-    /**
      * Final login session rebuild used after 2FA succeeds.
      */
     private function finalizeLogin(array $user, int $companyId, ?array $company, bool $isSuperAdmin, bool $rememberMe = false): void {
-        $sessionUser = $this->sanitizeSessionUser($user, $isSuperAdmin);
+        $sessionUser = $this->workflowService->sanitizeSessionUser($user, $isSuperAdmin);
         $sessionUser['twofa_pending'] = false;
         $sessionUser['twofa_verified'] = true;
 
@@ -351,18 +281,4 @@ class TwoFactorController extends Controller {
         $this->redirect('index.php?page=dashboard');
     }
 
-    /**
-     * Strip sensitive fields before placing the user in session.
-     */
-    private function sanitizeSessionUser(array $user, bool $isSuperAdmin): array {
-        unset(
-            $user['password'],
-            $user['twofa_secret'],
-            $user['twofa_recovery_codes'],
-            $user['company_status'],
-            $user['company_name']
-        );
-        $user['is_super_admin'] = $isSuperAdmin || !empty($user['is_super_admin']);
-        return $user;
-    }
 }

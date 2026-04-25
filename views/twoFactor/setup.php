@@ -4,11 +4,12 @@
         max-width: 300px;
         margin: 0 auto;
     }
-    .two-factor-qr {
-        max-width: 220px;
-    }
     .two-factor-secret-code {
         word-break: break-all;
+    }
+    .two-factor-uri {
+        word-break: break-all;
+        font-size: 12px;
     }
     .two-factor-otp-input {
         letter-spacing: 8px;
@@ -58,15 +59,22 @@
                         <!-- Setup 2FA -->
                         <div class="row">
                             <div class="col-md-6 text-center border-end">
-                                <h6 class="mb-3">Step 1: Scan QR Code</h6>
-                                <p class="text-muted small">Open your authenticator app (Google Authenticator, Authy, etc.) and scan this QR code:</p>
-                                <div class="mb-3">
-                                    <img src="<?= htmlspecialchars($qrUrl) ?>" alt="2FA QR Code" class="img-fluid border rounded two-factor-qr">
+                                <h6 class="mb-3">Step 1: Add This Account</h6>
+                                <p class="text-muted small">Use your authenticator app without sharing your secret with any third-party QR service.</p>
+                                <div class="alert alert-light border text-start small">
+                                    <div class="fw-semibold mb-2">Recommended</div>
+                                    <div>Choose <strong>Enter setup key</strong> or <strong>Manual entry</strong> in your authenticator app.</div>
+                                    <div class="mt-2">Account: <code class="user-select-all"><?= htmlspecialchars($email ?? '') ?></code></div>
+                                    <div>Issuer: <code class="user-select-all">InvenBill Pro</code></div>
                                 </div>
                                 <details class="text-start">
-                                    <summary class="text-muted small cursor-pointer">Can't scan? Enter manually</summary>
+                                    <summary class="text-muted small cursor-pointer">Show manual setup details</summary>
                                     <div class="mt-2 p-2 bg-light rounded">
                                         <code class="user-select-all two-factor-secret-code"><?= htmlspecialchars($secret) ?></code>
+                                    </div>
+                                    <div class="mt-2 p-2 bg-light rounded two-factor-uri">
+                                        <div class="text-muted mb-1">Advanced: OTP URI for apps that support direct import</div>
+                                        <code class="user-select-all"><?= htmlspecialchars($otpAuthUrl) ?></code>
                                     </div>
                                 </details>
                             </div>

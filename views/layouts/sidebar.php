@@ -336,6 +336,7 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
         <?php if (Tenant::isDemo()): ?>
         <div class="sidebar-demo-box">
             <small class="sidebar-demo-note"><i class="fas fa-flask me-1"></i>Demo Mode</small><br>
+            <small class="sidebar-demo-note d-block mt-1">Try products, billing workflows, and day-to-day operations. Billing, account, and settings changes are restricted.</small>
             <a href="<?= APP_URL ?>/signup?from_demo=1" class="btn btn-sm btn-outline-success mt-1 sidebar-demo-cta">Sign Up Free</a>
         </div>
         <?php endif; ?>

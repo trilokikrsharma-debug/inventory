@@ -9,6 +9,7 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? ($cspNonce ?? ''), ENT_QUOTES
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php tsa_render_adsense_verification(); ?>
     <title>Login | <?= Helper::escape(APP_NAME) ?></title>
     <meta name="robots" content="noindex,nofollow">
     <link rel="icon" type="image/svg+xml" href="<?= Helper::escape($assets['favicon']) ?>">
@@ -45,7 +46,7 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? ($cspNonce ?? ''), ENT_QUOTES
                 <p class="tsa-auth-subtitle">Sign in to your account</p>
 
                 <?php if (!empty($error)): ?>
-                    <div class="alert alert-danger py-2" style="font-size:0.85rem;">
+                    <div class="alert alert-danger py-2 tsa-auth-alert">
                         <i class="fas fa-exclamation-circle me-1"></i> <?= Helper::escape($error) ?>
                     </div>
                 <?php endif; ?>
@@ -107,7 +108,7 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? ($cspNonce ?? ''), ENT_QUOTES
 
                 <div class="tsa-sep"></div>
 
-                <div class="tsa-auth-note" style="line-height:1.75; font-size:0.86rem; margin-bottom: 24px;">Instant Demo Access signs you into a sample workspace with broader modules enabled so you can review the product flow before creating an account. Simple, structured, reliable.</div>
+                <div class="tsa-auth-note tsa-auth-note-strong">Instant Demo Access signs you into a sample workspace with broader modules enabled so you can review the product flow before creating an account. Simple, structured, reliable.</div>
                 <div class="tsa-auth-links">
                     <a href="<?= APP_URL ?>/signup">Sign Up</a>
                     <a href="<?= APP_URL ?>/demo">Instant Demo Access</a>

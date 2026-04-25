@@ -23,8 +23,11 @@ $heroCards = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php tsa_render_adsense_verification(); ?>
     <title>Pricing for GST Billing & Inventory Software | <?= APP_NAME ?></title>
     <meta name="description" content="See pricing for TSA Legacy GST billing and inventory management software. Simple monthly plans for Indian small businesses, retail teams and growing SMEs.">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <meta name="theme-color" content="#16385f">
     <meta property="og:title" content="Pricing for GST Billing & Inventory Software | <?= Helper::escape(APP_NAME) ?>">
     <meta property="og:description" content="Simple monthly pricing for Indian SMEs using TSA Legacy for GST billing, inventory management and daily business operations.">
     <meta property="og:type" content="website">
@@ -76,7 +79,7 @@ $heroCards = [
     'primary_href' => $pricingCtaHref,
 ]); ?>
 
-<main class="tsa-page">
+<main class="tsa-page" id="main-content">
     <div class="tsa-container">
         <?php tsa_render_page_hero([
             'eyebrow' => 'Pricing',
@@ -91,7 +94,7 @@ $heroCards = [
         ]); ?>
 
         <section class="tsa-trust-strip">
-            <div class="tsa-container-sm" style="padding:0">
+            <div class="tsa-container-sm tsa-container-flush">
                 <div class="tsa-trust-surface">
                     <div class="tsa-trust-copy">
                         <div>
@@ -159,18 +162,18 @@ $heroCards = [
                         </article>
                     <?php endforeach; ?>
                 </div>
-                <div style="text-align: center; margin-top: 36px; font-size: 0.95rem; color: var(--tsa-muted); font-weight: 500;">
-                    <p><i class="fas fa-lock" style="color: var(--tsa-primary); margin-right: 6px;"></i> Secure payment processing. No hidden setup fees. Upgrade or cancel anytime.</p>
+                <div class="tsa-plan-trust-note">
+                    <p><i class="fas fa-lock tsa-inline-accent-icon"></i>Secure payment processing. No hidden setup fees. Upgrade or cancel anytime.</p>
                 </div>
             <?php else: ?>
-                <div class="tsa-legal-card" style="text-align:center">
+                <div class="tsa-legal-card tsa-card-center">
                     <h1>No active pricing plans are available right now.</h1>
                     <p>Please contact support or check back once plan configuration is restored.</p>
                 </div>
             <?php endif; ?>
         </section>
 
-        <section class="tsa-section" style="padding-top:0" id="faq">
+        <section class="tsa-section tsa-section-no-top" id="faq">
             <div class="tsa-section-head">
                 <div class="tsa-section-kicker">Common Questions</div>
                 <h2>Frequently asked questions about pricing</h2>

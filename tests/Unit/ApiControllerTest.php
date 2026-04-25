@@ -5,6 +5,7 @@ require_once dirname(__DIR__, 2) . '/core/Session.php';
 require_once dirname(__DIR__, 2) . '/core/Tenant.php';
 require_once dirname(__DIR__, 2) . '/core/Controller.php';
 require_once dirname(__DIR__, 2) . '/core/ApiAuth.php';
+require_once dirname(__DIR__, 2) . '/services/ApiWorkflowService.php';
 require_once dirname(__DIR__, 2) . '/controllers/ApiController.php';
 
 class ApiControllerTest extends BaseTestCase {
@@ -71,13 +72,21 @@ class ApiControllerTest extends BaseTestCase {
     public function testResolveExpiryTimestampAllowsSupportedDurationsOnly(): void {
         $controller = new TestApiController();
 
-        $thirtyDays = $this->invokePrivate($controller, 'resolveExpiryTimestamp', ['30']);
-        $invalid = $this->invokePrivate($controller, 'resolveExpiryTimestamp', ['14']);
-        $never = $this->invokePrivate($controller, 'resolveExpiryTimestamp', ['never']);
+        $service = new ApiWorkflowService(new ApiControllerTestFakeDb());
+        $thirtyDays = $service->resolveExpiryTimestamp('30');
+        $invalid = $service->resolveExpiryTimestamp('14');
+        $never = $service->resolveExpiryTimestamp('never');
 
         $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', (string)$thirtyDays);
         $this->assertNull($invalid);
         $this->assertNull($never);
+    }
+
+    public function testNormalizeScopesFailsClosedWhenNoValidScopeProvided(): void {
+        $this->assertSame([], ApiAuth::normalizeScopes([]));
+        $this->assertSame([], ApiAuth::normalizeScopes(['unknown.scope']));
+        $this->assertSame(['catalog.read'], ApiAuth::normalizeScopes(['catalog.read', 'unknown.scope']));
+        $this->assertSame(['*'], ApiAuth::normalizeScopes(['*']));
     }
 
     private function invokePrivate(object $controller, string $method, array $args = []) {
@@ -128,5 +137,11 @@ class TestRedirectException extends RuntimeException {
     public function __construct(string $target) {
         parent::__construct('Redirected to ' . $target);
         $this->target = $target;
+    }
+}
+
+class ApiControllerTestFakeDb {
+    public function query($sql, $params = []) {
+        throw new RuntimeException('Not expected in this test.');
     }
 }

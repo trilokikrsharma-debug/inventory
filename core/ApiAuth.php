@@ -34,10 +34,13 @@ class ApiAuth {
      * @param array  $scopes     Permission scopes ['sales.read', 'products.write']
      * @return array ['token' => 'inv_...', 'id' => int]
      */
-    public static function generateToken(int $companyId, int $userId, string $name, array $scopes = ['*'], ?string $expiresAt = null): array {
+    public static function generateToken(int $companyId, int $userId, string $name, array $scopes = [], ?string $expiresAt = null): array {
         $rawToken = 'inv_' . bin2hex(random_bytes(32));
         $hash = hash('sha256', $rawToken);
         $scopes = self::normalizeScopes($scopes);
+        if ($scopes === []) {
+            throw new \InvalidArgumentException('API tokens must include at least one explicit scope.');
+        }
 
         $db = Database::getInstance();
         $db->query(
@@ -151,7 +154,7 @@ class ApiAuth {
             }
         }
 
-        return array_values($normalized) ?: ['*'];
+        return array_values($normalized);
     }
 
     private static function authorizationHeader(): string {

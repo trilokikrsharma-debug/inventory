@@ -77,6 +77,20 @@
 
         <!-- Content -->
         <div class="content-wrapper">
+            <?php if (Tenant::isDemo()): ?>
+            <div class="alert alert-primary border-0 shadow-sm mb-3" role="alert">
+                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2">
+                    <div>
+                        <strong><i class="fas fa-flask me-2"></i>Interactive Demo Workspace</strong>
+                        <div class="small mt-1">
+                            You can test products, billing, sales, purchases, inventory, and daily workflows here.
+                            Demo data may reset. Billing, account, and settings changes stay restricted.
+                        </div>
+                    </div>
+                    <a href="<?= APP_URL ?>/signup?from_demo=1" class="btn btn-sm btn-success">Create Your Free Workspace</a>
+                </div>
+            </div>
+            <?php endif; ?>
             <?= $content ?>
         </div>
 

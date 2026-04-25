@@ -21,17 +21,20 @@ $heroCards = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy — TSA Legacy</title>
-    <meta name="description" content="Privacy Policy for TSA Legacy, an MSME-registered SaaS platform for Indian SMEs.">
-    <meta property="og:title" content="Privacy Policy — TSA Legacy">
-    <meta property="og:description" content="Privacy Policy for TSA Legacy, an MSME-registered SaaS platform for Indian SMEs.">
+    <?php tsa_render_adsense_verification(); ?>
+    <title>Privacy Policy — <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?></title>
+    <meta name="description" content="Privacy Policy for <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>, an MSME-registered SaaS platform for Indian SMEs.">
+    <meta name="robots" content="index,follow,max-image-preview:large">
+    <meta name="theme-color" content="#16385f">
+    <meta property="og:title" content="Privacy Policy — <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
+    <meta property="og:description" content="Privacy Policy for <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>, an MSME-registered SaaS platform for Indian SMEs.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES) ?>">
     <meta property="og:image" content="<?= htmlspecialchars($socialImageUrl, ENT_QUOTES) ?>">
-    <meta property="og:image:alt" content="TSA Legacy">
+    <meta property="og:image:alt" content="<?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Privacy Policy — TSA Legacy">
-    <meta name="twitter:description" content="Privacy Policy for TSA Legacy, an MSME-registered SaaS platform for Indian SMEs.">
+    <meta name="twitter:title" content="Privacy Policy — <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
+    <meta name="twitter:description" content="Privacy Policy for <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>, an MSME-registered SaaS platform for Indian SMEs.">
     <meta name="twitter:image" content="<?= htmlspecialchars($socialImageUrl, ENT_QUOTES) ?>">
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars($faviconUrl, ENT_QUOTES) ?>">
     <link rel="canonical" href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES) ?>">
@@ -53,7 +56,7 @@ $heroCards = [
     'secondary_href' => APP_URL . '/',
 ]); ?>
 
-<main class="tsa-page tsa-legal-shell">
+<main class="tsa-page tsa-legal-shell" id="main-content">
     <div class="tsa-container">
         <?php tsa_render_page_hero([
             'eyebrow' => 'Legal & Trust',
@@ -71,7 +74,7 @@ $heroCards = [
             <h1>Privacy Policy</h1>
             <p class="tsa-legal-meta">Last updated: March 2026</p>
 
-            <p>TSA Legacy Ventures ("we", "us", "our") operates the TSA Legacy platform. This policy explains what information we collect, how we use it, and how we protect it when you use the service.</p>
+            <p><?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> ("we", "us", "our") operates the TSA Legacy platform. This policy explains what information we collect, how we use it, and how we protect it when you use the service.</p>
 
     <h2>1. Information We Collect</h2>
     <p><strong>Account Information:</strong> When you register, we collect your name, email address, phone number, business name, and business address.</p>
@@ -134,7 +137,7 @@ $heroCards = [
     <p>If you have questions about this Privacy Policy:</p>
     <ul>
         <li><strong>Email:</strong> triloki@tsalegacy.com</li>
-        <li><strong>Business:</strong> TSA Legacy Ventures (MSME / Udyam Registered)</li>
+        <li><strong>Business:</strong> <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?> (MSME / Udyam Registered)</li>
         <li><strong>Location:</strong> India</li>
     </ul>
         </article>

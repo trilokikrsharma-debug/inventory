@@ -11,6 +11,7 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? ($cspNonce ?? ''), ENT_QUOTES
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php tsa_render_adsense_verification(); ?>
     <title>Sign Up | <?= Helper::escape(APP_NAME) ?></title>
     <meta name="description" content="Create your free <?= Helper::escape(APP_NAME) ?> account. Inventory & billing for small businesses in India.">
     <meta name="robots" content="noindex,nofollow">
@@ -48,7 +49,7 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? ($cspNonce ?? ''), ENT_QUOTES
                 <p class="tsa-auth-subtitle">Create your free account</p>
 
                 <?php if (!empty($error)): ?>
-                    <div class="alert alert-danger py-2" style="font-size:0.85rem;">
+                    <div class="alert alert-danger py-2 tsa-auth-alert">
                         <i class="fas fa-exclamation-circle me-1"></i> <?= Helper::escape($error) ?>
                         <?php if (!empty($errors)): ?>
                             <ul class="mb-0 mt-2 ps-3 small">
@@ -69,8 +70,8 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? ($cspNonce ?? ''), ENT_QUOTES
                         <div class="invalid-feedback"><?= Helper::escape($errors['company_name'] ?? 'Company name is required.') ?></div>
                     </div>
 
-                    <div style="background: rgba(20,33,58,.02); padding: 18px; border-radius: 18px; border: 1px solid rgba(20,33,58,.04); margin-bottom: 24px;">
-                        <h4 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tsa-muted); margin: 0 0 16px;">Owner Details</h4>
+                    <div class="tsa-auth-section">
+                        <h4 class="tsa-auth-section-title">Owner Details</h4>
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Full Name *</label>
@@ -132,7 +133,7 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? ($cspNonce ?? ''), ENT_QUOTES
                     <button type="submit" class="tsa-btn tsa-btn-primary tsa-btn-block">
                         <i class="fas fa-rocket"></i> Create My Account
                     </button>
-                    <div class="text-center mt-3" style="font-size: 0.85rem; color: var(--tsa-muted);">
+                    <div class="text-center mt-3 tsa-auth-tagline">
                         Simple, structured, reliable. Built for real workflows.
                     </div>
                 </form>

@@ -24,6 +24,11 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+    // Exclude POST requests entirely - Cache API only supports GET
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
     // For HTML, API, and dynamic requests: Network First, fallback to cache
     if (event.request.mode === 'navigate' || event.request.destination === 'document') {
         event.respondWith(

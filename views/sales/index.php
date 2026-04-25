@@ -95,7 +95,14 @@
             <td class="text-end fw-bold amount-main"><?= Helper::formatCurrency($s['grand_total']) ?></td>
             <td class="text-end amount-paid"><?= Helper::formatCurrency($s['paid_amount']) ?></td>
             <td class="text-end amount-due"><?= Helper::formatCurrency($s['due_amount']) ?></td>
-            <td class="status-badge"><?= Helper::paymentBadge($s['payment_status']) ?></td>
+            <td class="status-badge">
+                        <?= Helper::paymentBadge($s['payment_status']) ?>
+                        <?php if ($s['grand_total'] >= 50000 && empty($s['dispatch_lr_no'])): ?>
+                            <br><span class="badge bg-warning text-dark mt-1" style="font-size:0.7em;" title="E-Way Bill Recommended for > 50K"><i class="fas fa-exclamation-circle"></i> E-Way Req</span>
+                        <?php elseif (!empty($s['dispatch_lr_no'])): ?>
+                            <br><span class="badge bg-secondary mt-1" style="font-size:0.7em;"><i class="fas fa-truck"></i> <?= Helper::escape($s['dispatch_lr_no']) ?></span>
+                        <?php endif; ?>
+                    </td>
             <td><div class="action-btns">
                 <a href="<?= APP_URL ?>/index.php?page=sales&action=view_sale&id=<?= $s['id'] ?>" class="btn btn-sm btn-outline-primary btn-icon"><i class="fas fa-eye"></i></a>
                 <a href="<?= APP_URL ?>/index.php?page=invoice&type=sale&id=<?= $s['id'] ?>" class="btn btn-sm btn-outline-info btn-icon" target="_blank" title="Print"><i class="fas fa-print"></i></a>

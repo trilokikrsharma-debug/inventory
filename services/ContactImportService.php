@@ -144,9 +144,15 @@ class ContactImportService {
      */
     public function buildContext(string $entity): array {
         $table = $this->normalizeEntity($entity) === 'supplier' ? 'suppliers' : 'customers';
-        $rows = Database::getInstance()->query(
-            "SELECT email, phone FROM {$table} WHERE deleted_at IS NULL"
-        )->fetchAll();
+        $tenantId = Tenant::id();
+        $params = [];
+        $sql = "SELECT email, phone FROM {$table} WHERE deleted_at IS NULL";
+        if ($tenantId !== null) {
+            $sql .= " AND company_id = ?";
+            $params[] = $tenantId;
+        }
+
+        $rows = Database::getInstance()->query($sql, $params)->fetchAll();
 
         $emails = [];
         $phones = [];

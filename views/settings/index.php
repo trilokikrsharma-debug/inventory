@@ -395,15 +395,22 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                                 <small class="text-muted">Stored for display/reference only in non-GST mode.</small>
                             </div>
                             <div class="col-md-6">
-                                <div class="alert alert-secondary h-100 mb-0 settings-alert-note">
+                                <label class="form-label">Simple Tax Rate (%)</label>
+                                <input type="number" name="tax_rate_nongst" class="form-control" step="0.01"
+                                       value="<?= $settings['tax_rate'] ?? 0 ?>"
+                                       placeholder="e.g. 5, 12, 18">
+                                <small class="text-muted">Flat tax rate applied to all items (no GST breakup)</small>
+                            </div>
+                            <div class="col-md-12 mt-2">
+                                <div class="alert alert-secondary mb-0 settings-alert-note">
                                     <i class="fas fa-ban me-2"></i>
-                                    <strong>Tax is disabled in non-GST mode.</strong> The system will issue a bill of supply style invoice and hide tax columns instead of applying a fallback tax rate.
+                                    <strong>Simple Tax Mode (Non-GST).</strong> A flat tax rate will be applied to all items. No GST breakup (CGST/SGST/IGST) will be shown on invoices.
                                 </div>
                             </div>
                         </div>
                         <div class="alert alert-warning mt-3 settings-alert-note">
                             <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>Non-GST Business:</strong> Invoice will show as <strong>"Bill of Supply"</strong> (or your custom title). Tax columns and tax calculations will stay disabled.
+                            <strong>Non-GST Business:</strong> Your invoices will display as <strong>"Invoice"</strong> or <strong>"Bill of Supply"</strong>. A flat tax % is applied to items without CGST/SGST breakup.
                         </div>
                     </div>
                 </div>
@@ -420,7 +427,7 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                     <hr>
                     <div class="mb-3">
                         <strong>Non-GST Business</strong>
-                        <p class="mb-0">If you're not GST registered, disable GST. Invoices will show as "Bill of Supply" and both tax columns and tax calculations stay off.</p>
+                        <p class="mb-0">If you're not GST registered, disable GST. Invoices will show as "Invoice". No tax will be applied. This is suitable for businesses below the GST threshold.</p>
                     </div>
                     <hr>
                     <div>
@@ -623,8 +630,8 @@ $previewShowHsn = !isset($settings['show_hsn_on_invoice']) || !empty($settings['
                                     <th class="settings-preview-cell settings-preview-text-left<?= ($previewTaxEnabled && $previewGstEnabled && $previewShowHsn) ? '' : ' settings-table-cell-hidden' ?>" id="previewHsnCol">HSN/SAC</th>
                                     <th class="settings-preview-cell settings-preview-text-right">Rate</th>
                                     <th class="settings-preview-cell settings-preview-text-right<?= $previewShowDiscount ? '' : ' settings-table-cell-hidden' ?>" id="previewDiscountCol">Disc</th>
-                                    <th class="settings-preview-cell settings-preview-text-right<?= ($previewTaxEnabled && $previewGstEnabled) ? '' : ' settings-table-cell-hidden' ?>" id="previewTaxRateCol">GST %</th>
-                                    <th class="settings-preview-cell settings-preview-text-right<?= ($previewTaxEnabled && $previewGstEnabled) ? '' : ' settings-table-cell-hidden' ?>" id="previewTaxAmtCol">GST Amt</th>
+                                    <th class="settings-preview-cell settings-preview-text-right<?= ($previewTaxEnabled && $previewGstEnabled) ? '' : ' settings-table-cell-hidden' ?>" id="previewTaxRateCol" id="previewTaxRateColLabel">Tax %</th>
+                                    <th class="settings-preview-cell settings-preview-text-right<?= ($previewTaxEnabled && $previewGstEnabled) ? '' : ' settings-table-cell-hidden' ?>" id="previewTaxAmtCol" id="previewTaxAmtColLabel">Tax Amt</th>
                                     <th class="settings-preview-cell settings-preview-text-right">Total</th>
                                 </tr>
                             </thead>
@@ -760,6 +767,7 @@ function toggleGstFields() {
             updatePreview();
         }
     } else {
+        // In India: GST OFF = Tax OFF
         if (taxSwitch && taxSwitch.checked) {
             taxSwitch.checked = false;
         }
@@ -806,7 +814,7 @@ function updatePreviewLayout() {
     const showUnit = !!(showUnitSwitch && showUnitSwitch.checked);
     const showDiscount = !!(showDiscountSwitch && showDiscountSwitch.checked);
     const showHsn = !!(showHsnSwitch && showHsnSwitch.checked);
-    const showTaxColumns = taxEnabled && gstEnabled;
+    const showTaxColumns = taxEnabled; // Tax columns shown for both GST and non-GST tax
     const showHsnColumn = showTaxColumns && showHsn;
     const discountCol = document.getElementById('previewDiscountCol');
     const discountCell = document.getElementById('previewDiscountCell');

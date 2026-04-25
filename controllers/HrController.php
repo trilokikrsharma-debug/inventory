@@ -3,8 +3,13 @@
  * HR Controller
  */
 class HrController extends Controller {
+    private HrWorkflowService $workflowService;
 
     protected $allowedActions = ['index', 'create', 'edit', 'view_employee', 'delete', 'attendance', 'mark_attendance', 'leaves', 'create_leave', 'approve_leave', 'reject_leave', 'manager_approve_leave', 'manager_reject_leave', 'payroll', 'process_payroll', 'approve_payroll', 'unlock_payroll', 'mark_payroll_paid', 'update_payroll_item', 'payslip', 'holidays', 'create_holiday', 'shifts', 'create_shift', 'leave_balances', 'update_leave_balance', 'save_leave_policy', 'process_leave_accruals', 'save_payroll_policy'];
+
+    public function __construct() {
+        $this->workflowService = new HrWorkflowService();
+    }
 
     public function index() {
         $this->requireFeature('hr');
@@ -13,76 +18,8 @@ class HrController extends Controller {
         $search = trim((string)$this->get('search', ''));
         $status = trim((string)$this->get('status', ''));
         $page = max(1, (int)$this->get('pg', 1));
-        $model = new HrEmployee();
         $month = $this->normalizeMonth((string)$this->get('month', date('Y-m')));
-        $attendanceModel = new HrAttendance();
-        $leaveModel = new HrLeaveRequest();
-        $holidayModel = new HrHoliday();
-        $shiftModel = new HrShift();
-
-        $employees = ['data' => [], 'total' => 0, 'page' => 1, 'perPage' => RECORDS_PER_PAGE, 'totalPages' => 1];
-        $stats = ['total_employees' => 0, 'active_employees' => 0, 'on_leave_employees' => 0, 'inactive_employees' => 0];
-        $attendanceSummary = [];
-        $leaveSummary = [];
-        $upcomingHolidays = [];
-        $shiftCount = 0;
-        $payrollSnapshot = ['has_run' => false, 'status' => 'draft', 'pending_items' => 0, 'paid_items' => 0, 'employee_count' => 0, 'net_amount' => 0.0];
-
-        try {
-            $employees = $model->searchPaginate($search, $status, $page);
-        } catch (\Throwable $e) {
-            error_log('[HR_INDEX_EMPLOYEES] ' . $e->getMessage());
-        }
-
-        try {
-            $stats = $model->stats();
-        } catch (\Throwable $e) {
-            error_log('[HR_INDEX_STATS] ' . $e->getMessage());
-        }
-
-        try {
-            $attendanceSummary = $attendanceModel->monthlySummary($month);
-        } catch (\Throwable $e) {
-            error_log('[HR_INDEX_ATTENDANCE] ' . $e->getMessage());
-        }
-
-        try {
-            $leaveSummary = $leaveModel->summary();
-        } catch (\Throwable $e) {
-            error_log('[HR_INDEX_LEAVES] ' . $e->getMessage());
-        }
-
-        try {
-            $upcomingHolidays = $holidayModel->upcoming();
-        } catch (\Throwable $e) {
-            error_log('[HR_INDEX_HOLIDAYS] ' . $e->getMessage());
-        }
-
-        try {
-            $shiftCount = count($shiftModel->allOrdered());
-        } catch (\Throwable $e) {
-            error_log('[HR_INDEX_SHIFTS] ' . $e->getMessage());
-        }
-
-        try {
-            $payrollSnapshot = (new HrPayroll())->dashboardSnapshot($month);
-        } catch (\Throwable $e) {
-            error_log('[HR_INDEX_PAYROLL] ' . $e->getMessage());
-        }
-
-        $this->view('hr.index', [
-            'pageTitle' => 'HR Tools',
-            'employees' => $employees,
-            'stats' => $stats,
-            'attendanceSummary' => $attendanceSummary,
-            'leaveSummary' => $leaveSummary,
-            'upcomingHolidays' => $upcomingHolidays,
-            'shiftCount' => $shiftCount,
-            'payrollSnapshot' => $payrollSnapshot,
-            'month' => $month,
-            'search' => $search,
-            'status' => $status,
-        ]);
+        $this->view('hr.index', $this->workflowService->buildIndexViewData($search, $status, $page, $month));
     }
 
     public function create() {

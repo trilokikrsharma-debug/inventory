@@ -45,13 +45,13 @@
                 <div class="card-body">
                     <div class="sales-entry-summary-grid">
                     <div class="mb-2"><label class="form-label small">Discount</label><input type="number" name="discount_amount" class="form-control form-control-sm" step="0.01" value="<?= $purchase['discount_amount'] ?>" id="discountInput"></div>
-                    <div class="mb-2"><label class="form-label small">Shipping</label><input type="number" name="shipping_cost" class="form-control form-control-sm" step="0.01" value="<?= $purchase['shipping_cost'] ?>" id="shippingInput"></div>
+                    <div class="mb-2"><label class="form-label small">Transport</label><input type="number" name="shipping_cost" class="form-control form-control-sm" step="0.01" value="<?= $purchase['shipping_cost'] ?>" id="shippingInput"></div>
                     </div>
                     <hr>
                     <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Subtotal</span><span class="sales-entry-summary-value" id="summarySubtotal">₹0.00</span></div>
-                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Tax</span><span class="sales-entry-summary-value" id="summaryTax">₹0.00</span></div>
+                    <?php if (!empty($settings['enable_gst'])): ?><!-- gst_tax_purchase_check --><div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">GST</span><span class="sales-entry-summary-value" id="summaryTax">₹0.00</span></div><?php endif; ?>
                     <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Discount</span><span class="sales-entry-summary-value" id="summaryDiscount">-₹0.00</span></div>
-                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Shipping</span><span class="sales-entry-summary-value" id="summaryShipping">₹0.00</span></div>
+                    <div class="sales-entry-summary-line mb-2"><span class="sales-entry-summary-label">Transport</span><span class="sales-entry-summary-value" id="summaryShipping">₹0.00</span></div>
                     <hr>
                     <div class="sales-entry-summary-line sales-entry-grand-total mb-3 fs-5 fw-bold"><span class="sales-entry-summary-label">Grand Total</span><span class="sales-entry-summary-value text-primary" id="summaryGrand">₹0.00</span></div>
                 </div>
@@ -88,6 +88,7 @@ let itemIndex = 0;
 const currentTaxStatus = " . ((!isset($settings['enable_tax']) || $settings['enable_tax']) ? 'true' : 'false') . ";
 const currentGstStatus = " . ((!isset($settings['enable_gst']) || $settings['enable_gst']) ? 'true' : 'false') . ";
 const taxCalculationEnabled = currentTaxStatus && currentGstStatus;
+const gstBreakupEnabled = currentTaxStatus && currentGstStatus;
 const APP = '" . APP_URL . "';
 const existingItems = " . $existingItems . ";
 

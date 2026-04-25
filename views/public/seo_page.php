@@ -24,6 +24,7 @@ $heroCards = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php tsa_render_adsense_verification(); ?>
     <title><?= Helper::escape($pageTitle) ?></title>
     <meta name="description" content="<?= Helper::escape($metaDescription) ?>">
     <meta property="og:title" content="<?= Helper::escape($pageTitle) ?>">
@@ -32,7 +33,7 @@ $heroCards = [
     <meta property="og:url" content="<?= Helper::escape($canonicalUrl) ?>">
     <meta property="og:image" content="<?= Helper::escape($assets['og']) ?>">
     <meta property="og:image:alt" content="<?= Helper::escape($pageTitle) ?>">
-    <meta property="og:site_name" content="TSA Legacy">
+    <meta property="og:site_name" content="<?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="<?= Helper::escape($pageTitle) ?>">
     <meta name="twitter:description" content="<?= Helper::escape($metaDescription) ?>">
@@ -89,7 +90,7 @@ $heroCards = [
             'side_cards' => $heroCards,
         ]); ?>
 
-        <section class="tsa-section" style="padding-top:32px">
+        <section class="tsa-section tsa-section-compact-top">
             <div class="tsa-section-head">
                 <div class="tsa-section-kicker">Why TSA Legacy</div>
                 <h2>Built for everyday business operations, not disconnected admin work.</h2>
@@ -109,7 +110,7 @@ $heroCards = [
                     <div class="tsa-icon-chip"><i class="fas fa-building"></i></div>
                     <h3>Business fit</h3>
                     <p>Suitable for retail, wholesale, trading, and service-led teams that need faster billing, cleaner records, and better owner visibility without ERP-level complexity.</p>
-                    <div class="tsa-chip-row" style="margin-top:16px">
+                    <div class="tsa-chip-row tsa-chip-row-spaced">
                         <a class="tsa-chip-link" href="<?= APP_URL ?>/pricing">View Pricing</a>
                         <a class="tsa-chip-link" href="<?= APP_URL ?>/blog">Read Guides</a>
                         <a class="tsa-chip-link" href="<?= APP_URL ?>/demo">Instant Demo Access</a>
@@ -126,10 +127,16 @@ $heroCards = [
             </div>
             <div class="tsa-grid-3">
                 <?php foreach ($useCases as $item): ?>
+                    <?php
+                    $useCaseTitle = is_array($item) ? (string)($item['t'] ?? '') : (string)$item;
+                    $useCaseDescription = is_array($item)
+                        ? (string)($item['d'] ?? 'Keep billing, stock, customer records, supplier activity, and reporting aligned in one cloud-based operating workflow.')
+                        : 'Keep billing, stock, customer records, supplier activity, and reporting aligned in one cloud-based operating workflow.';
+                    ?>
                     <article class="tsa-card">
                         <div class="tsa-icon-chip"><i class="fas fa-layer-group"></i></div>
-                        <h3><?= Helper::escape((string)$item) ?></h3>
-                        <p>Keep billing, stock, customer records, supplier activity, and reporting aligned in one cloud-based operating workflow.</p>
+                        <h3><?= Helper::escape($useCaseTitle) ?></h3>
+                        <p><?= Helper::escape($useCaseDescription) ?></p>
                     </article>
                 <?php endforeach; ?>
             </div>
@@ -153,7 +160,7 @@ $heroCards = [
             </section>
         <?php endif; ?>
 
-        <section class="tsa-section" style="padding-top:20px">
+        <section class="tsa-section tsa-section-cta-tight">
             <div class="tsa-cta-box">
                 <div class="tsa-eyebrow"><span class="dot"></span>TSA Legacy</div>
                 <h2>Start with billing. Build stronger operational control over time.</h2>

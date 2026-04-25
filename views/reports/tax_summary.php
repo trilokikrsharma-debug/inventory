@@ -8,6 +8,8 @@ $gstEnabled = !empty($report['gst_enabled']);
 <div class="report-page-shell">
 <div class="page-header"><nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="<?= APP_URL ?>">Dashboard</a></li><li class="breadcrumb-item"><a href="<?= APP_URL ?>/index.php?page=reports">Reports</a></li><li class="breadcrumb-item active">GST / Tax Summary</li></ol></nav>
     <div class="report-page-actions">
+        <a href="<?= APP_URL ?>/index.php?page=sales&action=export_gstr1&type=b2b&month=<?= date('Y-m', strtotime($toDate)) ?>" class="btn btn-sm btn-success me-2"><i class="fas fa-file-excel me-1"></i> GSTR-1 (B2B)</a>
+        <a href="<?= APP_URL ?>/index.php?page=sales&action=export_gstr1&type=b2c&month=<?= date('Y-m', strtotime($toDate)) ?>" class="btn btn-sm btn-info text-white me-2"><i class="fas fa-file-excel me-1"></i> GSTR-1 (B2C)</a>
         <form method="POST" action="<?= APP_URL ?>/index.php?page=reports&action=queue_export">
             <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
             <input type="hidden" name="report_type" value="tax_summary">
@@ -28,13 +30,13 @@ $gstEnabled = !empty($report['gst_enabled']);
 </div></div>
 
 <?php if (!$gstEnabled): ?>
-<div class="alert alert-info"><strong>Non-GST mode active.</strong> New bills keep tax calculations off. This report still shows historical tax snapshots if older GST entries exist in the selected period.</div>
+<div class="alert alert-info"><strong>Non-GST mode active.</strong> Tax is currently disabled. New bills will not include tax calculations.</div>
 <?php endif; ?>
 
 <div class="row g-3 mb-3 report-summary-grid">
     <div class="col-md-3"><div class="stat-card stat-success"><div class="stat-value"><?= Helper::formatCurrency($summary['sales_taxable'] ?? 0) ?></div><div class="stat-label">Sales Taxable Turnover</div></div></div>
     <div class="col-md-3"><div class="stat-card stat-info"><div class="stat-value"><?= Helper::formatCurrency($summary['sales_non_gst'] ?? 0) ?></div><div class="stat-label">Non-GST / Zero-Tax Sales</div></div></div>
-    <div class="col-md-3"><div class="stat-card stat-primary"><div class="stat-value"><?= Helper::formatCurrency($summary['output_tax'] ?? 0) ?></div><div class="stat-label">Output GST</div></div></div>
+    <div class="col-md-3"><div class="stat-card stat-primary"><div class="stat-value"><?= Helper::formatCurrency($summary['output_tax'] ?? 0) ?></div><div class="stat-label"><?= (!empty($reportData['gst_enabled'])) ? "Output GST" : "Output Tax" ?></div></div></div>
     <div class="col-md-3"><div class="stat-card stat-warning"><div class="stat-value"><?= Helper::formatCurrency($summary['net_tax_payable'] ?? 0) ?></div><div class="stat-label">Net Tax Payable</div></div></div>
 </div>
 

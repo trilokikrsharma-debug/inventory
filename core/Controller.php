@@ -340,9 +340,9 @@ class Controller {
     protected function demoGuard() {
         if (Tenant::isDemo()) {
             if ($this->isAjax()) {
-                $this->json(['success' => false, 'message' => 'Demo mode: This action is disabled. Sign up for a free account!'], 403);
+                $this->json(['success' => false, 'message' => 'Demo mode: This account-level action is disabled. Core workflow testing is still available in the demo workspace.'], 403);
             }
-            $this->setFlash('warning', 'Demo mode: Changes are not saved. Sign up for a free account!');
+            $this->setFlash('warning', 'Demo mode: This account-level action is disabled. Core workflow testing is still available in the demo workspace.');
             $this->redirect('index.php?page=dashboard');
             return true;
         }

@@ -4,11 +4,13 @@ class SettingsWorkflowService {
         $enableGst = !empty($input['enable_gst']) ? 1 : 0;
         $enableTax = !empty($input['enable_tax']) ? 1 : 0;
 
-        if (!$enableGst) {
-            $enableTax = 0;
+        // Indian business context: GST ON = Tax ON, GST OFF = Tax OFF
+        // There's no practical "tax without GST" in Indian billing
+        if ($enableGst) {
+            $enableTax = 1; // GST always implies tax
         }
-        if (!$enableTax) {
-            $enableGst = 0;
+        if (!$enableGst) {
+            $enableTax = 0; // No GST = no tax for Indian businesses
         }
 
         $taxRate = (float)($input['tax_rate'] ?? 18);
@@ -46,7 +48,7 @@ class SettingsWorkflowService {
             'purchase_prefix' => $this->sanitize($input['purchase_prefix'] ?? null),
             'payment_prefix' => $this->sanitize($input['payment_prefix'] ?? null),
             'receipt_prefix' => $this->sanitize($input['receipt_prefix'] ?? null),
-            'invoice_title' => $this->sanitize($input['invoice_title'] ?? ($enableGst ? 'Tax Invoice' : 'Invoice')),
+            'invoice_title' => $this->resolveInvoiceTitle($input['invoice_title'] ?? '', $enableGst, $enableTax),
             'invoice_subtitle' => $this->sanitize($input['invoice_subtitle'] ?? null),
             'purchase_invoice_title' => $this->sanitize($input['purchase_invoice_title'] ?? 'Purchase Bill'),
             'invoice_footer_text' => $this->sanitize($input['invoice_footer_text'] ?? null),
@@ -96,6 +98,31 @@ class SettingsWorkflowService {
         }
 
         return !empty($changes) ? implode(', ', $changes) : null;
+    }
+
+
+    /**
+     * Auto-resolve invoice title based on GST/Tax mode.
+     * If user provides a custom title, use it. If it's a standard title or empty, auto-set.
+     */
+    private function resolveInvoiceTitle(string $userTitle, int $enableGst, int $enableTax): string {
+        $title = $this->sanitize($userTitle);
+        $standardTitles = ['', 'Tax Invoice', 'Invoice', 'Bill of Supply'];
+        
+        // If user has a custom title (not one of the standard ones), keep it
+        if ($title !== '' && !in_array($title, $standardTitles, true)) {
+            return $title;
+        }
+        
+        // Auto-set based on mode
+        if ($enableGst && $enableTax) {
+            return 'Tax Invoice';
+        }
+        // GST OFF = No tax in India, plain invoice
+        if (!$enableGst) {
+            return 'Invoice';
+        }
+        return 'Invoice'; // No tax = plain invoice
     }
 
     private function sanitize($value): string {

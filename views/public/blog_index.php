@@ -10,17 +10,18 @@ $canonicalUrl = (string)($canonicalUrl ?? rtrim(APP_URL, '/') . '/blog');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Business Software Guides for Indian SMEs | TSA Legacy</title>
+    <?php tsa_render_adsense_verification(); ?>
+    <title>Business Software Guides for Indian SMEs | <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?></title>
     <meta name="description" content="Guides on GST billing software, inventory management, retail billing, kirana shop software, wholesale workflows and small-business operations in India.">
-    <meta property="og:title" content="Business Software Guides for Indian SMEs | TSA Legacy">
+    <meta property="og:title" content="Business Software Guides for Indian SMEs | <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
     <meta property="og:description" content="Guides on GST billing software, inventory management, retail billing, kirana shop software, wholesale workflows and small-business operations in India.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?= Helper::escape($canonicalUrl) ?>">
     <meta property="og:image" content="<?= Helper::escape($assets['og']) ?>">
-    <meta property="og:image:alt" content="TSA Legacy">
-    <meta property="og:site_name" content="TSA Legacy">
+    <meta property="og:image:alt" content="<?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
+    <meta property="og:site_name" content="<?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Business Software Guides for Indian SMEs | TSA Legacy">
+    <meta name="twitter:title" content="Business Software Guides for Indian SMEs | <?= Helper::escape(defined('APP_COMPANY_NAME') ? APP_COMPANY_NAME : APP_NAME) ?>">
     <meta name="twitter:description" content="Guides on GST billing software, inventory management, retail billing, kirana shop software, wholesale workflows and small-business operations in India.">
     <meta name="twitter:image" content="<?= Helper::escape($assets['og']) ?>">
     <link rel="icon" type="image/svg+xml" href="<?= Helper::escape($assets['favicon']) ?>">
@@ -78,7 +79,7 @@ $canonicalUrl = (string)($canonicalUrl ?? rtrim(APP_URL, '/') . '/blog');
             </div>
         </section>
 
-        <section class="tsa-section" style="padding-top:24px">
+        <section class="tsa-section tsa-section-compact-top">
             <div class="tsa-blog-grid">
                 <?php foreach ($items as $item): ?>
                     <a href="<?= Helper::escape((string)$item['url']) ?>" class="tsa-card tsa-blog-card">

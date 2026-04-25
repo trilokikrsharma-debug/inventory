@@ -199,6 +199,69 @@ try {
                 $unitId = demoInsert($pdo, "INSERT INTO units (company_id, name, short_name) VALUES (?, 'Pieces', 'pcs')", [$companyId]);
             }
 
+            $customerCount = (int)(demoScalar(
+                $pdo,
+                "SELECT COUNT(*) FROM customers WHERE company_id = ? AND deleted_at IS NULL",
+                [$companyId]
+            ) ?: 0);
+            if ($customerCount < 3) {
+                $customerSeeds = [
+                    ['Walk-In Customer', '', '', '', '', ''],
+                    ['Rajesh Kumar', '9876543210', 'rajesh@example.com', '45 Gandhi Road', 'Mumbai', 'Maharashtra'],
+                    ['Priya Sharma', '9876543211', 'priya@example.com', '12 MG Road', 'Delhi', 'Delhi'],
+                    ['Amit Patel', '9876543212', 'amit@example.com', '78 Station Road', 'Ahmedabad', 'Gujarat'],
+                ];
+                $insertCustomer = $pdo->prepare(
+                    "INSERT INTO customers
+                     (company_id, name, phone, email, address, city, state)
+                     SELECT ?, ?, ?, ?, ?, ?, ?
+                     WHERE NOT EXISTS (
+                         SELECT 1 FROM customers
+                         WHERE company_id = ?
+                           AND name = ?
+                           AND deleted_at IS NULL
+                     )"
+                );
+                foreach ($customerSeeds as [$name, $phone, $email, $address, $city, $state]) {
+                    $insertCustomer->execute([
+                        $companyId, $name, $phone, $email, $address, $city, $state,
+                        $companyId, $name,
+                    ]);
+                }
+            }
+            demoOk("Customer baseline ready for tenant #{$companyId}");
+
+            $supplierCount = (int)(demoScalar(
+                $pdo,
+                "SELECT COUNT(*) FROM suppliers WHERE company_id = ? AND deleted_at IS NULL",
+                [$companyId]
+            ) ?: 0);
+            if ($supplierCount < 3) {
+                $supplierSeeds = [
+                    ['Tech Distributors Pvt Ltd', '9811111111', 'tech@supplier.com', 'Industrial Area', 'Mumbai', 'Maharashtra'],
+                    ['Metro Wholesale', '9822222222', 'metro@supplier.com', 'Wholesale Market', 'Delhi', 'Delhi'],
+                    ['Quality Imports', '9833333333', 'quality@supplier.com', 'Port Area', 'Chennai', 'Tamil Nadu'],
+                ];
+                $insertSupplier = $pdo->prepare(
+                    "INSERT INTO suppliers
+                     (company_id, name, phone, email, address, city, state)
+                     SELECT ?, ?, ?, ?, ?, ?, ?
+                     WHERE NOT EXISTS (
+                         SELECT 1 FROM suppliers
+                         WHERE company_id = ?
+                           AND name = ?
+                           AND deleted_at IS NULL
+                     )"
+                );
+                foreach ($supplierSeeds as [$name, $phone, $email, $address, $city, $state]) {
+                    $insertSupplier->execute([
+                        $companyId, $name, $phone, $email, $address, $city, $state,
+                        $companyId, $name,
+                    ]);
+                }
+            }
+            demoOk("Supplier baseline ready for tenant #{$companyId}");
+
             $product = demoFetch(
                 $pdo,
                 "SELECT id, current_stock
@@ -221,6 +284,37 @@ try {
                 $product = ['id' => $productId, 'current_stock' => 30];
             }
             $productId = (int)$product['id'];
+
+            $productCount = (int)(demoScalar(
+                $pdo,
+                "SELECT COUNT(*) FROM products WHERE company_id = ? AND deleted_at IS NULL",
+                [$companyId]
+            ) ?: 0);
+            if ($productCount < 4) {
+                $productSeeds = [
+                    ['Enterprise Demo Product', 'DEMO-ENT-' . $companyId, 450.00, 675.00, 30.000],
+                    ['Barcode Label Roll', 'DEMO-LBL-' . $companyId, 120.00, 190.00, 80.000],
+                    ['Thermal Printer', 'DEMO-PRN-' . $companyId, 4200.00, 5750.00, 6.000],
+                    ['POS Counter Stand', 'DEMO-POS-' . $companyId, 850.00, 1290.00, 14.000],
+                ];
+                $insertProduct = $pdo->prepare(
+                    "INSERT INTO products
+                     (company_id, name, sku, category_id, brand_id, unit_id, purchase_price, selling_price, opening_stock, current_stock, is_active)
+                     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
+                     WHERE NOT EXISTS (
+                         SELECT 1 FROM products
+                         WHERE company_id = ?
+                           AND sku = ?
+                           AND deleted_at IS NULL
+                     )"
+                );
+                foreach ($productSeeds as [$name, $sku, $purchasePrice, $sellingPrice, $stockQty]) {
+                    $insertProduct->execute([
+                        $companyId, $name, $sku, $categoryId, $brandId, $unitId, $purchasePrice, $sellingPrice, $stockQty, $stockQty,
+                        $companyId, $sku,
+                    ]);
+                }
+            }
 
             $allocations = [
                 $defaultWarehouseId => 18.0,

@@ -108,7 +108,7 @@ class InvoicePdfService {
 
         // Company settings
         $settings = $db->query(
-            "SELECT * FROM company_settings WHERE id = 1 LIMIT 1"
+            "SELECT * FROM company_settings WHERE company_id = ? LIMIT 1", [$companyId]
         )->fetch(\PDO::FETCH_ASSOC);
 
         return array_merge($sale, [
@@ -219,7 +219,7 @@ HTML;
         $html .= '<br>';
         if (!empty($s['company_phone'])) $html .= 'Phone: ' . Helper::escape($s['company_phone']) . '<br>';
         if (!empty($s['company_email'])) $html .= 'Email: ' . Helper::escape($s['company_email']) . '<br>';
-        if (!empty($s['tax_number'])) $html .= 'GSTIN: ' . Helper::escape($s['tax_number']);
+        if (!empty($s['tax_number'])) { $taxLabel = !empty($s['enable_gst']) ? 'GSTIN' : 'Tax No.'; $html .= $taxLabel . ': ' . Helper::escape($s['tax_number']); }
 
         $paymentBadge = match($data['payment_status'] ?? 'unpaid') {
             'paid' => '<span class="badge badge-paid">Paid</span>',
@@ -292,7 +292,7 @@ HTML;
             <tr><td>Tax</td><td style="text-align:right">{$currency}{$taxStr}</td></tr>
 HTML;
         if (!empty($data['shipping_cost']) && $data['shipping_cost'] > 0) {
-            $html .= "<tr><td>Shipping</td><td style=\"text-align:right\">{$currency}" . number_format((float)$data['shipping_cost'], 2) . "</td></tr>";
+            $html .= "<tr><td>Transport</td><td style=\"text-align:right\">{$currency}" . number_format((float)$data['shipping_cost'], 2) . "</td></tr>";
         }
         if (!empty($data['round_off']) && $data['round_off'] != 0) {
             $html .= "<tr><td>Round Off</td><td style=\"text-align:right\">{$currency}" . number_format((float)$data['round_off'], 2) . "</td></tr>";

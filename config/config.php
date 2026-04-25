@@ -16,6 +16,7 @@ if (!defined('BASE_PATH')) {
 
 // Application Info
 define('APP_NAME', 'TSA Legacy');
+define('APP_COMPANY_NAME', 'TSA Legacy Ventures');
 define('APP_VERSION', '2.0.0');
 
 // Load .env variables into environment

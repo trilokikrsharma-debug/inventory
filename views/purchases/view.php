@@ -55,7 +55,7 @@ document.getElementById('printPurchaseBtn')?.addEventListener('click', function 
                 <div class="d-flex justify-content-between mb-2"><span>Subtotal</span><span><?= Helper::formatCurrency($purchase['subtotal']) ?></span></div>
                 <?php if ($isTaxEnabled && $isGstEnabled): ?><div class="d-flex justify-content-between mb-2"><span>Tax</span><span><?= Helper::formatCurrency($purchase['tax_amount']) ?></span></div><?php endif; ?>
                 <?php if ($purchase['discount_amount'] > 0): ?><div class="d-flex justify-content-between mb-2"><span>Discount</span><span class="text-danger">-<?= Helper::formatCurrency($purchase['discount_amount']) ?></span></div><?php endif; ?>
-                <?php if ($purchase['shipping_cost'] > 0): ?><div class="d-flex justify-content-between mb-2"><span>Shipping</span><span><?= Helper::formatCurrency($purchase['shipping_cost']) ?></span></div><?php endif; ?>
+                <?php if ($purchase['shipping_cost'] > 0): ?><div class="d-flex justify-content-between mb-2"><span>Transport</span><span><?= Helper::formatCurrency($purchase['shipping_cost']) ?></span></div><?php endif; ?>
                 <hr>
                 <div class="d-flex justify-content-between mb-2 fs-5 fw-bold"><span>Grand Total</span><span class="text-primary"><?= Helper::formatCurrency($purchase['grand_total']) ?></span></div>
                 <div class="d-flex justify-content-between mb-2"><span>Paid</span><span class="text-success"><?= Helper::formatCurrency($purchase['paid_amount']) ?></span></div>

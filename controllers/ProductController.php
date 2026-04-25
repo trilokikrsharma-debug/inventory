@@ -64,6 +64,7 @@ class ProductController extends Controller {
                     'brands' => $brands, 'units' => $units,
                     'warehouses' => $this->warehouseFeatureEnabled() ? (new WarehouseModel())->allActiveOrdered() : [],
                     'hasWarehouseFeature' => $this->warehouseFeatureEnabled(),
+                    'settings' => (new SettingsModel())->getSettings(),
                 ]);
                 return;
             }
@@ -140,6 +141,7 @@ class ProductController extends Controller {
             'customFieldsPretty' => '',
             'warehouses' => $this->warehouseFeatureEnabled() ? (new WarehouseModel())->allActiveOrdered() : [],
             'hasWarehouseFeature' => $this->warehouseFeatureEnabled(),
+            'settings' => (new SettingsModel())->getSettings(),
         ]);
     }
 
@@ -297,6 +299,7 @@ class ProductController extends Controller {
             'customFieldsDecoded' => CustomFieldService::decode($product['custom_fields'] ?? null),
             'warehouseBreakdown' => $this->warehouseFeatureEnabled() ? $productModel->getWarehouseBreakdown($id) : [],
             'hasWarehouseFeature' => $this->warehouseFeatureEnabled(),
+            'settings' => (new SettingsModel())->getSettings(),
         ]);
     }
 
@@ -318,6 +321,7 @@ class ProductController extends Controller {
             'customFields' => CustomFieldService::decode($product['custom_fields'] ?? null),
             'warehouseBreakdown' => $this->warehouseFeatureEnabled() ? $productModel->getWarehouseBreakdown($id) : [],
             'hasWarehouseFeature' => $this->warehouseFeatureEnabled(),
+            'settings' => (new SettingsModel())->getSettings(),
         ]);
     }
 
