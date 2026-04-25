@@ -4205,3 +4205,158 @@ td[colspan] i.d-block {
         min-width: 680px;
     }
 }
+
+/* ============================================================
+   ENTERPRISE UI/UX UPGRADES - TSA Legacy v2.0
+   ============================================================ */
+
+/* --- Scroll to top button --- */
+#scrollToTop {
+    transition: all .3s cubic-bezier(.175,.885,.32,1.275) !important;
+}
+#scrollToTop:hover {
+    transform: translateY(-3px) scale(1.1) !important;
+    box-shadow: 0 8px 25px rgba(var(--bs-primary-rgb),.4) !important;
+}
+
+/* --- Toast container responsive --- */
+#toastContainer {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+@media (max-width: 575px) {
+    #toastContainer {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        min-width: unset;
+        max-width: unset;
+    }
+}
+
+/* --- Skeleton shimmer animation --- */
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+}
+[data-bs-theme="dark"] .skeleton {
+    background: linear-gradient(90deg, #2d3748 25%, #364152 50%, #2d3748 75%);
+    background-size: 200% 100%;
+}
+
+/* --- Table clickable rows --- */
+.table-hover tbody tr[data-href] { cursor: pointer; }
+.table-hover tbody tr:hover { background-color: rgba(var(--bs-primary-rgb), .04) !important; }
+
+/* --- Premium card hover effect --- */
+.card-hover {
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+.card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(0,0,0,.12) !important;
+}
+
+/* --- Sidebar mobile auto-close animation --- */
+#sidebar.show {
+    animation: slideInLeft .25s cubic-bezier(.25,.46,.45,.94);
+}
+@keyframes slideInLeft {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
+
+/* --- Keyboard shortcut badges --- */
+kbd {
+    background: rgba(var(--bs-body-color-rgb), .1);
+    border: 1px solid rgba(var(--bs-body-color-rgb), .2);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: .7em;
+    color: var(--bs-body-color);
+}
+
+/* --- Tooltip enhancements --- */
+.tooltip-inner {
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    max-width: 220px;
+}
+
+/* --- Loading button state --- */
+.btn.loading { position: relative; pointer-events: none; }
+.btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    top: 50%; left: 50%;
+    margin: -7px 0 0 -7px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- Copy button feedback --- */
+[data-copy]:active { transform: scale(.95); }
+
+/* --- Dark mode table --- */
+[data-bs-theme="dark"] .table { --bs-table-bg: transparent; }
+[data-bs-theme="dark"] .card { background: #1e293b !important; border-color: rgba(255,255,255,.08) !important; }
+[data-bs-theme="dark"] .modal-content { background: #1e293b !important; }
+
+/* --- Stat card pulse on update --- */
+@keyframes statPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+}
+.stat-updated { animation: statPulse .4s ease; }
+
+/* --- Form control focus glow --- */
+.form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), .18) !important;
+}
+
+/* --- Badge improvements --- */
+.badge { font-weight: 600; letter-spacing: .3px; }
+
+/* --- Progress bar animated --- */
+.progress-bar-animated { animation: progress-bar-stripes .75s linear infinite; }
+
+/* --- Responsive utility classes --- */
+@media (max-width: 767px) {
+    .hide-mobile { display: none !important; }
+    .table-responsive-card .table thead { display: none; }
+    .table-responsive-card .table tbody tr {
+        display: block; border: 1px solid var(--bs-border-color);
+        border-radius: 10px; margin-bottom: 12px; padding: 12px;
+        background: var(--bs-card-bg);
+    }
+    .table-responsive-card .table tbody td {
+        display: flex; justify-content: space-between; align-items: center;
+        border: none; padding: 4px 0;
+    }
+    .table-responsive-card .table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600; font-size: .8rem; color: var(--bs-secondary-color);
+        flex-shrink: 0; margin-right: 8px;
+    }
+}
+
+/* --- Print improvements --- */
+@media print {
+    .sidebar, .topbar, #scrollToTop, #toastContainer, .btn, .alert { display: none !important; }
+    .main-content { margin-left: 0 !important; padding: 0 !important; }
+    .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+}
