@@ -56,11 +56,11 @@ function copyRecoveryCodes() {
 
 function downloadRecoveryCodes() {
     const codes = <?= json_encode($codes) ?>;
-    const text = "InvenBill Pro — 2FA Recovery Codes\n" + "Generated: " + new Date().toISOString() + "\n\n" + codes.join('\n') + "\n\nKeep these codes in a safe place.";
+    const text = "TSA Legacy — 2FA Recovery Codes\n" + "Generated: " + new Date().toISOString() + "\n\n" + codes.join('\n') + "\n\nKeep these codes in a safe place.";
     const blob = new Blob([text], {type: 'text/plain'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'invenbill-recovery-codes.txt';
+    a.download = 'tsalegacy-recovery-codes.txt';
     a.click();
 }
 

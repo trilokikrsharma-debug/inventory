@@ -65,7 +65,7 @@
                                     <div class="fw-semibold mb-2">Recommended</div>
                                     <div>Choose <strong>Enter setup key</strong> or <strong>Manual entry</strong> in your authenticator app.</div>
                                     <div class="mt-2">Account: <code class="user-select-all"><?= htmlspecialchars($email ?? '') ?></code></div>
-                                    <div>Issuer: <code class="user-select-all">InvenBill Pro</code></div>
+                                    <div>Issuer: <code class="user-select-all">TSA Legacy</code></div>
                                 </div>
                                 <details class="text-start">
                                     <summary class="text-muted small cursor-pointer">Show manual setup details</summary>

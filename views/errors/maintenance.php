@@ -9,7 +9,7 @@ $requestId = defined('REQUEST_ID') ? REQUEST_ID : '';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex,nofollow">
-    <title>Scheduled Maintenance - InvenBill Pro</title>
+    <title>Scheduled Maintenance - TSA Legacy</title>
     <style>
         :root {
             color-scheme: dark;
@@ -132,7 +132,7 @@ $requestId = defined('REQUEST_ID') ? REQUEST_ID : '';
         <div class="icon">Maintenance</div>
         <h1>We will be back shortly.</h1>
         <p>
-            InvenBill is temporarily offline while we apply updates and verify the deployment.
+            TSA Legacy is temporarily offline while we apply updates and verify the deployment.
             No data is being served from this page and no sensitive details are exposed here.
         </p>
 
