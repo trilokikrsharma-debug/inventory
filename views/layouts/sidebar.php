@@ -21,7 +21,11 @@ $hasInsightsFeature = Tenant::id() !== null && ($isSuperAdmin || Tenant::canUse(
     <!-- Brand / Logo -->
     <a href="<?= APP_URL ?>" class="sidebar-brand">
         <div class="brand-icon">
-            <img src="<?= APP_URL ?>/assets/icon.svg" alt="<?= Helper::escape(APP_NAME) ?>" class="brand-mark">
+            <img src="<?= APP_URL ?>/assets/img/app-icon.png" 
+                 onerror="this.onerror=null;this.src='<?= APP_URL ?>/assets/icon.svg'"
+                 alt="<?= Helper::escape(APP_NAME) ?>" 
+                 class="brand-mark"
+                 style="border-radius:8px;">
         </div>
         <span class="brand-text"><?= APP_NAME ?></span>
     </a>

@@ -394,10 +394,10 @@ $faqSchema = [
             animation:tsaFloatPanel 6.8s ease-in-out infinite
         }
         .tsa-home-product-visual{
-            order:2;display:block;width:100%;height:auto;border-radius:24px;border:1px solid rgba(20,33,58,.10);
-            background:#f7fbff;box-shadow:0 36px 88px rgba(20,33,58,.22);
-            transform:perspective(2000px) rotateY(-4deg) rotateX(2deg) translateY(0);transform-origin:center;
-            animation:tsaFloatPanel 6.8s ease-in-out infinite
+            width:100%;max-width:900px;border-radius:12px;
+            box-shadow:0 20px 60px rgba(15,23,42,0.2),0 4px 16px rgba(15,23,42,0.1);
+            border:1px solid rgba(15,23,42,0.08);
+            display:block;margin:0 auto;
         }
         .tsa-home-window-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(20,33,58,.08);background:#fffdf8}
         .tsa-home-dots{display:flex;gap:7px}
@@ -1121,7 +1121,7 @@ $faqSchema = [
                         <span>Low-stock signals and product movement are visible before they become owner problems.</span>
                         <div class="metric"><i class="fas fa-boxes-stacked"></i> 12 alerts active</div>
                     </div>
-                    <img class="tsa-home-product-visual" src="<?= htmlspecialchars(APP_URL . '/assets/home-product-dashboard.svg', ENT_QUOTES) ?>" alt="TSA Legacy dashboard showing sales, purchases, dues, stock value, recent sales, and low stock alerts" loading="eager" fetchpriority="high">
+                    <img class="tsa-home-product-visual" src="<?= htmlspecialchars(APP_URL . '/assets/img/dashboard-screenshot.png', ENT_QUOTES) ?>" onerror="this.onerror=null;this.src='<?= APP_URL ?>/assets/home-product-dashboard.svg'" alt="TSA Legacy dashboard showing sales, purchases, dues, stock value, recent sales, and low stock alerts" loading="eager" fetchpriority="high">
                     <div class="tsa-home-preview-signals">
                         <div class="tsa-home-signal"><strong>Counter-ready</strong><span>Fast workflows for daily billing desks.</span></div>
                         <div class="tsa-home-signal"><strong>Cloud-based</strong><span>Use across devices and business locations.</span></div>
