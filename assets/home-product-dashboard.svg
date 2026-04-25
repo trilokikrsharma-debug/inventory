@@ -1,121 +1,226 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" role="img" aria-labelledby="title desc">
-  <title id="title">TSA Legacy live demo dashboard view</title>
-  <desc id="desc">Live demo dashboard with sidebar navigation, demo mode notice, eight stat cards, monthly chart, recent sales and low stock alert.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
   <defs>
-    <linearGradient id="page" x1="0" y1="0" x2="980" y2="620" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#f6f9fd"/>
-      <stop offset="1" stop-color="#e9f0f8"/>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f0f4ff"/>
+      <stop offset="100%" stop-color="#e8eeff"/>
     </linearGradient>
-    <linearGradient id="sidebar" x1="0" y1="34" x2="0" y2="586" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#111827"/>
-      <stop offset="1" stop-color="#0b1220"/>
+    <linearGradient id="sidebarGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
     </linearGradient>
-    <filter id="shadow" x="-6%" y="-8%" width="112%" height="116%">
-      <feDropShadow dx="0" dy="22" stdDeviation="23" flood-color="#132238" flood-opacity=".2"/>
+    <linearGradient id="chartLine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="chartLine2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="chartFill2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.12"/>
     </filter>
+    <clipPath id="chartClip">
+      <rect x="270" y="400" width="700" height="260"/>
+    </clipPath>
   </defs>
-  <rect width="980" height="620" rx="30" fill="#dfe8f3"/>
-  <g filter="url(#shadow)">
-    <rect x="36" y="32" width="908" height="556" rx="24" fill="url(#page)" stroke="#cbd8e6"/>
-    <rect x="36" y="32" width="196" height="556" rx="24" fill="url(#sidebar)"/>
-    <path d="M232 32v556" stroke="#d7e1ec"/>
-  </g>
-  <g font-family="Inter, Manrope, Arial, sans-serif">
-    <g transform="translate(60 58)">
-      <rect width="42" height="42" rx="12" fill="#ffffff" fill-opacity=".1"/>
-      <path d="M13 14h17M22 14v16M17 30h12" stroke="#f8fbff" stroke-width="4" stroke-linecap="round"/>
-      <path d="M30 10v24" stroke="#d6b271" stroke-width="3" stroke-linecap="round"/>
-      <text x="52" y="27" fill="#f8fbff" font-size="17" font-weight="850">TSA Legacy</text>
-    </g>
-    <g font-size="10" font-weight="850" letter-spacing=".2">
-      <text x="60" y="132" fill="#64748b">MAIN</text>
-      <text x="60" y="194" fill="#64748b">BILLING</text>
-      <text x="60" y="256" fill="#64748b">INVENTORY</text>
-      <text x="60" y="367" fill="#64748b">TRANSACTIONS</text>
-      <text x="60" y="478" fill="#64748b">SYSTEM</text>
-    </g>
-    <g font-size="12" font-weight="760">
-      <rect x="52" y="146" width="160" height="32" rx="9" fill="#eef2ff" fill-opacity=".13"/>
-      <text x="82" y="167" fill="#f8fafc">Dashboard</text>
-      <circle cx="66" cy="162" r="5" fill="#60a5fa"/>
-      <text x="82" y="228" fill="#cbd5e1">Plans &amp; Billing</text>
-      <text x="82" y="290" fill="#cbd5e1">Products</text>
-      <rect x="190" y="278" width="16" height="16" rx="8" fill="#dc2626"/>
-      <text x="198" y="290" fill="#fff" font-size="9" text-anchor="middle">1</text>
-      <text x="82" y="323" fill="#cbd5e1">Categories</text>
-      <text x="82" y="356" fill="#cbd5e1">Warehouses</text>
-      <text x="82" y="401" fill="#cbd5e1">Purchases</text>
-      <text x="82" y="434" fill="#cbd5e1">Sales</text>
-      <text x="82" y="467" fill="#cbd5e1">Reports</text>
-      <text x="82" y="512" fill="#cbd5e1">Settings</text>
-      <text x="82" y="545" fill="#cbd5e1">Backup</text>
-    </g>
-    <g transform="translate(55 536)">
-      <rect width="162" height="36" rx="10" fill="#052e1b" stroke="#14532d"/>
-      <text x="12" y="15" fill="#86efac" font-size="10" font-weight="850">Demo Mode</text>
-      <text x="12" y="29" fill="#bbf7d0" font-size="9" font-weight="650">Billing and settings restricted</text>
-    </g>
-    <g transform="translate(232 32)">
-      <rect width="712" height="66" fill="#ffffff"/>
-      <path d="M0 66h712" stroke="#e3ebf4"/>
-      <text x="32" y="42" fill="#111827" font-size="22" font-weight="850">Dashboard</text>
-      <rect x="452" y="20" width="34" height="26" rx="13" fill="#eef2f7"/>
-      <circle cx="473" cy="33" r="9" fill="#4f46e5"/>
-      <circle cx="520" cy="33" r="13" fill="#f8fafc" stroke="#d8e2ee"/>
-      <circle cx="562" cy="33" r="13" fill="#f8fafc" stroke="#d8e2ee"/>
-      <rect x="600" y="17" width="82" height="32" rx="16" fill="#f8fafc" stroke="#d8e2ee"/>
-      <circle cx="618" cy="33" r="10" fill="#4f46e5"/>
-      <text x="635" y="37" fill="#334155" font-size="10" font-weight="800">Demo</text>
-    </g>
-    <g transform="translate(264 116)">
-      <rect width="648" height="34" rx="8" fill="#e0f2fe" stroke="#bae6fd"/>
-      <text x="16" y="22" fill="#0369a1" font-size="12" font-weight="760">Welcome to Demo Mode. Explore freely, demo data may reset.</text>
-    </g>
-    <g transform="translate(264 170)" font-size="10" font-weight="820">
-      <g><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#dcfce7"/><text x="46" y="24" fill="#64748b">Total Sales</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
-      <g transform="translate(166 0)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#e0e7ff"/><text x="46" y="24" fill="#64748b">Total Purchases</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
-      <g transform="translate(332 0)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#fef3c7"/><text x="46" y="24" fill="#64748b">Today's Sales</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
-      <g transform="translate(498 0)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#cffafe"/><text x="46" y="24" fill="#64748b">Stock Value</text><text x="46" y="46" fill="#111827" font-size="17" font-weight="900">Rs 60,200</text></g>
-      <g transform="translate(0 76)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#fee2e2"/><text x="46" y="24" fill="#64748b">Customer Dues</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
-      <g transform="translate(166 76)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#ffedd5"/><text x="46" y="24" fill="#64748b">Supplier Dues</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
-      <g transform="translate(332 76)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#dcfce7"/><text x="46" y="24" fill="#64748b">This Month Sales</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
-      <g transform="translate(498 76)"><rect width="150" height="62" rx="12" fill="#ffffff" stroke="#dce6f0"/><circle cx="22" cy="22" r="13" fill="#e0e7ff"/><text x="46" y="24" fill="#64748b">Month Purchase</text><text x="46" y="46" fill="#111827" font-size="18" font-weight="900">Rs 0.00</text></g>
-    </g>
-    <g transform="translate(264 330)">
-      <rect width="420" height="132" rx="13" fill="#ffffff" stroke="#dce6f0"/>
-      <text x="18" y="31" fill="#111827" font-size="15" font-weight="850">Monthly Sales vs Purchase (2026)</text>
-      <g transform="translate(32 56)" stroke="#e8eef6"><path d="M0 60h338M0 30h338M0 0h338"/></g>
-      <path d="M32 119C76 96 96 108 130 74S190 82 222 48s76-14 118-44" fill="none" stroke="#4f46e5" stroke-width="4" stroke-linecap="round"/>
-      <path d="M32 131C78 120 102 122 138 104s72-8 105-30 67 10 120-12" fill="none" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>
-      <circle cx="340" cy="44" r="4" fill="#4f46e5"/><text x="350" y="48" fill="#475569" font-size="10" font-weight="760">Sales</text>
-      <circle cx="340" cy="64" r="4" fill="#f59e0b"/><text x="350" y="68" fill="#475569" font-size="10" font-weight="760">Purchase</text>
-    </g>
-    <g transform="translate(704 330)">
-      <rect width="208" height="132" rx="13" fill="#ffffff" stroke="#dce6f0"/>
-      <text x="16" y="31" fill="#111827" font-size="15" font-weight="850">Top Selling Products</text>
-      <rect x="16" y="51" width="176" height="27" rx="7" fill="#f8fafc"/>
-      <text x="34" y="69" fill="#94a3b8" font-size="11" font-weight="760">No sales data</text>
-      <path d="M16 92h176" stroke="#edf2f7"/>
-      <text x="16" y="116" fill="#64748b" font-size="11" font-weight="800">Product</text>
-      <text x="142" y="116" fill="#64748b" font-size="11" font-weight="800">Qty Sold</text>
-    </g>
-    <g transform="translate(264 482)">
-      <rect width="420" height="72" rx="13" fill="#ffffff" stroke="#dce6f0"/>
-      <text x="16" y="29" fill="#111827" font-size="15" font-weight="850">Recent Sales</text>
-      <rect x="346" y="13" width="58" height="24" rx="8" fill="#ffffff" stroke="#93c5fd"/>
-      <text x="360" y="29" fill="#2563eb" font-size="10" font-weight="820">View All</text>
-      <text x="16" y="55" fill="#94a3b8" font-size="11" font-weight="760">No recent sales</text>
-      <text x="116" y="55" fill="#64748b" font-size="11" font-weight="760">Invoice · Customer · Date · Amount · Status</text>
-    </g>
-    <g transform="translate(704 482)">
-      <rect width="208" height="72" rx="13" fill="#ffffff" stroke="#dce6f0"/>
-      <text x="16" y="29" fill="#111827" font-size="15" font-weight="850">Low Stock Alert</text>
-      <rect x="138" y="13" width="54" height="24" rx="8" fill="#ffffff" stroke="#fca5a5"/>
-      <text x="152" y="29" fill="#dc2626" font-size="10" font-weight="820">View All</text>
-      <text x="16" y="55" fill="#111827" font-size="11" font-weight="800">Thermal Printer</text>
-      <rect x="130" y="42" width="26" height="18" rx="9" fill="#dc2626"/>
-      <text x="143" y="55" text-anchor="middle" fill="#fff" font-size="10" font-weight="850">6</text>
-      <text x="164" y="55" fill="#64748b" font-size="11" font-weight="760">pcs</text>
-    </g>
-  </g>
+
+  <!-- Window chrome -->
+  <rect width="1200" height="800" rx="16" fill="#ffffff" filter="url(#shadow)"/>
+  
+  <!-- Title bar -->
+  <rect width="1200" height="44" rx="16" fill="#f8fafc"/>
+  <rect y="28" width="1200" height="16" fill="#f8fafc"/>
+  <circle cx="22" cy="22" r="7" fill="#ef4444" opacity="0.7"/>
+  <circle cx="44" cy="22" r="7" fill="#f59e0b" opacity="0.7"/>
+  <circle cx="66" cy="22" r="7" fill="#22c55e" opacity="0.7"/>
+  <rect x="200" y="12" width="800" height="20" rx="10" fill="#e2e8f0"/>
+  <text x="600" y="26" text-anchor="middle" font-family="system-ui" font-size="11" fill="#64748b">tsalegacy.com/dashboard</text>
+
+  <!-- Sidebar -->
+  <rect x="0" y="44" width="200" height="756" rx="0" fill="url(#sidebarGrad)"/>
+  
+  <!-- Brand in sidebar -->
+  <rect x="12" y="58" width="32" height="32" rx="8" fill="#1e3a5f"/>
+  <text x="28" y="79" text-anchor="middle" font-family="'Georgia',serif" font-size="15" font-weight="700" fill="#c19148">T</text>
+  <text x="55" y="71" font-family="system-ui" font-size="11" font-weight="700" fill="#f1f5f9">TSA</text>
+  <text x="55" y="84" font-family="system-ui" font-size="8" fill="#94a3b8" letter-spacing="2">LEGACY</text>
+
+  <!-- Sidebar nav items -->
+  <rect x="10" y="105" width="180" height="32" rx="8" fill="#2563eb" opacity="0.9"/>
+  <text x="40" y="126" font-family="system-ui" font-size="12" fill="#ffffff" font-weight="600">⊞ Dashboard</text>
+  
+  <text x="24" y="162" font-family="system-ui" font-size="10" fill="#64748b" letter-spacing="1">INVENTORY</text>
+  <text x="40" y="183" font-family="system-ui" font-size="12" fill="#94a3b8">📦 Products</text>
+  <text x="40" y="207" font-family="system-ui" font-size="12" fill="#94a3b8">🏷 Categories</text>
+  <text x="40" y="231" font-family="system-ui" font-size="12" fill="#94a3b8">🏭 Warehouses</text>
+  
+  <text x="24" y="263" font-family="system-ui" font-size="10" fill="#64748b" letter-spacing="1">PEOPLE</text>
+  <text x="40" y="284" font-family="system-ui" font-size="12" fill="#94a3b8">👤 Customers</text>
+  <text x="40" y="308" font-family="system-ui" font-size="12" fill="#94a3b8">🚛 Suppliers</text>
+  <text x="40" y="332" font-family="system-ui" font-size="12" fill="#94a3b8">👥 HR Tools</text>
+  
+  <text x="24" y="364" font-family="system-ui" font-size="10" fill="#64748b" letter-spacing="1">TRANSACTIONS</text>
+  <text x="40" y="385" font-family="system-ui" font-size="12" fill="#94a3b8">🧾 Sales</text>
+  <text x="40" y="409" font-family="system-ui" font-size="12" fill="#94a3b8">🛒 Purchases</text>
+  <text x="40" y="433" font-family="system-ui" font-size="12" fill="#94a3b8">💰 Payments</text>
+  <text x="40" y="457" font-family="system-ui" font-size="12" fill="#94a3b8">📄 Quotations</text>
+
+  <!-- Main content area -->
+  <rect x="200" y="44" width="1000" height="756" fill="#f8fafc"/>
+
+  <!-- Top navbar -->
+  <rect x="200" y="44" width="1000" height="52" fill="#ffffff"/>
+  <rect x="200" y="95" width="1000" height="1" fill="#e2e8f0"/>
+  <text x="228" y="76" font-family="system-ui" font-size="18" font-weight="700" fill="#0f172a">Dashboard</text>
+  
+  <!-- Dark mode toggle -->
+  <rect x="1070" y="59" width="40" height="22" rx="11" fill="#e2e8f0"/>
+  <circle cx="1082" cy="70" r="9" fill="#ffffff"/>
+  
+  <!-- User avatar -->
+  <circle cx="1150" cy="70" r="18" fill="#4f46e5"/>
+  <text x="1150" y="75" text-anchor="middle" font-family="system-ui" font-size="12" font-weight="700" fill="#ffffff">DU</text>
+
+  <!-- Stat Cards Row -->
+  <!-- Card 1 - Total Sales -->
+  <rect x="220" y="112" width="220" height="110" rx="12" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="220" y="112" width="220" height="4" rx="12" fill="#10b981"/>
+  <text x="244" y="148" font-family="system-ui" font-size="11" fill="#64748b" font-weight="500">TOTAL SALES</text>
+  <text x="244" y="178" font-family="system-ui" font-size="22" font-weight="700" fill="#10b981">₹ 60,745</text>
+  <text x="244" y="196" font-family="system-ui" font-size="10" fill="#94a3b8">↑ 12% vs last month</text>
+  <text x="404" y="148" font-family="system-ui" font-size="22" fill="#d1fae5">📈</text>
+
+  <!-- Card 2 - Total Purchases -->
+  <rect x="456" y="112" width="220" height="110" rx="12" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="456" y="112" width="220" height="4" rx="12" fill="#3b82f6"/>
+  <text x="480" y="148" font-family="system-ui" font-size="11" fill="#64748b" font-weight="500">TOTAL PURCHASES</text>
+  <text x="480" y="178" font-family="system-ui" font-size="22" font-weight="700" fill="#3b82f6">₹ 63,270</text>
+  <text x="480" y="196" font-family="system-ui" font-size="10" fill="#94a3b8">3 purchase orders</text>
+  <text x="640" y="148" font-family="system-ui" font-size="22" fill="#dbeafe">🛒</text>
+
+  <!-- Card 3 - Today's Sales -->
+  <rect x="692" y="112" width="220" height="110" rx="12" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="692" y="112" width="220" height="4" rx="12" fill="#f59e0b"/>
+  <text x="716" y="148" font-family="system-ui" font-size="11" fill="#64748b" font-weight="500">TODAY'S SALES</text>
+  <text x="716" y="178" font-family="system-ui" font-size="22" font-weight="700" fill="#f59e0b">₹ 28,750</text>
+  <text x="716" y="196" font-family="system-ui" font-size="10" fill="#94a3b8">INV-0008 pending</text>
+  <text x="876" y="148" font-family="system-ui" font-size="22" fill="#fef3c7">☀️</text>
+
+  <!-- Card 4 - Stock Value -->
+  <rect x="928" y="112" width="240" height="110" rx="12" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="928" y="112" width="240" height="4" rx="12" fill="#8b5cf6"/>
+  <text x="952" y="148" font-family="system-ui" font-size="11" fill="#64748b" font-weight="500">STOCK VALUE</text>
+  <text x="952" y="178" font-family="system-ui" font-size="22" font-weight="700" fill="#8b5cf6">₹ 60,200</text>
+  <text x="952" y="196" font-family="system-ui" font-size="10" fill="#94a3b8">4 products · 1 low stock</text>
+  <text x="1130" y="148" font-family="system-ui" font-size="22" fill="#ede9fe">📦</text>
+
+  <!-- Row 2 stat cards -->
+  <rect x="220" y="238" width="220" height="90" rx="12" fill="#ffffff" filter="url(#shadow)"/>
+  <text x="244" y="268" font-family="system-ui" font-size="10" fill="#64748b">CUSTOMER DUES</text>
+  <text x="244" y="292" font-family="system-ui" font-size="18" font-weight="700" fill="#ef4444">₹ 29,320</text>
+  <text x="244" y="310" font-family="system-ui" font-size="9" fill="#94a3b8">2 unpaid invoices</text>
+
+  <rect x="456" y="238" width="220" height="90" rx="12" fill="#ffffff" filter="url(#shadow)"/>
+  <text x="480" y="268" font-family="system-ui" font-size="10" fill="#64748b">SUPPLIER DUES</text>
+  <text x="480" y="292" font-family="system-ui" font-size="18" font-weight="700" fill="#f59e0b">₹ 51,750</text>
+  <text x="480" y="310" font-family="system-ui" font-size="9" fill="#94a3b8">PO-0003 pending</text>
+
+  <rect x="692" y="238" width="220" height="90" rx="12" fill="#ffffff" filter="url(#shadow)"/>
+  <text x="716" y="268" font-family="system-ui" font-size="10" fill="#64748b">THIS MONTH SALES</text>
+  <text x="716" y="292" font-family="system-ui" font-size="18" font-weight="700" fill="#10b981">₹ 33,970</text>
+  <text x="716" y="310" font-family="system-ui" font-size="9" fill="#94a3b8">Apr 2026</text>
+
+  <rect x="928" y="238" width="240" height="90" rx="12" fill="#ffffff" filter="url(#shadow)"/>
+  <text x="952" y="268" font-family="system-ui" font-size="10" fill="#64748b">THIS MONTH PURCHASE</text>
+  <text x="952" y="292" font-family="system-ui" font-size="18" font-weight="700" fill="#3b82f6">₹ 51,750</text>
+  <text x="952" y="310" font-family="system-ui" font-size="9" fill="#94a3b8">Apr 2026</text>
+
+  <!-- Chart section -->
+  <rect x="220" y="348" width="730" height="300" rx="12" fill="#ffffff" filter="url(#shadow)"/>
+  <text x="248" y="380" font-family="system-ui" font-size="14" font-weight="700" fill="#0f172a">📊 Monthly Sales vs Purchase (2026)</text>
+  
+  <!-- Chart legend -->
+  <circle cx="570" cy="376" r="5" fill="#4f46e5"/>
+  <text x="580" y="380" font-family="system-ui" font-size="11" fill="#64748b">Sales</text>
+  <circle cx="625" cy="376" r="5" fill="#10b981"/>
+  <text x="635" y="380" font-family="system-ui" font-size="11" fill="#64748b">Purchase</text>
+
+  <!-- Chart Y-axis labels -->
+  <text x="235" y="400" font-family="system-ui" font-size="9" fill="#94a3b8">₹60k</text>
+  <text x="235" y="450" font-family="system-ui" font-size="9" fill="#94a3b8">₹40k</text>
+  <text x="235" y="500" font-family="system-ui" font-size="9" fill="#94a3b8">₹20k</text>
+  <text x="235" y="560" font-family="system-ui" font-size="9" fill="#94a3b8">₹0</text>
+
+  <!-- Chart grid lines -->
+  <line x1="270" y1="395" x2="935" y2="395" stroke="#f1f5f9" stroke-width="1"/>
+  <line x1="270" y1="445" x2="935" y2="445" stroke="#f1f5f9" stroke-width="1"/>
+  <line x1="270" y1="495" x2="935" y2="495" stroke="#f1f5f9" stroke-width="1"/>
+  <line x1="270" y1="555" x2="935" y2="555" stroke="#e2e8f0" stroke-width="1"/>
+  
+  <!-- Sales line (blue/indigo) - peaks in April -->
+  <path d="M270,545 L325,540 L380,520 L435,500 L490,470 L545,440 L600,410 L655,420 L710,530 L765,545 L820,545 L875,545 L935,545" 
+        fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Sales fill area -->
+  <path d="M270,545 L325,540 L380,520 L435,500 L490,470 L545,440 L600,410 L655,420 L710,530 L765,545 L820,545 L875,545 L935,545 L935,555 L270,555 Z" 
+        fill="url(#chartFill)" opacity="0.6"/>
+  
+  <!-- Purchase line (green) - peaks in April too -->
+  <path d="M270,548 L325,545 L380,530 L435,510 L490,490 L545,455 L600,400 L655,430 L710,540 L765,548 L820,548 L875,548 L935,548" 
+        fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,3"/>
+  
+  <!-- Data points on sales line -->
+  <circle cx="600" cy="410" r="5" fill="#4f46e5" stroke="#ffffff" stroke-width="2"/>
+  <text x="594" y="402" font-family="system-ui" font-size="9" fill="#4f46e5" font-weight="600">60k</text>
+  
+  <!-- X-axis labels -->
+  <text x="268" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">Nov</text>
+  <text x="323" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">Dec</text>
+  <text x="378" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">Jan</text>
+  <text x="433" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">Feb</text>
+  <text x="488" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">Mar</text>
+  <text x="543" y="572" font-family="system-ui" font-size="9" fill="#4f46e5" font-weight="600">Apr ●</text>
+  <text x="598" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">May</text>
+  <text x="653" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">Jun</text>
+  <text x="708" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">Jul</text>
+  <text x="763" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">Aug</text>
+  <text x="818" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">Sep</text>
+  <text x="873" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">Oct</text>
+  <text x="928" y="572" font-family="system-ui" font-size="9" fill="#94a3b8">Dec</text>
+
+  <!-- Top Selling Products card -->
+  <rect x="968" y="348" width="200" height="300" rx="12" fill="#ffffff" filter="url(#shadow)"/>
+  <text x="988" y="378" font-family="system-ui" font-size="12" font-weight="700" fill="#0f172a">🏆 Top Products</text>
+  <line x1="978" y1="388" x2="1158" y2="388" stroke="#f1f5f9" stroke-width="1"/>
+  
+  <text x="988" y="412" font-family="system-ui" font-size="10" fill="#64748b" font-weight="600">PRODUCT</text>
+  <text x="1140" y="412" text-anchor="end" font-family="system-ui" font-size="10" fill="#64748b" font-weight="600">QTY</text>
+  
+  <text x="988" y="438" font-family="system-ui" font-size="11" fill="#0f172a">Barcode Label Roll</text>
+  <text x="1140" y="438" text-anchor="end" font-family="system-ui" font-size="11" font-weight="700" fill="#4f46e5">5</text>
+  <line x1="978" y1="448" x2="1158" y2="448" stroke="#f8fafc" stroke-width="1"/>
+  
+  <text x="988" y="468" font-family="system-ui" font-size="11" fill="#0f172a">Enterprise Demo</text>
+  <text x="1140" y="468" text-anchor="end" font-family="system-ui" font-size="11" font-weight="700" fill="#4f46e5">3</text>
+  <line x1="978" y1="478" x2="1158" y2="478" stroke="#f8fafc" stroke-width="1"/>
+  
+  <text x="988" y="498" font-family="system-ui" font-size="11" fill="#0f172a">Thermal Printer</text>
+  <text x="1140" y="498" text-anchor="end" font-family="system-ui" font-size="11" font-weight="700" fill="#4f46e5">2</text>
+  <line x1="978" y1="508" x2="1158" y2="508" stroke="#f8fafc" stroke-width="1"/>
+  
+  <text x="988" y="528" font-family="system-ui" font-size="11" fill="#0f172a">POS Counter Stand</text>
+  <text x="1140" y="528" text-anchor="end" font-family="system-ui" font-size="11" font-weight="700" fill="#4f46e5">1</text>
+
+  <!-- Bottom footer strip -->
+  <rect x="200" y="780" width="1000" height="20" fill="#f8fafc"/>
+  <text x="400" y="793" font-family="system-ui" font-size="9" fill="#94a3b8">© 2026 TSA Demo Store · All rights reserved.</text>
+  <text x="1000" y="793" text-anchor="end" font-family="system-ui" font-size="9" fill="#94a3b8">TSA Legacy v2.0.0</text>
 </svg>
