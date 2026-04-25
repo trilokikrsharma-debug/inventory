@@ -26,7 +26,14 @@ $nonce = htmlspecialchars($GLOBALS['csp_nonce'] ?? ($cspNonce ?? ''), ENT_QUOTES
     <div class="tsa-container">
         <div class="tsa-auth-grid">
             <aside class="tsa-auth-side">
-                <div class="tsa-auth-brand"><a href="<?= APP_URL ?>/"><img src="<?= Helper::escape($assets['logo_light']) ?>" alt="<?= Helper::escape(APP_NAME) ?>"></a></div>
+                <div class="tsa-auth-brand">
+    <a href="<?= APP_URL ?>/">
+        <img src="<?= APP_URL ?>/assets/img/logo.png" 
+             onerror="this.onerror=null;this.src='<?= Helper::escape($assets['logo_light']) ?>'"
+             alt="<?= Helper::escape(APP_NAME) ?>"
+             style="height:40px;width:auto;">
+    </a>
+</div>
                 <div class="tsa-eyebrow"><span class="dot"></span>Workspace Access</div>
                 <h3>Sign in to keep billing, inventory, and operations moving.</h3>
                 <p>Use your workspace login to access invoices, stock movement, reports, and role-based controls.</p>
