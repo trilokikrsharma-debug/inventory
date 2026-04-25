@@ -381,13 +381,15 @@ class Tenant {
             'professional' => [
                 'basic_reports', 'invoicing', 'inventory', 'customer_management',
                 'payment_tracking', 'audit_trail', 'export_pdf', 'sale_returns',
-                'multi_user', 'quotations', 'advanced_reports'
+                'multi_user', 'quotations', 'advanced_reports',
+                'warehouses', 'insights'
             ],
             'enterprise' => [
                 'basic_reports', 'invoicing', 'inventory', 'customer_management',
                 'payment_tracking', 'audit_trail', 'export_pdf', 'sale_returns',
                 'multi_user', 'quotations', 'advanced_reports',
-                'backup_restore', 'api'
+                'backup_restore', 'api', 'hr', 'insights', 'warehouses',
+                'ai_scan', 'two_factor', 'sale_returns'
             ],
         ];
 
