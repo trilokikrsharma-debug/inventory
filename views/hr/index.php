@@ -360,7 +360,7 @@ $month = (string)($month ?? date('Y-m'));
                                 <a href="<?= APP_URL ?>/index.php?page=hr&action=view_employee&id=<?= (int)$emp['id'] ?>" class="btn btn-sm btn-outline-primary btn-icon" title="View"><i class="fas fa-eye"></i></a>
                                 <a href="<?= APP_URL ?>/index.php?page=hr&action=edit&id=<?= (int)$emp['id'] ?>" class="btn btn-sm btn-outline-secondary btn-icon" title="Edit"><i class="fas fa-edit"></i></a>
                                 <form method="POST" action="<?= APP_URL ?>/index.php?page=hr&action=delete" class="d-inline" data-confirm="Delete this employee?">
-                                    <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrf_token ?? '' ?>">
+                                    <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrfToken ?>">
                                     <input type="hidden" name="id" value="<?= (int)$emp['id'] ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-danger btn-icon" title="Delete"><i class="fas fa-trash"></i></button>
                                 </form>
