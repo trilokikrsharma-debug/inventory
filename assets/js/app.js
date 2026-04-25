@@ -565,12 +565,22 @@ function printElement(elementId) {
 // ============================================================
 function openGlobalSearch() {
     const modal = document.getElementById('globalSearchModal');
-    if (modal && typeof bootstrap !== 'undefined') {
-        new bootstrap.Modal(modal).show();
-        setTimeout(() => { const inp = modal.querySelector('input'); if (inp) inp.focus(); }, 300);
+    if (!modal) return;
+    // Use Bootstrap modal if available (loaded from CDN)
+    if (typeof bootstrap !== 'undefined') {
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modal);
+        bsModal.show();
+        setTimeout(() => { 
+            const inp = modal.querySelector('#globalSearchInput'); 
+            if (inp) { inp.focus(); inp.value = ''; inp.dispatchEvent(new Event('input')); }
+        }, 200);
     } else {
-        const search = document.querySelector('#globalSearch, input[type="search"]');
-        if (search) { search.focus(); search.select(); }
+        // Fallback: show manually
+        modal.style.display = 'flex';
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+        const inp = modal.querySelector('#globalSearchInput');
+        if (inp) inp.focus();
     }
 }
 
