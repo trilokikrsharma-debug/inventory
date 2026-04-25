@@ -4360,3 +4360,31 @@ kbd {
     .main-content { margin-left: 0 !important; padding: 0 !important; }
     .card { box-shadow: none !important; border: 1px solid #ddd !important; }
 }
+
+/* ── Global Search Styles ── */
+.search-trigger-btn {
+    cursor: pointer;
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    transition: all 0.2s ease;
+}
+.search-trigger-btn:hover {
+    background: rgba(255,255,255,0.1) !important;
+    border-color: var(--primary) !important;
+}
+#globalSearchModal .modal-content {
+    backdrop-filter: blur(20px);
+}
+#globalSearchInput:focus {
+    outline: none;
+    box-shadow: none;
+}
+.search-quick-link:hover,
+.search-result-item:hover {
+    background: rgba(255,255,255,0.05) !important;
+}
+[data-bs-theme="dark"] #globalSearchModal .modal-content,
+body.dark-mode #globalSearchModal .modal-content {
+    background: #1a1d2e;
+    border-color: rgba(255,255,255,0.08);
+}
