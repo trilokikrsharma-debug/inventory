@@ -10,6 +10,8 @@ if (!function_exists('tsa_brand_assets')) {
             $brandCssVersion .= '.' . $brandCssMtime;
         }
         return [
+        'logo_png'     => APP_URL . '/assets/img/logo.png',
+        'icon_png'     => APP_URL . '/assets/img/app-icon.png',
             'favicon' => $base . '/assets/favicon.svg',
             'icon' => $base . '/assets/icon.svg',
             'logo_light' => $base . '/assets/logo-lockup.svg',
