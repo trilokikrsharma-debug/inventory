@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title><?= Helper::escape($pageTitle ?? 'Dashboard') ?> | <?= Helper::escape(APP_NAME) ?></title>
     <?php
-    $assetSuffix = '?v=' . rawurlencode((string)ASSET_VERSION);
+    $assetSuffix = '?v=' . rawurlencode((string)ASSET_VERSION) . '.' . @filemtime(ASSET_PATH . '/js/app.js');
     $cssAsset = '/assets/css/style.css';
     $appJsAsset = '/assets/js/app.js';
     if (defined('APP_ENV') && APP_ENV === 'production') {
