@@ -22,6 +22,87 @@
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Critical Dark Mode CSS (inline to bypass CDN caching) -->
+    <style id="darkModeInline">
+    [data-theme="dark"] body, [data-bs-theme="dark"] body {
+        background: #0f172a !important; color: #e2e8f0 !important;
+    }
+    [data-theme="dark"] .main-content, [data-bs-theme="dark"] .main-content {
+        background: #0f172a !important;
+    }
+    [data-theme="dark"] .top-navbar, [data-bs-theme="dark"] .top-navbar {
+        background: #1e293b !important; border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+    }
+    [data-theme="dark"] .card, [data-bs-theme="dark"] .card {
+        background: #1e293b !important; border-color: rgba(255,255,255,0.08) !important; color: #e2e8f0 !important;
+    }
+    [data-theme="dark"] .card-header, [data-bs-theme="dark"] .card-header {
+        background: rgba(255,255,255,0.03) !important; border-bottom-color: rgba(255,255,255,0.08) !important; color: #f1f5f9 !important;
+    }
+    [data-theme="dark"] .card-body, [data-bs-theme="dark"] .card-body { color: #e2e8f0 !important; }
+    [data-theme="dark"] .stat-card.stat-primary, [data-bs-theme="dark"] .stat-card.stat-primary {
+        background: linear-gradient(135deg, rgba(78,115,223,0.28), rgba(78,115,223,0.14)) !important;
+        border-color: rgba(78,115,223,0.3) !important;
+    }
+    [data-theme="dark"] .stat-card.stat-success, [data-bs-theme="dark"] .stat-card.stat-success {
+        background: linear-gradient(135deg, rgba(28,200,138,0.28), rgba(28,200,138,0.14)) !important;
+        border-color: rgba(28,200,138,0.3) !important;
+    }
+    [data-theme="dark"] .stat-card.stat-warning, [data-bs-theme="dark"] .stat-card.stat-warning {
+        background: linear-gradient(135deg, rgba(246,194,62,0.28), rgba(246,194,62,0.14)) !important;
+        border-color: rgba(246,194,62,0.3) !important;
+    }
+    [data-theme="dark"] .stat-card.stat-danger, [data-bs-theme="dark"] .stat-card.stat-danger {
+        background: linear-gradient(135deg, rgba(231,74,59,0.28), rgba(231,74,59,0.14)) !important;
+        border-color: rgba(231,74,59,0.3) !important;
+    }
+    [data-theme="dark"] .stat-card.stat-info, [data-bs-theme="dark"] .stat-card.stat-info {
+        background: linear-gradient(135deg, rgba(54,185,204,0.28), rgba(54,185,204,0.14)) !important;
+        border-color: rgba(54,185,204,0.3) !important;
+    }
+    [data-theme="dark"] .stat-card .stat-label, [data-bs-theme="dark"] .stat-card .stat-label {
+        color: #94a3b8 !important; opacity: 1 !important;
+    }
+    [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
+    [data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6,
+    [data-theme="dark"] label, [data-theme="dark"] .text-dark,
+    [data-bs-theme="dark"] h1, [data-bs-theme="dark"] h2, [data-bs-theme="dark"] h3,
+    [data-bs-theme="dark"] h4, [data-bs-theme="dark"] h5, [data-bs-theme="dark"] h6,
+    [data-bs-theme="dark"] label, [data-bs-theme="dark"] .text-dark {
+        color: #f1f5f9 !important;
+    }
+    [data-theme="dark"] .table, [data-bs-theme="dark"] .table {
+        color: #e2e8f0 !important; --bs-table-bg: transparent !important;
+    }
+    [data-theme="dark"] .table thead th, [data-bs-theme="dark"] .table thead th {
+        background: rgba(255,255,255,0.04) !important; color: #94a3b8 !important;
+        border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+    }
+    [data-theme="dark"] .table td, [data-bs-theme="dark"] .table td {
+        border-color: rgba(255,255,255,0.05) !important; color: #e2e8f0 !important;
+    }
+    [data-theme="dark"] .form-control, [data-theme="dark"] .form-select,
+    [data-bs-theme="dark"] .form-control, [data-bs-theme="dark"] .form-select {
+        background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.12) !important;
+        color: #e2e8f0 !important;
+    }
+    [data-theme="dark"] .bg-white, [data-bs-theme="dark"] .bg-white { background: #1e293b !important; }
+    [data-theme="dark"] .bg-light, [data-bs-theme="dark"] .bg-light { background: rgba(255,255,255,0.04) !important; }
+    [data-theme="dark"] .modal-content, [data-bs-theme="dark"] .modal-content {
+        background: #1e293b !important; border-color: rgba(255,255,255,0.1) !important; color: #e2e8f0 !important;
+    }
+    [data-theme="dark"] .dropdown-menu, [data-bs-theme="dark"] .dropdown-menu {
+        background: #1e293b !important; border-color: rgba(255,255,255,0.1) !important;
+    }
+    [data-theme="dark"] .dropdown-item, [data-bs-theme="dark"] .dropdown-item { color: #e2e8f0 !important; }
+    [data-theme="dark"] .dropdown-item:hover, [data-bs-theme="dark"] .dropdown-item:hover {
+        background: rgba(255,255,255,0.06) !important;
+    }
+    [data-theme="dark"] .app-footer, [data-bs-theme="dark"] .app-footer {
+        background: #1e293b !important; border-top: 1px solid rgba(255,255,255,0.06) !important; color: #64748b !important;
+    }
+    [data-theme="dark"] .text-muted, [data-bs-theme="dark"] .text-muted { color: #64748b !important; }
+    </style>
     <!-- Font Awesome 6 -->
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" /></noscript>
