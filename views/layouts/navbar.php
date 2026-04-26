@@ -35,6 +35,29 @@ if (!empty($user['full_name'])) {
             <input type="checkbox" id="themeSwitch" <?= ($user['theme_mode'] ?? 'light') === 'dark' ? 'checked' : '' ?>>
             <label class="theme-slider" for="themeSwitch"></label>
         </div>
+        <script>
+        // Inline theme init — runs immediately, no defer dependency
+        (function(){
+            var sw = document.getElementById('themeSwitch');
+            if (!sw) return;
+            
+            function applyThemeNow(t) {
+                document.documentElement.setAttribute('data-theme', t);
+                document.documentElement.setAttribute('data-bs-theme', t);
+                localStorage.setItem('theme', t);
+                sw.checked = (t === 'dark');
+            }
+            
+            // Apply saved theme immediately
+            var saved = localStorage.getItem('theme') || 'light';
+            applyThemeNow(saved);
+            
+            // Listen for toggle
+            sw.addEventListener('change', function() {
+                applyThemeNow(this.checked ? 'dark' : 'light');
+            });
+        })();
+        </script>
 
         <!-- Notifications placeholder -->
         <button class="navbar-btn" title="Notifications">
